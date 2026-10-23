@@ -161,7 +161,7 @@ function mix(c1,c2,k){k=clamp(k,0,1);return`rgb(${c1.map((v,i)=>Math.round(lerp(
 function dotCross(x,y,r,out,col,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.stroke();
   if(out){ctx.beginPath();ctx.arc(x,y,r*.32,0,7);ctx.fill()}else{const d=r*.62;ctx.beginPath();ctx.moveTo(x-d,y-d);ctx.lineTo(x+d,y+d);ctx.moveTo(x+d,y-d);ctx.lineTo(x-d,y+d);ctx.stroke()}ctx.restore()}
 // Vòng dòng điện xoáy có mũi tên chạy: ccw=true ngược chiều kim đồng hồ (trên màn hình)
-function swirl(x,y,rx,ry,ccw,col,w,alpha,ph){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU2);ctx.stroke();
+function swirl(x,y,rx,ry,ccw,col,w,alpha,ph,dash){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=dash?'#3f1d0b':col;ctx.lineWidth=w;if(dash)ctx.setLineDash(dash);ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU2);ctx.stroke();ctx.setLineDash([]);
   for(const o of[0,1/3,2/3]){const a=((ph+o)%1)*TAU2*(ccw?-1:1);const px=x+rx*Math.cos(a),py=y+ry*Math.sin(a);
     const tx=-rx*Math.sin(a),ty=ry*Math.cos(a);let ang=Math.atan2(ty,tx);if(ccw)ang+=Math.PI;head(px,py,ang,4+w,col)}ctx.restore()}
 // Các vòng đường sức quanh một cuộn dây phẳng (trục thẳng đứng tại cx); sg>0: trong lòng cuộn hướng lên
@@ -612,10 +612,81 @@ const PHANH=(()=>{
   const SIG={dong:1,nhom:0.6,nhua:0},COLM={dong:[196,120,72],nhom:[203,213,225],nhua:[241,245,249]};
   let st;
   const kb=()=>st.brake?1.4*st.I*st.I*SIG[st.mat]:0;
+  // Hình phối cảnh: đĩa nằm ngang, trục thẳng đứng, nam châm N ở trên, S ở dưới (giống hình sách)
+  // Tọa độ trên mặt phẳng đĩa: X sang phải, Z hướng về phía người xem; h là độ cao so với mặt đĩa
+  const D={x:420,y:270,R:270,KY:0.3,TH:16,ZM:125,HW:68,HD:46};
+  const P=(X,Z,h=0)=>[D.x+X,D.y+Z*D.KY-h];
+  function box(X,Z,hTop,hBot,cTop,cFront){
+    const[a,b]=P(X-D.HW,Z+D.HD,hTop),[c,d]=P(X+D.HW,Z+D.HD,hBot);
+    ctx.fillStyle=cFront;ctx.fillRect(a,b,c-a,d-b);
+    ctx.fillStyle=cTop;ctx.beginPath();[[X-D.HW,Z-D.HD],[X+D.HW,Z-D.HD],[X+D.HW,Z+D.HD],[X-D.HW,Z+D.HD]].forEach(([x,z],i)=>{const q=P(x,z,hTop);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])});ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#0f172a';ctx.lineWidth=1.2;ctx.stroke();ctx.strokeRect(a,b,c-a,d-b);
+    return[a,b,c,d];
+  }
+  function draw3d(){
+    const c=COLM[st.mat],hk=clamp(st.heat/250,0,.5),on=st.brake,mag=on?st.I:0;
+    const topC=mix(c,[240,90,40],hk),sideC=mix(c.map(v=>v*.72),[150,60,30],hk);
+    const GRID=[];for(const X of[-48,-24,0,24,48])for(const Z of[D.ZM-28,D.ZM,D.ZM+28])GRID.push([X,Z]);
+    const G='#15803d';
+    // trục phía dưới đĩa
+    ctx.fillStyle='#b7791f';ctx.fillRect(D.x-9,D.y,18,250);
+    // nam châm S phía dưới
+    box(0,D.ZM,-110,-165,on?'#3b82f6':'#94a3b8',on?'#1d4ed8':'#64748b');
+    const sf=P(0,D.ZM+D.HD,-137);text('S',sf[0],sf[1],22,'#fff','center',700);
+    // đĩa: bề dày rồi mặt trên
+    ctx.fillStyle=sideC;ctx.beginPath();ctx.ellipse(D.x,D.y+D.TH,D.R,D.R*D.KY,0,0,TAU2);ctx.fill();ctx.fillRect(D.x-D.R,D.y,2*D.R,D.TH);
+    ctx.strokeStyle='#7c4a24';ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(D.x,D.y+D.TH,D.R,D.R*D.KY,0,0,Math.PI);ctx.stroke();
+    ctx.fillStyle=topC;ctx.beginPath();ctx.ellipse(D.x,D.y,D.R,D.R*D.KY,0,0,TAU2);ctx.fill();ctx.stroke();
+    // vạch trên đĩa để thấy đĩa quay (w > 0: chỗ dưới nam châm đi sang phải)
+    ctx.strokeStyle='rgba(60,35,15,.22)';ctx.lineWidth=2;
+    for(let i=0;i<8;i++){const a=i*Math.PI/4-st.ang;ctx.beginPath();ctx.moveTo(...P(40*Math.cos(a),40*Math.sin(a)));ctx.lineTo(...P((D.R-14)*Math.cos(a),(D.R-14)*Math.sin(a)));ctx.stroke()}
+    {const a=-st.ang+0.3;ctx.fillStyle='#1f2937';ctx.beginPath();ctx.ellipse(...P((D.R-30)*Math.cos(a),(D.R-30)*Math.sin(a)),7,7*D.KY+2,0,0,TAU2);ctx.fill()}
+    // đường sức phía dưới đĩa (chỉ phần lộ ra dưới mép trước của đĩa)
+    if(on){ctx.save();ctx.globalAlpha=.35+.65*mag;ctx.strokeStyle=G;ctx.lineWidth=1.8;
+      for(const[X,Z]of GRID){const edge=D.y+D.TH+D.KY*Math.sqrt(D.R*D.R-X*X),y1=P(X,Z,-110)[1],y0=Math.max(P(X,Z,-D.TH)[1],edge);
+        if(y1-y0>6){ctx.beginPath();ctx.moveTo(D.x+X,y0);ctx.lineTo(D.x+X,y1);ctx.stroke();head(D.x+X,(y0+y1)/2+3,Math.PI/2,5,G)}}
+      ctx.restore()}
+    // dòng Foucault: phía đĩa đi vào vùng từ trường (từ thông tăng) và phía đi ra (từ thông giảm) xoáy ngược chiều nhau
+    const A=clamp(Math.abs(st.w)/12*SIG[st.mat]*st.I,0,1),inLeft=st.w>0;
+    if(on&&A>0.04){
+      for(const sd of[-1,1]){const[cx,cy]=P(sd*(D.HW+84),D.ZM),entering=(sd<0)===inLeft;
+        // B hướng xuống; từ thông tăng ⇒ dòng cảm ứng ngược chiều kim đồng hồ khi nhìn từ trên
+        for(const r of[24,48,72])swirl(cx,cy,r,r*D.KY,entering,'#b91c1c',1.6,.35+.65*A,st.ph+r/100,[6,4]);}
+    }
+    // điểm đường sức xuyên qua mặt đĩa
+    if(on)for(const[X,Z]of GRID){const[x,y]=P(X,Z);ctx.fillStyle=G;ctx.globalAlpha=.5+.5*mag;ctx.beginPath();ctx.ellipse(x,y,3,1.6,0,0,TAU2);ctx.fill();ctx.globalAlpha=1}
+    // lực phanh lên đĩa (ngược chiều chuyển động)
+    if(on&&A>0.04){const F=kb()*Math.abs(st.w),d=st.w>0?-1:1,[fx,fy]=P(0,D.ZM+D.HD+40);
+      arrow(fx,fy,fx+d*Math.min(110,30+F*6),fy,'#7c3aed',3.2,10);text('F phanh',fx+d*Math.min(110,30+F*6)+d*36,fy,13,'#7c3aed','center',700)}
+    // trục phía trên đĩa
+    ctx.fillStyle='#d69e2e';ctx.fillRect(D.x-9,D.y-240,18,240);ctx.fillStyle='#b7791f';ctx.beginPath();ctx.ellipse(D.x,D.y-240,9,3.5,0,0,TAU2);ctx.fill();
+    ctx.fillStyle='#92400e';ctx.beginPath();ctx.ellipse(D.x,D.y,13,5,0,0,TAU2);ctx.fill();
+    // đường sức phía trên đĩa: từ cực N đi xuống
+    if(on){ctx.save();ctx.globalAlpha=.35+.65*mag;ctx.strokeStyle=G;ctx.lineWidth=1.8;
+      for(const[X,Z]of GRID){const[x,y0]=P(X,Z,120),y1=P(X,Z,2)[1];ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x,y1);ctx.stroke();head(x,(y0+y1)/2+4,Math.PI/2,5,G)}
+      ctx.restore();const[bx,by]=P(D.HW+12,D.ZM-D.HD,70);text('B',bx+10,by,22,G,'left',700)}
+    // nam châm N phía trên: thân đen, mặt dưới đỏ
+    const[a,b,cc,dd]=box(0,D.ZM,190,120,'#374151','#111827');
+    ctx.fillStyle=on?'#dc2626':'#9ca3af';ctx.fillRect(a,b+(dd-b)*.55,cc-a,(dd-b)*.45);ctx.strokeStyle='#0f172a';ctx.strokeRect(a,b,cc-a,dd-b);
+    text('N',(a+cc)/2,b+(dd-b)*.77,20,'#fff','center',700);
+    text(on?`Nam châm điện: I = ${fmt(st.I*5,1)} A`:'Nam châm điện: ngắt',(a+cc)/2,b-58,13,on?'#15803d':'#64748b','center',700);
+    // mũi tên chiều quay ở mép phải đĩa
+    if(Math.abs(st.w)>0.3){const r=D.R+22,s=Math.sign(st.w),a0=s>0?0.75:0.15,a1=s>0?0.15:0.75;
+      ctx.strokeStyle='#111827';ctx.lineWidth=3;ctx.beginPath();for(let k=0;k<=20;k++){const a=a0+(a1-a0)*k/20,q=P(r*Math.cos(a),r*Math.sin(a));k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])}ctx.stroke();
+      const q=P(r*Math.cos(a1),r*Math.sin(a1)),q2=P(r*Math.cos(a1+(a1-a0)*.05),r*Math.sin(a1+(a1-a0)*.05));head(q[0],q[1],Math.atan2(q2[1]-q[1],q2[0]-q[0])+Math.PI,10,'#111827')}
+    // nhãn
+    const nm={dong:'Đĩa đồng',nhom:'Đĩa nhôm',nhua:'Đĩa nhựa'}[st.mat],[lx,ly]=P(-D.R+40,-60);
+    ctx.strokeStyle='#1f2937';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx-40,ly-46);ctx.stroke();text(nm,lx-44,ly-56,15,'#1f2937','center',700);
+    if(on&&A>0.04){const[ex,ey]=P(D.HW+84+60,D.ZM);ctx.strokeStyle='#7f1d1d';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-10,ey+4);ctx.lineTo(ex+70,ey+88);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.strokeStyle='#dc2626';ctx.lineWidth=1.5;rrect(ex+40,ey+88,150,48,8);ctx.fill();ctx.stroke();text('Dòng điện',ex+115,ey+103,14,'#b91c1c','center',700);text('Foucault (Fu-cô)',ex+115,ey+122,14,'#b91c1c','center',700)}
+    if(Math.abs(st.w)<0.3)text('Bấm “Quay đĩa” rồi bật phanh từ',D.x,18,13,'#475569','center',600);
+  }
   return{
     id:'phanh',tab:'🛑 Phanh điện từ',title:'Phanh điện từ (phanh dùng dòng Foucault)',
-    init(){st={w:0,ang:0,brake:false,I:0.8,mat:'dong',t:0,hist:[],ht:0,heat:0,tb:null,ph:0,spun:false}},
-    controls:`<div class="row"><button class="wide pri" data-act="spin">⟳ Quay đĩa (bánh xe)</button></div>
+    init(){st={w:0,ang:0,brake:false,I:0.8,mat:'nhom',view:'3d',t:0,hist:[],ht:0,heat:0,tb:null,ph:0,spun:false}},
+    controls:`<div class="lbl">Cách nhìn</div>
+      <div class="seg" data-key="view"><button data-v="3d">Phối cảnh 3D (đĩa nằm ngang)</button><button data-v="top">Nhìn chính diện</button></div>
+      <div class="row"><button class="wide pri" data-act="spin">⟳ Quay đĩa (bánh xe)</button></div>
       <div class="row"><button class="wide" data-tog="brake" data-t="Ngắt phanh từ|Bật phanh từ (nam châm điện)"></button></div>
       <label class="rng">Cường độ dòng điện qua nam châm điện<span class="v" data-show="I"></span><input type="range" data-key="I" min="0.2" max="1" step="0.05" value="0.8"></label>
       <div class="lbl">Vật liệu đĩa</div>
@@ -633,7 +704,8 @@ const PHANH=(()=>{
       st.ang+=st.w*dt;st.ph+=dt*clamp(Math.abs(st.w)/6,0,1.5);
       st.ht+=dt;if(st.ht>0.05){st.ht=0;st.hist.push([st.w*60/TAU2,st.brake?1:0]);if(st.hist.length>240)st.hist.shift()}
     },
-    draw(){
+    draw(){if(st.view==='3d')draw3d();else this.drawTop()},
+    drawTop(){
       const c=COLM[st.mat];
       // đĩa
       ctx.fillStyle=mix(c,[240,90,40],clamp(st.heat/250,0,.5));ctx.beginPath();ctx.arc(CX,CY,R,0,7);ctx.fill();
