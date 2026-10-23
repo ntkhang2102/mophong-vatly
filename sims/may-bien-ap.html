@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Máy biến áp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Bố cục: vùng hình (canvas nền bạc) bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --stage:#e5e9f0; --ink:#2b3340;
+  --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; --ind:#e2531f; --field:#1e40af;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:var(--stage);min-width:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 20px)}
+.chip{background:rgba(255,255,255,.92);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:6px 11px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}
+.chip.ind b{color:var(--ind)}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.85);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex;gap:0}
+.seg button{flex:1;border-radius:0}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-2px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.rng input:disabled{opacity:.4}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.formula{font-size:13px;color:#cbd5e1;background:#0b1427;border-radius:8px;padding:6px 8px;border:1px dashed var(--line)}
+#graph{width:100%;height:180px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+@media (max-width:860px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="chips">
+      <div class="chip">U<sub>1</sub> = <b id="cU1">0</b></div>
+      <div class="chip">I<sub>1</sub> = <b id="cI1">0</b></div>
+      <div class="chip ind">U<sub>2</sub> = <b id="cU2">0</b></div>
+      <div class="chip ind">I<sub>2</sub> = <b id="cI2">0</b></div>
+    </div>
+    <div class="hint" id="hint">Bấm vào khóa K₁, K₂ trên hình để đóng/mở</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Máy biến áp: cấu tạo, đường sức từ và dòng điện Foucault</h1>
+      <div class="sub">Vật lí 12 · Cảm ứng điện từ · Máy biến áp</div>
+    </div>
+
+    <div class="sec">
+      <h2>Nguồn điện (cuộn sơ cấp)</h2>
+      <div class="seg"><button id="bAC" class="on">∿ Xoay chiều</button><button id="bDC">⎓ Một chiều không đổi</button></div>
+      <label class="rng">Điện áp nguồn U₁<span class="v" id="vU">220 V</span>
+        <input type="range" id="rU" min="20" max="240" step="10" value="220"></label>
+      <label class="rng">Tốc độ hình (dòng 50 Hz được chiếu chậm)<span class="v" id="vF">chậm 100×</span>
+        <input type="range" id="rF" min="0.2" max="1.5" step="0.05" value="0.5"></label>
+      <div class="row">
+        <button class="wide" id="bK1">Mở khóa K₁</button>
+        <button class="wide pri" id="bPause">⏸ Dừng hình</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Lõi thép</h2>
+      <div class="seg"><button id="bCore" class="on">Có lõi thép</button><button id="bNoCore">Không có lõi</button></div>
+      <div class="seg"><button id="bLam" class="on">Lá thép mỏng ghép</button><button id="bSolid">Khối thép đặc</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Cuộn dây</h2>
+      <label class="rng">Số vòng cuộn sơ cấp N₁<span class="v" id="vN1">200</span>
+        <input type="range" id="rN1" min="50" max="500" step="10" value="200"></label>
+      <label class="rng">Số vòng cuộn thứ cấp N₂<span class="v" id="vN2">100</span>
+        <input type="range" id="rN2" min="50" max="500" step="10" value="100"></label>
+      <div class="row">
+        <button class="wide" id="bK2">Đóng khóa K₂ (nối tải)</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kField" checked> Đường sức từ</label>
+        <label><input type="checkbox" id="kFlow" checked> Đường sức chuyển động</label>
+        <label><input type="checkbox" id="kI" checked> Chiều dòng điện</label>
+        <label><input type="checkbox" id="kEddy" checked> Dòng Foucault</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2">
+        <div class="cell"><div class="k">N<sub>2</sub> / N<sub>1</sub></div><div class="val" id="oN">–</div></div>
+        <div class="cell"><div class="k">U<sub>2</sub> / U<sub>1</sub> (đo được)</div><div class="val" id="oU">–</div></div>
+        <div class="cell"><div class="k">Loại máy</div><div class="val" id="oType">–</div></div>
+        <div class="cell"><div class="k">Công suất ra tải</div><div class="val" id="oP2">–</div></div>
+        <div class="cell"><div class="k">Hao phí do dòng Foucault</div><div class="val" id="oPe">–</div></div>
+        <div class="cell"><div class="k">Nhiệt độ lõi thép</div><div class="val" id="oT">–</div></div>
+      </div>
+      <div class="formula">U<sub>2</sub>/U<sub>1</sub> = N<sub>2</sub>/N<sub>1</sub> · I<sub>2</sub>/I<sub>1</sub> ≈ N<sub>1</sub>/N<sub>2</sub> (máy lí tưởng, có lõi thép, nguồn xoay chiều). Nguồn xoay chiều: số đo là giá trị hiệu dụng; nguồn một chiều: giá trị tức thời.</div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b> để nhận câu trắc nghiệm về máy biến áp. Sau khi chọn đáp án, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li><b>Cấu tạo:</b> lõi thép kín (ghép từ các lá thép mỏng cách điện) và hai cuộn dây quấn trên lõi: cuộn sơ cấp N<sub>1</sub> nối nguồn, cuộn thứ cấp N<sub>2</sub> nối tải.</li>
+        <li><b>Nguyên tắc:</b> hiện tượng cảm ứng điện từ. Dòng xoay chiều ở cuộn sơ cấp tạo từ thông biến thiên trong lõi, đi qua cuộn thứ cấp và sinh ra suất điện động cảm ứng.</li>
+        <li><b>Nguồn một chiều không đổi:</b> từ thông không đổi nên U<sub>2</sub> = 0. Chỉ lúc đóng hoặc ngắt K<sub>1</sub> mới có xung cảm ứng ngắn. Dòng sơ cấp rất lớn, dễ làm cháy cuộn dây.</li>
+        <li><b>Lõi thép:</b> dẫn gần như toàn bộ đường sức qua cuộn thứ cấp. Bỏ lõi thì phần lớn đường sức khép kín trong không khí, U<sub>2</sub> rất nhỏ, I<sub>1</sub> lại rất lớn.</li>
+        <li><b>Dòng Foucault:</b> từ thông biến thiên sinh ra dòng điện xoáy trong lõi thép, làm lõi nóng lên và gây hao phí. Ghép các lá thép mỏng cách điện thì mạch xoáy bị chia nhỏ, hao phí giảm mạnh.</li>
+        <li><b>Khóa K<sub>2</sub> mở</b> (không tải): vẫn có U<sub>2</sub> nhưng I<sub>2</sub> = 0. <b>K<sub>2</sub> đóng</b>: I<sub>2</sub> ≠ 0 và I<sub>1</sub> tăng theo.</li>
+      </ul>
+    </div>
+
+    <button id="bReset">↺ Khôi phục ban đầu</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const W=900,H=540;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const gcv=document.getElementById('graph'),gctx=gcv.getContext('2d');
+const $=id=>document.getElementById(id);
+const fmt=(v,n=2)=>v.toFixed(n).replace('.',',');
+
+// ====== Mô hình vật lí (đơn vị thật, thời gian thật được chiếu chậm) ======
+const FREAL=50,W50=2*Math.PI*FREAL;
+const R1=100,RL=60,R2=2;                         // điện trở cuộn sơ cấp, đèn (tải), cuộn thứ cấp
+const TAU_CORE=0.02,TAU_AIR=0.0012;             // L/R của cuộn sơ cấp: có lõi / không lõi
+const COUP_CORE=0.98,COUP_AIR=0.12;             // tỉ lệ đường sức qua được cuộn thứ cấp
+const EDDY_LAM=0.04;                            // hao phí lá thép mỏng so với khối đặc
+
+// Hình học (tọa độ logic W×H)
+const CX0=190,CX1=610,CY0=70,CY1=390,CT=60;     // lõi thép ngoài, bề dày
+const LX=220,RX=580,TY=100,BY=360;              // đường giữa lõi
+const COIL_T=150,COIL_B=310,TRX=46,TRY=9;       // vùng quấn dây
+const SRC={x:90,y:230,r:26},LAMP={x:800,y:230,r:22};
+const K1={x0:112,x1:152,y:COIL_B},K2={x0:690,x1:740,y:COIL_B};
+
+const S={};
+function initState(){
+  Object.assign(S,{
+    ac:true,U:220,fa:0.5,K1:true,K2:false,core:true,lam:true,N1:200,N2:100,
+    t:0,im:0,u1:0,e2:0,i1:0,i2:0,dphi:0,phi:0,
+    pe:0,peAvg:0,pl:0,T:25,
+    paused:false,flow:0,eddyPh:0,hist:[],histT:0
+  });
+  steady();
+}
+const Lm=()=>R1*(S.core?TAU_CORE:TAU_AIR);
+const coup=()=>S.core?COUP_CORE:COUP_AIR;
+const src=t=>!S.K1?0:S.ac?S.U*Math.SQRT2*Math.sin(W50*t):S.U;
+// Đưa mạch về trạng thái xác lập (tránh quá độ khi đổi lõi / đổi nguồn xoay chiều)
+function steady(){
+  if(!S.K1){S.im=0;return}
+  if(!S.ac){S.im=S.U/R1;return}
+  const X=W50*Lm(),Z=Math.hypot(R1,X),ph=Math.atan2(X,R1);
+  S.im=S.U*Math.SQRT2/Z*Math.sin(W50*S.t-ph);
+}
+function stepReal(dtr){
+  const u=src(S.t),Reff=S.K1?R1:R1*4,tau=Lm()/Reff;
+  // L·di/dt + R·i = u  (nghiệm chính xác cho mỗi bước nhỏ)
+  S.im=u/Reff+(S.im-u/Reff)*Math.exp(-dtr/tau);
+  S.t+=dtr;
+  S.u1=u;
+  const vL=u-Reff*S.im;                       // điện áp trên cảm kháng = N1·dΦ/dt
+  S.dphi=vL/S.N1;S.phi=Lm()*S.im/S.N1;
+  S.e2=coup()*S.N2*S.dphi;
+  S.i2=S.K2?S.e2/(RL+R2):0;
+  S.i1=S.im+coup()*S.N2/S.N1*S.i2;
+  // Foucault: P ∝ (dB/dt)² × (bề dày)²
+  S.pe=S.core?Math.min(4,(S.dphi/DPHI_REF)**2)*300*(S.lam?EDDY_LAM:1):0;
+}
+const DPHI_REF=220*Math.SQRT2/200;
+// Xoay chiều ở chế độ xác lập: giá trị hiệu dụng tính bằng giản đồ phức (ổn định, không phụ thuộc tốc độ hình).
+// Các trường hợp khác (một chiều, quá độ khi đóng/ngắt): dùng giá trị tức thời.
+function meas(){
+  if(S.ac&&S.K1){
+    const X=W50*Lm(),Z=Math.hypot(R1,X),Im=S.U/Z,VL=S.U*X/Z,n=coup()*S.N2/S.N1;
+    const E2=n*VL,I2=S.K2?E2/(RL+R2):0,U2=S.K2?I2*RL:E2;
+    const pe=S.core?0.5*(Math.SQRT2*VL/S.N1/DPHI_REF)**2*300*(S.lam?EDDY_LAM:1):0;
+    return{U1:S.U,I1:Math.hypot(Im,n*I2),U2,I2,pe,pl:I2*I2*RL};
+  }
+  return{U1:Math.abs(S.u1),I1:Math.abs(S.i1),U2:Math.abs(S.K2?S.i2*RL:S.e2),I2:Math.abs(S.i2),pe:S.pe,pl:S.i2*S.i2*RL};
+}
+function step(dt){
+  if(S.paused||dt<=0)return;
+  const slow=FREAL/S.fa,dtr=dt/slow,n=10;
+  for(let i=0;i<n;i++)stepReal(dtr/n);
+  const M=meas();
+  S.peAvg=M.pe;S.pl=M.pl;
+  S.T+=(25+0.8*S.peAvg-S.T)*Math.min(1,dt/6);
+  const ref=220*Math.SQRT2/(200*W50);
+  S.flow+=Math.max(-2,Math.min(2,S.phi/ref))*60*dt;
+  S.eddyPh+=Math.max(-3,Math.min(3,S.dphi/DPHI_REF))*4*dt;
+  S.histT+=dt;if(S.histT>0.03){S.histT=0;S.hist.push([S.u1,S.phi,S.e2,S.i2]);if(S.hist.length>170)S.hist.shift()}
+}
+
+// ====== Kích thước canvas ======
+let scale=1,offX=0,offY=0,cw=0,ch=0;
+function resize(){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  scale=Math.min(cw/W,(ch-40)/H);offX=(cw-W*scale)/2;offY=Math.max(40,(ch-H*scale)/2+14);
+  const q=gcv.getBoundingClientRect();gcv.width=q.width*dpr;gcv.height=q.height*dpr;gctx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(resize).observe($('stage'));new ResizeObserver(resize).observe(gcv);
+
+// ====== Tiện ích vẽ ======
+function head(x,y,ang,s,col){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(s,0);ctx.lineTo(-s*.8,-s*.6);ctx.lineTo(-s*.8,s*.6);ctx.closePath();ctx.fill();ctx.restore()}
+function text(t,x,y,size=15,col='#2b3340',al='center',wt=600){ctx.fillStyle=col;ctx.font=`${wt} ${size}px "Be Vietnam Pro",sans-serif`;ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillText(t,x,y)}
+function poly(pts){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke()}
+function polyLen(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L}
+function pointAt(pts,s){for(let i=1;i<pts.length;i++){const l=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);if(s<=l){const k=s/l;return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k]}s-=l}return pts[pts.length-1]}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function dots(P,phase,col){const L=polyLen(P),gap=22,ph=((phase%gap)+gap)%gap;ctx.fillStyle=col;for(let s=ph;s<L;s+=gap){const q=pointAt(P,s);ctx.beginPath();ctx.arc(q[0],q[1],2.6,0,7);ctx.fill()}}
+const lerp=(a,b,k)=>a+(b-a)*k;
+function mix(c1,c2,k){return`rgb(${c1.map((v,i)=>Math.round(lerp(v,c2[i],k))).join(',')})`}
+
+const COL={wire:'#2b3340',copper:'#b4632a',field:'#1d4ed8',i1:'#2563eb',i2:'#e2531f',eddy:'#dc2626'};
+const nTurns=N=>Math.max(3,Math.min(20,Math.round(N/25)));
+const turnY=(i,n)=>COIL_T+8+i*(COIL_B-COIL_T-16)/Math.max(1,n-1);
+
+function drawTurns(x,N,front,cur,curCol){
+  const n=nTurns(N);
+  for(let i=0;i<n;i++){
+    const y=turnY(i,n);
+    ctx.lineWidth=front?4:3;ctx.strokeStyle=front?COL.copper:'#8a5a3a';
+    ctx.beginPath();ctx.ellipse(x,y,TRX,TRY,0,front?0:Math.PI,front?Math.PI:Math.PI*2);ctx.stroke();
+    if(front){ctx.strokeStyle='rgba(255,220,190,.7)';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(x,y,TRX,TRY,0,.3,Math.PI-.3);ctx.stroke()}
+    // dòng dương ⇒ nửa vòng phía trước đi sang phải ⇒ từ trường trong cuộn hướng lên
+    if(front&&cur&&i%2===0)head(x,y+TRY,cur>0?0:Math.PI,6.5,curCol);
+  }
+}
+function drawCoreBody(){
+  const hot=Math.max(0,Math.min(1,(S.T-30)/140));
+  const base=mix([148,156,170],[230,90,50],hot),dark=mix([96,104,118],[160,50,30],hot);
+  ctx.save();
+  ctx.beginPath();ctx.rect(CX0,CY0,CX1-CX0,CY1-CY0);ctx.rect(CX0+CT,CY0+CT,CX1-CX0-2*CT,CY1-CY0-2*CT);
+  ctx.fillStyle=base;ctx.fill('evenodd');
+  ctx.clip('evenodd');
+  if(S.lam){ // các lá thép mỏng: các đường song song theo chiều đường sức
+    ctx.strokeStyle=dark;ctx.lineWidth=1;
+    for(let d=6;d<CT;d+=6){
+      ctx.strokeRect(CX0+d,CY0+d,CX1-CX0-2*d,CY1-CY0-2*d);
+    }
+  } else {
+    const g=ctx.createLinearGradient(CX0,CY0,CX1,CY1);g.addColorStop(0,'rgba(255,255,255,.25)');g.addColorStop(1,'rgba(0,0,0,.15)');
+    ctx.fillStyle=g;ctx.fillRect(CX0,CY0,CX1-CX0,CY1-CY0);
+  }
+  if(hot>0.05){ctx.fillStyle=`rgba(255,120,40,${hot*.35})`;ctx.fillRect(CX0,CY0,CX1-CX0,CY1-CY0)}
+  ctx.restore();
+  ctx.strokeStyle='#374151';ctx.lineWidth=1.8;ctx.strokeRect(CX0,CY0,CX1-CX0,CY1-CY0);ctx.strokeRect(CX0+CT,CY0+CT,CX1-CX0-2*CT,CY1-CY0-2*CT);
+  text(S.lam?'Lõi thép: các lá thép mỏng ghép cách điện':'Lõi thép: khối thép đặc',(CX0+CX1)/2,CY0-14,13,'#334155');
+}
+function fieldLevel(){const ref=220*Math.SQRT2/(200*W50);return S.phi/ref*(S.core?1:2.2)}
+function drawFieldCore(){
+  const v=fieldLevel(),a=Math.abs(v),sg=Math.sign(v),flow=$('kFlow').checked;
+  ctx.save();ctx.lineWidth=2;ctx.strokeStyle=COL.field;
+  for(let k=0;k<5;k++){
+    const al=Math.max(0,Math.min(1,a*5-k*.9));if(al<=0.02)continue;
+    const d=[0,-12,12,-24,24][k];
+    const x0=LX+d,x1=RX-d,y0=TY+d,y1=BY-d;
+    ctx.globalAlpha=al;ctx.setLineDash([10,7]);ctx.lineDashOffset=flow?-S.flow:0;
+    // Φ > 0: đi lên trong nhánh trái ⇒ chiều kim đồng hồ trên màn hình
+    ctx.beginPath();ctx.moveTo(x0,y1);ctx.lineTo(x0,y0);ctx.lineTo(x1,y0);ctx.lineTo(x1,y1);ctx.closePath();ctx.stroke();ctx.setLineDash([]);
+    head(x0,(y0+y1)/2-40,sg>0?-Math.PI/2:Math.PI/2,7,COL.field);
+    head((x0+x1)/2,y0,sg>0?0:Math.PI,7,COL.field);
+    head(x1,(y0+y1)/2+40,sg>0?Math.PI/2:-Math.PI/2,7,COL.field);
+    head((x0+x1)/2,y1,sg>0?Math.PI:0,7,COL.field);
+  }
+  ctx.restore();
+}
+function drawFieldAir(){
+  const v=fieldLevel(),a=Math.abs(v),sg=Math.sign(v),flow=$('kFlow').checked;
+  ctx.save();ctx.lineWidth=2;ctx.strokeStyle=COL.field;
+  const cy=(COIL_T+COIL_B)/2;
+  // đường sức trong lòng cuộn sơ cấp
+  for(let k=-1;k<=1;k++){const al=Math.max(0,Math.min(1,a*4-Math.abs(k)*.6));if(al<.02)continue;
+    ctx.globalAlpha=al;ctx.setLineDash([10,7]);ctx.lineDashOffset=flow?-S.flow*sg*sg:0;
+    ctx.beginPath();ctx.moveTo(LX+k*16,COIL_B+30);ctx.lineTo(LX+k*16,COIL_T-30);ctx.stroke();ctx.setLineDash([]);
+    head(LX+k*16,cy,sg>0?-Math.PI/2:Math.PI/2,7,COL.field)}
+  // các vòng khép kín ngoài không khí, càng xa càng thưa; vòng ngoài cùng mới tới cuộn thứ cấp
+  for(let k=1;k<=4;k++){
+    const al=Math.max(0,Math.min(1,a*4-(k-1)*.8))*(1-k*.12);if(al<.02)continue;
+    const rx=24+40*k,ry=100+20*k;
+    for(const s of[-1,1]){
+      ctx.globalAlpha=al;ctx.setLineDash([10,7]);ctx.lineDashOffset=flow?-S.flow*s:0;
+      ctx.beginPath();ctx.ellipse(LX+s*rx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      // đỉnh: đi ra xa trục khi Φ > 0; đáy: đi về trục
+      head(LX+s*rx,cy-ry,(sg*s>0)?0:Math.PI,7,COL.field);
+      head(LX+s*rx,cy+ry,(sg*s>0)?Math.PI:0,7,COL.field);
+    }
+  }
+  ctx.restore();
+}
+function drawEddyInset(){
+  const bx=CX0,by=412,bw=CX1-CX0,bh=118;
+  ctx.fillStyle='rgba(255,255,255,.8)';ctx.strokeStyle='#c7cfdc';ctx.lineWidth=1;rrect(bx,by,bw,bh,10);ctx.fill();ctx.stroke();
+  text('Mặt cắt ngang nhánh trái của lõi (vuông góc với đường sức)',bx+12,by+14,12,'#334155','left',600);
+  const x=bx+16,y=by+28,w=170,h=80;
+  const hot=Math.max(0,Math.min(1,(S.T-30)/140));
+  ctx.fillStyle=mix([160,168,182],[235,110,60],hot);ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='#374151';ctx.lineWidth=1.5;ctx.strokeRect(x,y,w,h);
+  const lvl=Math.max(-1.5,Math.min(1.5,S.dphi/DPHI_REF)),A=Math.min(1,Math.abs(lvl));
+  // chiều đường sức qua mặt cắt
+  const v=fieldLevel();
+  if(S.core&&Math.abs(v)>0.05){const cx=x+w/2,cy=y+h/2;ctx.strokeStyle=COL.field;ctx.fillStyle=COL.field;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,9,0,7);ctx.stroke();
+    if(v>0){ctx.beginPath();ctx.arc(cx,cy,2.8,0,7);ctx.fill()}else{ctx.beginPath();ctx.moveTo(cx-6,cy-6);ctx.lineTo(cx+6,cy+6);ctx.moveTo(cx+6,cy-6);ctx.lineTo(cx-6,cy+6);ctx.stroke()}}
+  const dir=lvl>0?1:-1;   // dòng xoáy chống lại sự biến thiên ⇒ đổi chiều theo dΦ/dt
+  const loopArrows=(lx,ly,lw,lh,s,col,alpha)=>{
+    ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=s;rrect(lx,ly,lw,lh,Math.min(lw,lh)/2.2);ctx.stroke();
+    const t=((S.eddyPh%1)+1)%1;
+    const per=2*(lw+lh),pts=[[lx,ly],[lx+lw,ly],[lx+lw,ly+lh],[lx,ly+lh],[lx,ly]];
+    for(const off of[0,.5]){let p=((t+off)%1)*per;const q=pointAt(pts,p),q2=pointAt(pts,(p+3)%per);
+      let a=Math.atan2(q2[1]-q[1],q2[0]-q[0]);if(dir<0)a+=Math.PI;head(q[0],q[1],a,4+s*1.2,col)}
+    ctx.restore();
+  };
+  if(!S.core){text('Không có lõi thép',x+w/2,y+h/2,13,'#334155');}
+  else if(S.lam){
+    const nL=9,lw=w/nL;
+    ctx.strokeStyle='#1f2937';ctx.lineWidth=1.2;
+    for(let i=1;i<nL;i++){ctx.beginPath();ctx.moveTo(x+i*lw,y);ctx.lineTo(x+i*lw,y+h);ctx.stroke()}
+    if(A>0.03&&$('kEddy').checked)for(let i=0;i<nL;i++)loopArrows(x+i*lw+4,y+8,lw-8,h-16,1.2,COL.eddy,.35+.4*A);
+  } else if(A>0.03&&$('kEddy').checked){
+    for(let k=0;k<3;k++){const m=10+k*16;loopArrows(x+m,y+m*.55,w-2*m,h-m*1.1,3-k*.7,COL.eddy,.4+.6*A)}
+  }
+  // chú thích bên phải
+  const tx=x+w+18;
+  text(S.core?(S.lam?'Lá thép mỏng, cách điện với nhau':'Khối thép đặc liền khối'):'—',tx,y+8,13,'#111827','left',700);
+  const msg=!S.core?'Không có dòng Foucault trong lõi.':
+    A<0.03?'Từ thông không biến thiên ⇒ không có dòng Foucault.':
+    S.lam?'Dòng xoáy bị chia nhỏ trong từng lá ⇒ rất yếu.':'Dòng xoáy chạy vòng lớn trong cả khối ⇒ rất mạnh.';
+  text(msg,tx,y+30,12.5,'#334155','left',500);
+  text(`Hao phí ≈ ${Math.round(S.peAvg)} W · lõi ${Math.round(S.T)} °C`,tx,y+52,12.5,S.T>60?'#b91c1c':'#334155','left',700);
+  // thanh nhiệt độ
+  const bw2=bx+bw-tx-16;ctx.fillStyle='#e2e8f0';ctx.fillRect(tx,y+66,bw2,8);
+  ctx.fillStyle=S.T>60?'#dc2626':'#f59e0b';ctx.fillRect(tx,y+66,bw2*Math.min(1,(S.T-25)/150),8);
+}
+function drawSwitch(K,closed,label){
+  ctx.fillStyle=closed?'rgba(34,197,94,.14)':'rgba(239,68,68,.12)';rrect(K.x0-12,K.y-40,K.x1-K.x0+24,58,10);ctx.fill();
+  ctx.fillStyle='#fff';ctx.strokeStyle=COL.wire;ctx.lineWidth=2;
+  for(const xx of[K.x0,K.x1]){ctx.beginPath();ctx.arc(xx,K.y,4.5,0,7);ctx.fill();ctx.stroke()}
+  const tipX=closed?K.x0+3:K.x0+8,tipY=closed?K.y-3:K.y-30;
+  ctx.lineCap='round';ctx.strokeStyle='#111827';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(K.x1,K.y);ctx.lineTo(tipX,tipY);ctx.stroke();ctx.lineCap='butt';
+  text(label,(K.x0+K.x1)/2,K.y+24,15,'#111827','center',700);
+  text(closed?'đóng':'mở',(K.x0+K.x1)/2,K.y-32,11.5,closed?'#15803d':'#b91c1c','center',700);
+}
+function draw(){
+  ctx.clearRect(0,0,cw,ch);
+  ctx.save();ctx.translate(offX,offY);ctx.scale(scale,scale);
+  const showF=$('kField').checked,showI=$('kI').checked;
+
+  // Dây nối mạch sơ cấp và thứ cấp
+  ctx.strokeStyle=COL.wire;ctx.lineWidth=2.4;ctx.lineJoin='round';
+  const pA=[[LX-TRX,COIL_T+8],[SRC.x,COIL_T+8],[SRC.x,SRC.y-SRC.r]],pB=[[SRC.x,SRC.y+SRC.r],[SRC.x,COIL_B],[K1.x0,COIL_B]],pC=[[K1.x1,COIL_B],[LX-TRX,COIL_B-8]];
+  const sA=[[RX+TRX,COIL_T+8],[LAMP.x,COIL_T+8],[LAMP.x,LAMP.y-LAMP.r]],sB=[[LAMP.x,LAMP.y+LAMP.r],[LAMP.x,COIL_B],[K2.x1,COIL_B]],sC=[[K2.x0,COIL_B],[RX+TRX,COIL_B-8]];
+  for(const P of[pA,pB,pC,sA,sB,sC])poly(P);
+  if(showI){
+    if(Math.abs(S.i1)>0.02)for(const P of[pA,pB,pC])dots(P,-S.dotP1,'rgba(37,99,235,.9)');
+    if(Math.abs(S.i2)>0.01)for(const P of[sA,sB,sC])dots(P,S.dotP2,'rgba(226,83,31,.9)');
+  }
+  // Nguồn
+  ctx.fillStyle='#fff';ctx.strokeStyle=COL.wire;ctx.lineWidth=2.4;
+  if(S.ac){ctx.beginPath();ctx.arc(SRC.x,SRC.y,SRC.r,0,7);ctx.fill();ctx.stroke();
+    ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<=30;i++){const xx=SRC.x-15+i,yy=SRC.y-9*Math.sin(i/30*2*Math.PI);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.stroke();
+    text('~ 50 Hz',SRC.x-8,SRC.y+SRC.r+16,13,'#111827','right',700);
+  } else {
+    ctx.fillStyle='#e5e9f0';ctx.fillRect(SRC.x-22,SRC.y-SRC.r,44,SRC.r*2);
+    ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(SRC.x,SRC.y-SRC.r);ctx.lineTo(SRC.x,SRC.y-6);ctx.moveTo(SRC.x,SRC.y+6);ctx.lineTo(SRC.x,SRC.y+SRC.r);ctx.stroke();
+    ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(SRC.x-20,SRC.y-6);ctx.lineTo(SRC.x+20,SRC.y-6);ctx.stroke();
+    ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(SRC.x-10,SRC.y+6);ctx.lineTo(SRC.x+10,SRC.y+6);ctx.stroke();
+    text('+',SRC.x-28,SRC.y-12,15,'#b91c1c');text('−',SRC.x-28,SRC.y+12,15,'#1d4ed8');
+    text('một chiều',SRC.x-8,SRC.y+SRC.r+16,12,'#111827','right',700);
+  }
+  text('U₁ = '+S.U+' V',SRC.x-8,SRC.y-SRC.r-16,13,'#1e40af','right',700);
+  drawSwitch(K1,S.K1,'K₁');drawSwitch(K2,S.K2,'K₂');
+  // Đèn (tải)
+  const br=Math.max(0,Math.min(1,S.pl/200));
+  if(br>0.02){const g=ctx.createRadialGradient(LAMP.x,LAMP.y,4,LAMP.x,LAMP.y,LAMP.r*3);g.addColorStop(0,`rgba(255,220,80,${.9*br})`);g.addColorStop(1,'rgba(255,220,80,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(LAMP.x,LAMP.y,LAMP.r*3,0,7);ctx.fill()}
+  ctx.fillStyle=br>0.02?mix([255,255,255],[255,226,120],br):'#fff';ctx.strokeStyle=COL.wire;ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(LAMP.x,LAMP.y,LAMP.r,0,7);ctx.fill();ctx.stroke();
+  ctx.lineWidth=2;const d=LAMP.r*.7;ctx.beginPath();ctx.moveTo(LAMP.x-d,LAMP.y-d);ctx.lineTo(LAMP.x+d,LAMP.y+d);ctx.moveTo(LAMP.x+d,LAMP.y-d);ctx.lineTo(LAMP.x-d,LAMP.y+d);ctx.stroke();
+  text('Tải (đèn)',LAMP.x+30,LAMP.y-34,13,'#111827','left',700);
+
+  // Nửa sau các vòng dây (nằm sau lõi)
+  drawTurns(LX,S.N1,false);drawTurns(RX,S.N2,false);
+  if(S.core)drawCoreBody();
+  else{ctx.setLineDash([5,6]);ctx.strokeStyle='#94a3b8';ctx.lineWidth=1.2;ctx.strokeRect(CX0,CY0,CX1-CX0,CY1-CY0);ctx.strokeRect(CX0+CT,CY0+CT,CX1-CX0-2*CT,CY1-CY0-2*CT);ctx.setLineDash([]);
+    text('Đã bỏ lõi thép (nét đứt: vị trí lõi)',(CX0+CX1)/2,CY0-14,13,'#475569')}
+  if(showF){S.core?drawFieldCore():drawFieldAir()}
+  // Nửa trước các vòng dây
+  drawTurns(LX,S.N1,true,showI&&Math.abs(S.i1)>0.02?S.i1:0,COL.i1);
+  drawTurns(RX,S.N2,true,showI&&Math.abs(S.i2)>0.01?S.i2:0,COL.i2);
+  text('Cuộn sơ cấp',LX+TRX+8,COIL_B-6,13,'#1e3a8a','left',700);text(`N₁ = ${S.N1} vòng`,LX+TRX+8,COIL_B+12,13,'#1e3a8a','left',700);
+  text('Cuộn thứ cấp',RX-TRX-8,COIL_B-6,13,'#9a3412','right',700);text(`N₂ = ${S.N2} vòng`,RX-TRX-8,COIL_B+12,13,'#9a3412','right',700);
+  drawEddyInset();
+  ctx.restore();
+}
+
+// ====== Đồ thị ======
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),w=r.width,h=r.height;gctx.clearRect(0,0,w,h);
+  const pad=8,laneH=(h-20)/2,y1=10+laneH/2,y2=14+laneH*1.5,amp=laneH/2-6;
+  gctx.font='11px "Be Vietnam Pro",sans-serif';gctx.textBaseline='middle';
+  gctx.strokeStyle='#1c2a47';gctx.lineWidth=1;
+  for(let i=0;i<=8;i++){const xx=pad+i*(w-2*pad)/8;gctx.beginPath();gctx.moveTo(xx,6);gctx.lineTo(xx,h-4);gctx.stroke()}
+  gctx.strokeStyle='#3a4b70';for(const y of[y1,y2]){gctx.beginPath();gctx.moveTo(pad,y);gctx.lineTo(w-pad,y);gctx.stroke()}
+  gctx.textAlign='left';
+  gctx.fillStyle='#60a5fa';gctx.fillText('u₁(t)',pad+4,12);gctx.fillStyle='#a78bfa';gctx.fillText('Φ(t)',pad+44,12);
+  gctx.fillStyle='#fb923c';gctx.fillText('u₂(t)',pad+4,laneH+18);gctx.fillStyle='#4ade80';gctx.fillText('i₂(t)',pad+44,laneH+18);
+  const N=S.hist.length;if(N<2)return;const span=170,X=i=>pad+(i-(N-span))*(w-2*pad)/span;
+  const um=S.U*Math.SQRT2,pm=220*Math.SQRT2/(200*W50)*1.4,u2m=Math.max(5,um*S.N2/S.N1),i2m=u2m/(RL+R2);
+  const line=(idx,mx,y0,col,dash)=>{gctx.strokeStyle=col;gctx.setLineDash(dash?[4,3]:[]);gctx.lineWidth=2;gctx.beginPath();
+    S.hist.forEach((q,i)=>{const yy=y0-Math.max(-1.15,Math.min(1.15,q[idx]/mx))*amp;i?gctx.lineTo(X(i),yy):gctx.moveTo(X(i),yy)});gctx.stroke();gctx.setLineDash([])};
+  line(0,um,y1,'#60a5fa');line(1,pm,y1,'#a78bfa',true);line(2,u2m,y2,'#fb923c');line(3,i2m,y2,'#4ade80',true);
+}
+
+// ====== Giao diện ======
+function fV(v){return v<10?fmt(v,1):Math.round(v)+''}
+function updateUI(){
+  const{U1,U2,I1,I2}=meas();
+  $('cU1').textContent=fV(U1)+' V';$('cI1').textContent=fmt(I1,2)+' A';$('cU2').textContent=fV(U2)+' V';$('cI2').textContent=fmt(I2,2)+' A';
+  $('oN').textContent=fmt(S.N2/S.N1,2);$('oU').textContent=U1>1?fmt(U2/U1,2):'–';
+  $('oType').textContent=S.N2>S.N1?'tăng áp':S.N2<S.N1?'hạ áp':'không đổi áp';
+  $('oP2').textContent=Math.round(S.pl)+' W';
+  $('oPe').textContent=S.core?Math.round(S.peAvg)+' W':'không có lõi';
+  $('oT').textContent=Math.round(S.T)+' °C';
+  $('vU').textContent=S.U+' V';$('vN1').textContent=S.N1;$('vN2').textContent=S.N2;
+  $('vF').textContent='chậm '+Math.round(FREAL/S.fa)+'×';
+  $('bAC').classList.toggle('on',S.ac);$('bDC').classList.toggle('on',!S.ac);
+  $('bCore').classList.toggle('on',S.core);$('bNoCore').classList.toggle('on',!S.core);
+  $('bLam').classList.toggle('on',S.lam);$('bSolid').classList.toggle('on',!S.lam);
+  $('bLam').disabled=$('bSolid').disabled=!S.core;
+  $('bK1').textContent=S.K1?'Mở khóa K₁':'Đóng khóa K₁';
+  $('bK2').textContent=S.K2?'Mở khóa K₂ (bỏ tải)':'Đóng khóa K₂ (nối tải)';
+  $('bPause').textContent=S.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+  explainLive(U1,U2,I1,I2);
+}
+let lastExplain='';
+function explainLive(U1,U2,I1,I2){
+  const k=S.N2/S.N1;let s='<ol>';
+  if(!S.K1&&Math.abs(S.im)<0.01)s+='<li>Khóa K₁ mở: không có dòng điện sơ cấp, lõi không có từ trường ⇒ U₂ = 0.</li>';
+  else if(S.ac){
+    s+=`<li>Nguồn <b>xoay chiều</b>: i₁ biến thiên điều hòa ⇒ từ trường trong ${S.core?'lõi thép':'cuộn sơ cấp'} biến thiên, <b>đổi chiều 2 lần mỗi chu kì</b> (quan sát mũi tên đường sức).</li>`;
+    s+=S.core?`<li>Lõi thép dẫn gần như toàn bộ đường sức đi qua cuộn thứ cấp ⇒ từ thông qua mỗi vòng của hai cuộn gần bằng nhau ⇒ U₂/U₁ ≈ N₂/N₁ = ${fmt(k,2)} ⇒ U₂ ≈ ${fV(U2)} V.</li>`
+      :`<li><b>Không có lõi thép</b>: đường sức khép kín ngoài không khí, rất ít đường sức đi qua cuộn thứ cấp ⇒ U₂ chỉ ≈ ${fV(U2)} V (lẽ ra ≈ ${Math.round(S.U*k)} V). Cảm kháng nhỏ nên I₁ rất lớn (${fmt(I1,1)} A).</li>`;
+    s+=S.K2?`<li>K₂ đóng: có dòng I₂ = ${fmt(I2,2)} A qua tải ⇒ dòng sơ cấp tăng theo (I₁ = ${fmt(I1,2)} A). Công suất được truyền từ cuộn sơ cấp sang cuộn thứ cấp qua từ trường.</li>`
+      :`<li>K₂ mở (không tải): vẫn có điện áp U₂ ≈ ${fV(U2)} V ở hai đầu cuộn thứ cấp nhưng I₂ = 0. I₁ nhỏ, chỉ là dòng từ hóa lõi.</li>`;
+  } else {
+    const transient=Math.abs(S.e2)>0.5;
+    s+=`<li>Nguồn <b>một chiều không đổi</b>: ${transient?'<b>đang có quá trình đóng/ngắt</b>, dòng i₁ đang thay đổi ⇒ từ thông biến thiên ⇒ xuất hiện <b>xung</b> điện áp ở cuộn thứ cấp.':'dòng i₁ = U₁/R₁ không đổi ⇒ từ trường trong lõi <b>không đổi</b>, không đổi chiều.'}</li>`;
+    s+=`<li>Từ thông không biến thiên ⇒ <b>không có suất điện động cảm ứng</b> ⇒ U₂ = 0, đèn không sáng. Hãy thử bấm đóng/mở K₁ để thấy xung cảm ứng chớp nhoáng.</li>`;
+    s+=`<li>Dòng sơ cấp rất lớn (I₁ ≈ ${fmt(S.U/R1,1)} A, chỉ bị giới hạn bởi điện trở dây) ⇒ cuộn dây nóng, dễ cháy. Máy biến áp <b>không</b> dùng với dòng một chiều.</li>`;
+  }
+  if(S.core){
+    s+=S.lam?`<li><b>Lá thép mỏng ghép cách điện</b>: dòng Foucault bị chia nhỏ trong từng lá ⇒ hao phí nhỏ (≈ ${Math.round(S.peAvg)} W), lõi gần như không nóng.</li>`
+      :`<li><b>Khối thép đặc</b>: từ thông biến thiên sinh ra dòng Foucault chạy vòng lớn trong cả khối ⇒ hao phí lớn (≈ ${Math.round(S.peAvg)} W), lõi nóng lên (${Math.round(S.T)} °C).</li>`;
+  }
+  s+='</ol>';
+  if(s!==lastExplain){$('explain').innerHTML=s;lastExplain=s}
+}
+
+// ====== Điều khiển ======
+function setAC(v){S.ac=v;steady()}
+$('bAC').onclick=()=>{setAC(true);hint('Nguồn xoay chiều: đường sức liên tục đổi chiều')};
+$('bDC').onclick=()=>{setAC(false);hint('Nguồn một chiều: từ trường không đổi ⇒ U₂ = 0. Thử đóng/mở K₁')};
+$('rU').addEventListener('input',e=>{S.U=+e.target.value;steady()});
+$('rF').addEventListener('input',e=>{S.fa=+e.target.value});
+$('rN1').addEventListener('input',e=>{S.N1=+e.target.value});
+$('rN2').addEventListener('input',e=>{S.N2=+e.target.value});
+function toggleK1(){S.K1=!S.K1;if(S.K1&&S.ac)steady();hint(S.K1?(S.ac?'Đã đóng K₁':'Đóng K₁: dòng tăng dần ⇒ xung cảm ứng ở cuộn thứ cấp'):'Đã mở K₁: dòng giảm đột ngột ⇒ xung cảm ứng')}
+function toggleK2(){S.K2=!S.K2;hint(S.K2?'Đã đóng K₂: có dòng qua tải':'Đã mở K₂: cuộn thứ cấp hở, I₂ = 0')}
+$('bK1').onclick=toggleK1;$('bK2').onclick=toggleK2;
+$('bCore').onclick=()=>{S.core=true;steady();hint('Có lõi thép: đường sức tập trung trong lõi')};
+$('bNoCore').onclick=()=>{S.core=false;steady();hint('Không lõi: đường sức tản ra ngoài không khí')};
+$('bLam').onclick=()=>{S.lam=true;hint('Lá thép mỏng ghép cách điện: dòng Foucault nhỏ')};
+$('bSolid').onclick=()=>{S.lam=false;hint('Khối thép đặc: dòng Foucault lớn, lõi nóng lên')};
+$('bPause').onclick=()=>{S.paused=!S.paused};
+$('bReset').onclick=()=>{initState();syncInputs();quizIdle();hint('Đã khôi phục ban đầu')};
+function syncInputs(){$('rU').value=S.U;$('rF').value=S.fa;$('rN1').value=S.N1;$('rN2').value=S.N2}
+
+// Bấm khóa trên hình
+function toLogic(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left-offX)/scale,(e.clientY-r.top-offY)/scale]}
+const onK=(K,x,y)=>x>K.x0-14&&x<K.x1+14&&y>K.y-42&&y<K.y+20;
+cv.addEventListener('pointerdown',e=>{const[x,y]=toLogic(e);if(onK(K1,x,y))toggleK1();else if(onK(K2,x,y))toggleK2()});
+cv.addEventListener('pointermove',e=>{const[x,y]=toLogic(e);cv.style.cursor=onK(K1,x,y)||onK(K2,x,y)?'pointer':'default'});
+
+let hintT;function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(()=>h.style.opacity=0,5000)}
+hint('Bấm vào khóa K₁, K₂ trên hình để đóng/mở; đổi nguồn, đổi lõi ở bảng bên phải');
+
+// ====== Đố nhanh ======
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const set=o=>{Object.assign(S,o);syncInputs();steady()};
+const BASE={ac:true,K1:true,core:true,lam:true};
+const QS=[
+  ()=>({q:'Máy biến áp hoạt động dựa trên hiện tượng nào?',o:['Cảm ứng điện từ','Tác dụng nhiệt của dòng điện','Hiện tượng quang điện','Hiện tượng nhiễm điện do hưởng ứng'],a:0,
+    e:'Dòng xoay chiều ở cuộn sơ cấp tạo từ thông biến thiên trong lõi, từ thông này qua cuộn thứ cấp sinh ra suất điện động cảm ứng.',d:()=>set({...BASE,K2:true})}),
+  ()=>({q:'Nối cuộn sơ cấp với nguồn điện một chiều không đổi (sau khi đóng mạch đã ổn định). Điện áp ở hai đầu cuộn thứ cấp:',o:['Bằng 0','Bằng U₁·N₂/N₁','Bằng U₁','Lớn hơn U₁'],a:0,
+    e:'Dòng một chiều không đổi tạo từ thông không đổi ⇒ không có suất điện động cảm ứng ⇒ U₂ = 0 (chỉ có xung lúc đóng/ngắt).',d:()=>set({...BASE,ac:false,K2:true})}),
+  ()=>({q:'Lõi thép của máy biến áp được ghép từ nhiều lá thép mỏng cách điện với nhau nhằm:',o:['Giảm hao phí do dòng điện Foucault','Tăng số vòng dây của cuộn thứ cấp','Giảm điện trở của các cuộn dây','Làm từ thông đổi chiều nhanh hơn'],a:0,
+    e:'Các lá mỏng cách điện chia nhỏ mạch của dòng xoáy ⇒ dòng Foucault và nhiệt tỏa ra giảm mạnh. So sánh nhiệt độ lõi khi đổi sang khối thép đặc.',d:()=>set({...BASE,lam:false,T:25})}),
+  ()=>{const N1=rnd([100,200,250,400,500]),N2=rnd([50,100,150,300,500].filter(n=>n!==N1)),U=rnd([100,120,200,220]);
+    const ans=Math.round(U*N2/N1),wr=[Math.round(U*N1/N2),U,Math.round(U*N2/N1/2)].filter(v=>v!==ans);
+    const o=[ans,...[...new Set(wr)].slice(0,3)];while(o.length<4)o.push(ans+o.length*7);
+    return{q:`Máy biến áp lí tưởng có N₁ = ${N1} vòng, N₂ = ${N2} vòng. Đặt vào cuộn sơ cấp điện áp xoay chiều U₁ = ${U} V. Điện áp hiệu dụng ở cuộn thứ cấp để hở là:`,o:o.map(v=>v+' V'),a:0,
+      e:`U₂ = U₁·N₂/N₁ = ${U}·${N2}/${N1} = ${ans} V. Mô phỏng đã đặt đúng các số liệu này (sai lệch nhỏ do lõi thực không lí tưởng).`,d:()=>set({...BASE,N1,N2,U,K2:false})}},
+  ()=>{const N1=rnd([200,400,500]),N2=rnd([50,100]),I2=rnd([2,4,5]);const ans=I2*N2/N1;
+    return{q:`Máy hạ áp lí tưởng có N₁ = ${N1}, N₂ = ${N2}. Cường độ dòng điện ở cuộn thứ cấp là ${I2} A. Cường độ dòng điện ở cuộn sơ cấp là:`,o:[fmt(ans,2)+' A',fmt(I2*N1/N2,1)+' A',I2+' A',fmt(ans/2,2)+' A'],a:0,
+      e:`Máy lí tưởng: U₁I₁ = U₂I₂ ⇒ I₁ = I₂·N₂/N₁ = ${I2}·${N2}/${N1} = ${fmt(ans,2)} A. Hạ áp thì dòng sơ cấp nhỏ hơn dòng thứ cấp.`,d:()=>set({...BASE,N1,N2,K2:true})}},
+  ()=>({q:'Khi khóa K₂ mở (cuộn thứ cấp để hở), phát biểu nào đúng?',o:['U₂ ≠ 0 nhưng I₂ = 0','U₂ = 0 và I₂ = 0','U₂ = 0 nhưng I₂ ≠ 0','Từ thông trong lõi bằng 0'],a:0,
+    e:'Từ thông biến thiên vẫn qua cuộn thứ cấp nên vẫn có suất điện động (U₂ ≠ 0), nhưng mạch hở nên không có dòng điện.',d:()=>set({...BASE,K2:false})}),
+  ()=>({q:'Rút bỏ lõi thép (giữ nguyên nguồn xoay chiều và các cuộn dây). Điện áp U₂ thay đổi thế nào?',o:['Giảm mạnh','Tăng mạnh','Không đổi','Bằng U₁'],a:0,
+    e:'Không có lõi, phần lớn đường sức khép kín ngoài không khí, rất ít đi qua cuộn thứ cấp ⇒ U₂ giảm mạnh. Đồng thời I₁ tăng rất lớn.',d:()=>set({...BASE,core:false,K2:true})}),
+  ()=>({q:'Máy biến áp là máy tăng áp khi:',o:['N₂ > N₁','N₂ < N₁','N₂ = N₁','Dùng nguồn một chiều'],a:0,
+    e:'U₂/U₁ = N₂/N₁: số vòng thứ cấp nhiều hơn thì điện áp ra lớn hơn.',d:()=>set({...BASE,N1:100,N2:300,K2:true})}),
+  ()=>({q:'Với nguồn xoay chiều, đường sức từ trong lõi thép:',o:['Liên tục đổi chiều theo chiều dòng điện sơ cấp','Có chiều và độ lớn không đổi','Chỉ xuất hiện khi khóa K₂ đóng','Chỉ đi qua cuộn sơ cấp, không qua cuộn thứ cấp'],a:0,
+    e:'Dòng xoay chiều đổi chiều 2 lần mỗi chu kì ⇒ từ trường (đường sức) trong lõi cũng đổi chiều theo, đi qua cả hai cuộn dây.',d:()=>set({...BASE,K2:false})}),
+  ()=>({q:'Một khối thép đặc đặt trong từ trường biến thiên bị nóng lên. Nguyên nhân chủ yếu là:',o:['Dòng điện Foucault chạy trong khối thép','Ma sát giữa các đường sức từ','Bức xạ nhiệt từ cuộn dây','Điện trở của cuộn sơ cấp'],a:0,
+    e:'Từ thông biến thiên sinh ra dòng điện cảm ứng xoáy (Foucault) trong khối kim loại, tỏa nhiệt theo định luật Joule.',d:()=>set({...BASE,lam:false})})
+];
+const Q={n:0,ok:0,done:false};
+function newQuestion(){
+  const q=rnd(QS)();const idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5);
+  const opts=idx.map(i=>q.o[i]),correct=idx.indexOf(q.a);Q.done=false;
+  $('qbox').innerHTML=`<div class="qbox" style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${opts.map((o,i)=>`<button data-i="${i}">${'ABCD'[i]}. ${o}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{
+    if(Q.done)return;Q.done=true;const i=+b.dataset.i;Q.n++;if(i===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(i!==correct)bs[i].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${i===correct?'ok':'no'}"><b>${i===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;
+    q.d();hint('Mô phỏng đã chuyển sang tình huống minh họa');
+  });
+}
+function quizIdle(){$('qbox').innerHTML='<div class="note">Bấm <b>Câu hỏi mới</b> để nhận câu trắc nghiệm về máy biến áp. Sau khi chọn đáp án, mô phỏng tự chuyển sang tình huống minh họa.</div>'}
+$('bNew').onclick=newQuestion;
+
+// ====== Vòng lặp ======
+initState();S.dotP1=0;S.dotP2=0;resize();
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;step(dt);
+  if(!S.paused){S.dotP1+=Math.max(-3,Math.min(3,S.i1/3))*60*dt;S.dotP2+=Math.max(-3,Math.min(3,S.i2))*60*dt}
+  draw();drawGraph();updateUI();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

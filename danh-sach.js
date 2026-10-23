@@ -19,5 +19,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/nam-cham-cuon-day-dien-ke.html",
     tags: ["Lenz", "Faraday", "nam châm", "điện kế", "đúng sai", "năng lượng"]
+  },
+  {
+    ten: "Máy biến áp: cấu tạo, đường sức từ và dòng điện Foucault",
+    mota: "Chọn nguồn xoay chiều hoặc một chiều, có hoặc không có lõi thép, lõi lá thép mỏng hoặc khối đặc. Quan sát đường sức đổi chiều trong lõi, dòng Foucault làm nóng lõi, đóng/mở khóa K₂ ở cuộn thứ cấp.",
+    chuong: "Cảm ứng điện từ",
+    lop: 12,
+    file: "sims/may-bien-ap.html",
+    tags: ["máy biến áp", "Foucault", "Fuco", "dòng điện xoáy", "lõi thép", "xoay chiều", "tăng áp", "hạ áp"]
   }
 ];
