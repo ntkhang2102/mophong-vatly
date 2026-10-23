@@ -168,10 +168,10 @@ if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không
 
 // ====== Thông số (1 đơn vị = 5 cm) ======
 // Con lắc quay quanh trục x (thanh T), tấm dao động trong mặt phẳng yz, từ trường hướng theo −x (từ N ở +x sang S ở −x)
-const PY=6.0,L=3.7,HZ=0.75,HY=0.5,TH=0.05;          // trục treo, chiều dài tới tâm tấm, nửa rộng, nửa cao, bề dày tấm
-const GAP=0.45,FZ=0.75,FY0=1.5,FY1=3.1;              // nửa khe từ, vùng từ trường (rộng bằng tấm theo phương dao động)
+const PY=6.0,L=3.7,HZ=1.0,HY=0.72,TH=0.05;          // trục treo, chiều dài tới tâm tấm, nửa rộng, nửa cao, bề dày tấm
+const GAP=0.85,FZ=1.0,FY0=1.5,FY1=3.1;              // nửa khe từ, vùng từ trường (rộng bằng tấm theo phương dao động)
 const W2=9;                                          // g/L (chu kì ≈ 2,1 s)
-const SIG={dong:1,nhom:0.6},KB=0.5,SLOT=0.1;
+const SIG={dong:1,nhom:0.6},KB=0.9,SLOT=0.1;
 const st={type:'solid',mat:'dong',mag:true,a0:35,th:35/DEG,om:0,t:0,run:null,runs:[],eE:0,eA:0,dphi:0,ph:0,cross:0,prev:0,amp:35,stopT:null};
 const sigma=()=>st.type==='plastic'?0:SIG[st.mat]*(st.type==='slot'?SLOT:1);
 const kb=()=>st.mag?KB*sigma():0;
@@ -197,7 +197,7 @@ const magG=new THREE.Group();scene.add(magG);
 const sMat=new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.45,metalness:.1});
 const nMat=new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.45,metalness:.1,transparent:true,opacity:.4,depthWrite:false});
 const baseMat=new THREE.MeshStandardMaterial({color:0x64748b,roughness:.5,metalness:.3});
-const PX=1.25,PZ=0.95,PYC=(FY0+FY1)/2,PH=FY1-FY0+0.6;
+const PX=1.25,PZ=1.2,PYC=(FY0+FY1)/2,PH=FY1-FY0+0.6;
 const base=new THREE.Mesh(new THREE.BoxGeometry(2*(GAP+PX),FY0-0.3,2*PZ),baseMat);base.position.set(0,(FY0-0.3)/2,0);magG.add(base);
 const sBlk=new THREE.Mesh(new THREE.BoxGeometry(PX,PH,2*PZ),sMat);sBlk.position.set(-(GAP+PX/2),FY0-0.3+PH/2,0);magG.add(sBlk);
 const nBlk=new THREE.Mesh(new THREE.BoxGeometry(PX,PH,2*PZ),nMat);nBlk.position.set(GAP+PX/2,FY0-0.3+PH/2,0);nBlk.renderOrder=8;magG.add(nBlk);
@@ -209,7 +209,7 @@ const nTop=new THREE.Mesh(new THREE.PlaneGeometry(PX*0.9,PZ*1.6),new THREE.MeshB
 // ====== Đường sức từ: từ cực N (+x) sang cực S (−x) qua khe ======
 const fieldG=new THREE.Group();magG.add(fieldG);
 const fMat=new THREE.MeshBasicMaterial({color:0x16a34a,transparent:true,opacity:.85}),fCone=new THREE.MeshBasicMaterial({color:0x15803d});
-for(const y of[FY0+0.3,PYC,FY1-0.3])for(const z of[-0.5,0,0.5]){
+for(const y of[FY0+0.3,PYC,FY1-0.3])for(const z of[-0.7,0,0.7]){
   const t=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,2*GAP,6),fMat);t.rotation.z=Math.PI/2;t.position.set(0,y,z);fieldG.add(t);
   const c=new THREE.Mesh(new THREE.ConeGeometry(.05,.14,8),fCone);c.rotation.z=Math.PI/2;c.position.set(-GAP*0.55,y,z);fieldG.add(c);   // mũi tên hướng −x
 }
@@ -243,8 +243,8 @@ function ring(rz,ry,par,cs=1){const g=new THREE.Group();
   for(const side of[-1,1]){g.add(ellipseTube(rz,ry,0.045*cs,eEdge,side*(TH/2+0.02)));g.add(ellipseTube(rz,ry,0.026*cs,eCore,side*(TH/2+0.05)))}
   const cones=[];for(let k=0;k<4;k++)for(const side of[-1,1]){const m=new THREE.Mesh(new THREE.ConeGeometry(.08*cs,.22*cs,10),eCone);m.userData={o:k/4,side,rz,ry,cs};g.add(m);cones.push(m)}
   par.add(g);return{g,cones}}
-const bigRing=ring(0.58,0.38,eddyG);
-const smallRings=[];for(let i=0;i<FINGERS;i++){const r=ring(FW*0.26,0.24,eddyG,0.55);r.g.position.set(0,-0.18,-HZ+FW*(i+0.5));smallRings.push(r)}
+const bigRing=ring(0.78,0.54,eddyG);
+const smallRings=[];for(let i=0;i<FINGERS;i++){const r=ring(FW*0.26,0.36,eddyG,0.6);r.g.position.set(0,-0.16,-HZ+FW*(i+0.5));smallRings.push(r)}
 buildPlate();
 // lực cản (vectơ tím) đặt cạnh tấm
 function mkArrow(color){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.35});
@@ -264,7 +264,7 @@ const labels=[];const L_=(t,c,x,y,z,s,par=scene)=>{const l=makeLabel(t,c,s);l.po
 L_('Thanh T','#1e3a8a',0,PY+0.45,-0.9,0.3);
 L_('Cực S','#1d4ed8',-(GAP+PX/2),FY1+0.75,0.6,0.3,magG);L_('Cực N','#b91c1c',GAP+PX/2,FY1+0.75,0.6,0.3,magG);
 let lbPlate=L_('Tấm đồng K','#7c2d12',0,-HY-0.35,HZ+0.4,0.28,plateG);
-const lbB=L_('B','#15803d',0,FY1+0.15,-0.65,0.34,magG);
+const lbB=L_('B','#15803d',0,FY1+0.15,-0.9,0.34,magG);
 const lbE=L_('Dòng điện Fu-cô','#b91c1c',0,HY+0.35,0,0.27,plateG);
 const lbF=L_('F cản','#6d28d9',0,0,0,0.28);
 
