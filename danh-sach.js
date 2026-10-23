@@ -45,20 +45,20 @@ window.MO_PHONG = [
     tags: ["ghi ta điện", "guitar", "cuộn cảm ứng", "nam châm", "âm thanh"]
   },
   {
-    ten: "Thí nghiệm về dòng điện Foucault",
-    mota: "Con lắc là tấm kim loại dao động giữa hai cực nam châm: tấm liền khối dừng nhanh, tấm có rãnh xẻ dao động lâu hơn, tấm nhựa không bị cản.",
+    ten: "Thí nghiệm về dòng điện Foucault 3D",
+    mota: "Không gian 3D (Hình 18.5): kéo tấm kim loại sang bên rồi thả, con lắc dao động giữa hai cực nam châm. Tấm liền khối dừng nhanh, tấm có rãnh xẻ dao động lâu, tấm nhựa không bị cản; đồ thị so sánh nhiều lần thả.",
     chuong: "Ứng dụng cảm ứng điện từ",
     lop: 12,
-    file: "sims/ung-dung-cam-ung.html#foucault",
-    tags: ["Foucault", "Fuco", "dòng điện xoáy", "con lắc", "rãnh xẻ"]
+    file: "sims/thi-nghiem-foucault-3d.html",
+    tags: ["Foucault", "Fuco", "dòng điện xoáy", "con lắc", "rãnh xẻ", "3D"]
   },
   {
-    ten: "Bếp từ",
-    mota: "Dòng xoay chiều tần số cao trong cuộn dây phẳng tạo dòng Foucault làm nóng đáy nồi. So sánh nồi gang, nhôm, sứ; nhấc nồi lên; quan sát mặt kính không tự nóng.",
+    ten: "Bếp từ 3D",
+    mota: "Không gian 3D: cuộn dây phẳng bằng đồng, thanh ferit, mạch tạo dòng cao tần dưới mặt kính. Kéo thả nồi gang/nhôm/sứ, quan sát đường sức đi vào đáy nồi, dòng Fu-cô làm nóng nồi, đun sôi nước; bếp báo E1 khi không nhận nồi.",
     chuong: "Ứng dụng cảm ứng điện từ",
     lop: 12,
-    file: "sims/ung-dung-cam-ung.html#bep",
-    tags: ["bếp từ", "bếp cảm ứng", "Foucault", "Fuco", "nồi"]
+    file: "sims/bep-tu-3d.html",
+    tags: ["bếp từ", "bếp cảm ứng", "Foucault", "Fuco", "nồi", "3D", "kéo thả"]
   },
   {
     ten: "Phanh điện từ 3D",
@@ -91,5 +91,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/sac-khong-day-3d.html",
     tags: ["sạc không dây", "3D", "kéo thả", "cuộn dây phẳng", "điốt", "chỉnh lưu", "pin", "Chart.js"]
+  },
+  {
+    ten: "Nam châm rơi trong ống đồng 3D",
+    mota: "Thả nam châm vào hai ống đặt cạnh nhau (nhựa, nhôm, đồng, đồng xẻ khe): trong ống đồng nam châm rơi từ từ do dòng điện xoáy trên thành ống. Quan sát hai vòng dòng điện ngược chiều, lực P và F từ, đồ thị quãng đường – thời gian.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/nam-cham-roi-ong-dong-3d.html",
+    tags: ["nam châm rơi", "ống đồng", "dòng điện xoáy", "Foucault", "Fuco", "Lenz", "3D", "kéo thả"]
   }
 ];

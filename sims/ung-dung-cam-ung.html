@@ -412,7 +412,9 @@ const FOU=(()=>{
   return{
     id:'foucault',tab:'🔔 Thí nghiệm Foucault',title:'Thí nghiệm về dòng điện Foucault',
     init(){st={plate:'solid',mag:true,th0:40,th:40*Math.PI/180,om:0,t:0,hist:[],ht:0,cross:0,amp:40,stopT:null,t0:0,eE:0,eA:0,dphi:0,ph:0}},
-    controls:`<div class="lbl">Vật treo vào thanh T</div>
+    controls:`<a class="back" href="thi-nghiem-foucault-3d.html" style="font-size:13.5px;font-weight:700">🧊 Mở bản 3D: kéo thả con lắc, so sánh các lần thả →</a>
+      <a class="back" href="nam-cham-roi-ong-dong-3d.html" style="font-size:13.5px;font-weight:700">🧲 Thí nghiệm nam châm rơi trong ống đồng (3D) →</a>
+      <div class="lbl">Vật treo vào thanh T</div>
       <div class="seg" data-key="plate"><button data-v="solid">Tấm liền khối</button><button data-v="slot">Tấm có rãnh xẻ</button><button data-v="plastic">Tấm nhựa</button></div>
       <label class="rng">Góc thả ban đầu<span class="v" data-show="th0"></span><input type="range" data-key="th0" min="10" max="60" value="40"></label>
       <div class="row"><button class="wide pri" data-act="release">▶ Thả con lắc</button><button class="wide" data-tog="mag" data-t="Bỏ nam châm|Đặt nam châm"></button></div>`,
@@ -518,7 +520,8 @@ const BEP=(()=>{
   return{
     id:'bep',tab:'🍳 Bếp từ',title:'Bếp từ (bếp cảm ứng)',
     init(){st={on:true,lvl:3,mat:'gang',lift:0,Tw:25,Tg:25,t:0,i:0,hist:[],ht:0,bub:[],ph:0}},
-    controls:`<div class="row"><button class="wide" data-tog="on" data-t="Tắt bếp|Bật bếp"></button><button class="wide" data-act="water">Đổ nước mới (25 °C)</button></div>
+    controls:`<a class="back" href="bep-tu-3d.html" style="font-size:13.5px;font-weight:700">🧊 Mở bản 3D: kéo thả nồi, đun sôi nước →</a>
+      <div class="row"><button class="wide" data-tog="on" data-t="Tắt bếp|Bật bếp"></button><button class="wide" data-act="water">Đổ nước mới (25 °C)</button></div>
       <label class="rng">Mức công suất<span class="v" data-show="lvl"></span><input type="range" data-key="lvl" min="1" max="5" value="3"></label>
       <div class="lbl">Chất liệu nồi</div>
       <div class="seg" data-key="mat"><button data-v="gang">Gang / thép</button><button data-v="nhom">Nhôm</button><button data-v="su">Sứ / thủy tinh</button></div>
