@@ -21,7 +21,7 @@
 html,body{height:100%;margin:0}
 body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
 .app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
-.stage{position:relative;background:#0d2d63;min-width:0;overflow:hidden}
+.stage{position:relative;background:#3f6fb5;min-width:0;overflow:hidden}
 #view{position:absolute;inset:0;touch-action:none}
 #view canvas{display:block;width:100%;height:100%;touch-action:none}
 .chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 150px);z-index:2}
@@ -189,12 +189,12 @@ let renderer;
 try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 const view=$('view');view.appendChild(renderer.domElement);
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d2d63);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x3f6fb5);
 const camera=new THREE.PerspectiveCamera(40,1,0.1,200);
-scene.add(new THREE.HemisphereLight(0xffffff,0x1e3a8a,0.8));
+scene.add(new THREE.HemisphereLight(0xffffff,0x3b5f9e,0.9));
 const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(5,10,7);scene.add(sun);
 const V=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V(0,1,0);
-const grid=new THREE.GridHelper(16,32,0x5b8bd6,0x2a5299);scene.add(grid);
+const grid=new THREE.GridHelper(16,32,0x9cc0f0,0x6a93d1);scene.add(grid);
 
 // đường xoắn ốc phẳng (Archimedes); tham số tăng ⇒ ngược chiều kim đồng hồ khi nhìn từ trên
 function spiral(r0,r1,turns,y,a0){const pts=[],n=turns*64;for(let k=0;k<=n;k++){const a=a0+k/64*TAU,r=r0+(r1-r0)*k/n;pts.push(V(r*Math.cos(a),y,-r*Math.sin(a)))}return pts}
@@ -238,11 +238,11 @@ function drawSrc(){
 
 // ====== TỪ TRƯỜNG của cuộn sơ cấp ======
 const fieldG=new THREE.Group();scene.add(fieldG);
-const fMat=new THREE.LineDashedMaterial({color:0xbfe3ff,dashSize:.2,gapSize:.12,transparent:true,opacity:.85});
+const fMat=new THREE.LineDashedMaterial({color:0xf0f9ff,dashSize:.24,gapSize:.14,transparent:true,opacity:.85});
 const fCone=new THREE.MeshBasicMaterial({color:0xe0f2fe,transparent:true,opacity:.9});
 const fArrows=[];
-for(let k=0;k<8;k++){const az=k*Math.PI/4,c=Math.cos(az),s=Math.sin(az);
-  [[0.18,2.25,2.6,-0.9],[0.45,2.9,3.4,-1.2],[0.85,3.5,4.1,-1.5]].forEach(([rin,rout,top,bot],li)=>{
+for(let k=0;k<6;k++){const az=k*Math.PI/3+Math.PI/6,c=Math.cos(az),s=Math.sin(az);
+  [[0.25,2.45,2.9,-1.0],[0.7,3.3,3.9,-1.4]].forEach(([rin,rout,top,bot],li)=>{
     const P2=[[rin,PC_Y],[rin,(PC_Y+top)/2],[rin*1.3,top],[(rin+rout)/2,top+0.25],[rout,top*0.55],[rout,PC_Y],[rout*0.85,bot*0.8],[(rin+rout)/2,bot],[rin*1.15,bot*0.55]];
     const pts=new THREE.CatmullRomCurve3(P2.map(([r,y])=>V(r*c,y,-r*s)),true).getPoints(140);
     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),fMat);line.computeLineDistances();fieldG.add(line);
