@@ -61,12 +61,12 @@ window.MO_PHONG = [
     tags: ["bếp từ", "bếp cảm ứng", "Foucault", "Fuco", "nồi"]
   },
   {
-    ten: "Phanh điện từ",
-    mota: "Đĩa kim loại quay qua từ trường của nam châm điện: dòng Foucault tạo lực phanh tỉ lệ với tốc độ. Đổi cường độ dòng điện và vật liệu đĩa.",
+    ten: "Phanh điện từ 3D",
+    mota: "Không gian 3D: đĩa nhôm/đồng quay qua khe nam châm điện lõi chữ C. Kéo mép đĩa để quay, quan sát hai xoáy dòng Fu-cô ngược chiều, đường sức B, vectơ v và lực phanh; so sánh đĩa liền, đĩa xẻ rãnh, đĩa nhựa.",
     chuong: "Ứng dụng cảm ứng điện từ",
     lop: 12,
-    file: "sims/ung-dung-cam-ung.html#phanh",
-    tags: ["phanh từ", "phanh điện từ", "Foucault", "Fuco", "tàu điện"]
+    file: "sims/phanh-dien-tu-3d.html",
+    tags: ["phanh từ", "phanh điện từ", "3D", "Foucault", "Fuco", "tàu điện", "đĩa xẻ rãnh"]
   },
   {
     ten: "Lò nung cao tần (lò cảm ứng)",

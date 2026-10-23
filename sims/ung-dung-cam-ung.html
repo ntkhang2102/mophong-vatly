@@ -685,7 +685,8 @@ const PHANH=(()=>{
   return{
     id:'phanh',tab:'🛑 Phanh điện từ',title:'Phanh điện từ (phanh dùng dòng Foucault)',
     init(){st={w:0,ang:0,brake:false,I:0.8,mat:'nhom',view:'3d',t:0,hist:[],ht:0,heat:0,tb:null,ph:0,spun:false}},
-    controls:`<div class="lbl">Cách nhìn</div>
+    controls:`<a class="back" href="phanh-dien-tu-3d.html" style="font-size:13.5px;font-weight:700">🧊 Mở bản 3D: xoay không gian, kéo mép đĩa để quay, đĩa xẻ rãnh →</a>
+      <div class="lbl">Cách nhìn</div>
       <div class="seg" data-key="view"><button data-v="3d">Phối cảnh 3D (đĩa nằm ngang)</button><button data-v="top">Nhìn chính diện</button></div>
       <div class="row"><button class="wide pri" data-act="spin">⟳ Quay đĩa (bánh xe)</button></div>
       <div class="row"><button class="wide" data-tog="brake" data-t="Ngắt phanh từ|Bật phanh từ (nam châm điện)"></button></div>
