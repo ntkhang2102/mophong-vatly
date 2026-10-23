@@ -99,5 +99,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/nam-cham-roi-ong-dong-3d.html",
     tags: ["nam châm rơi", "ống đồng", "dòng điện xoáy", "Foucault", "Fuco", "Lenz", "3D", "kéo thả"]
+  },
+  {
+    ten: "Loa điện động và micro điện động 3D",
+    mota: "Mặt cắt 3D: nam châm lõi N – vành S, khe từ xuyên tâm, cuộn dây gắn nón loa. Dòng xoay chiều tạo lực F = BIℓ làm màng dao động phát âm (có âm thanh thật); chế độ micro: kéo màng sinh suất điện động cảm ứng.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/loa-dien-dong-3d.html",
+    tags: ["loa", "loa điện động", "micro", "lực từ", "quy tắc bàn tay trái", "âm thanh", "3D"]
   }
 ];
