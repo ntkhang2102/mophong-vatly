@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nam châm – cuộn dây – điện kế</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Bố cục: vùng hình (canvas nền bạc) bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --stage:#e5e9f0; --ink:#2b3340;
+  --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; --ind:#e2531f; --field:#1e40af;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:var(--stage);min-width:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 20px)}
+.chip{background:rgba(255,255,255,.92);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:6px 11px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}
+.chip.ind b{color:var(--ind)}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.85);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2)}
+button.wide{flex:1}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.formula{font-size:13px;color:#cbd5e1;background:#0b1427;border-radius:8px;padding:6px 8px;border:1px dashed var(--line)}
+#graph{width:100%;height:170px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.explain .hid{color:var(--muted);font-style:italic}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.qtext .act{display:block;color:#fde68a;font-weight:600;margin-bottom:3px}
+.ds{display:flex;flex-direction:column;gap:6px}
+.it{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.it.ok{border-color:var(--good)} .it.no{border-color:var(--bad)}
+.it .st{line-height:1.45}
+.it .st b{color:var(--accent2)}
+.it .ctl{display:flex;gap:6px;align-items:center}
+.it .ctl button{min-width:58px;padding:5px 8px}
+.it .ctl button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:700}
+.it .ctl .demo{margin-left:auto;font-size:12px}
+.it .ex{font-size:13px;line-height:1.5;color:#cbd5e1;border-left:3px solid var(--accent);padding-left:8px}
+.it.ok .ex{border-left-color:var(--good)} .it.no .ex{border-left-color:var(--bad)}
+.tag{font-weight:700} .tag.ok{color:var(--good)} .tag.no{color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+@media (max-width:860px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:58vh;min-height:330px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="chips">
+      <div class="chip">Nam châm: <b id="cMove">đứng yên</b></div>
+      <div class="chip">Kim điện kế: <b id="cG">0</b></div>
+      <div class="chip ans">Φ: <b id="cPhi">–</b></div>
+      <div class="chip ind ans">Mặt X: <b id="cX">–</b></div>
+    </div>
+    <div class="hint" id="hint">Kéo nam châm lại gần hoặc ra xa cuộn dây</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Cảm ứng điện từ: nam châm, cuộn dây và điện kế</h1>
+      <div class="sub">Vật lí 12 · Định luật Lenz · Định luật Faraday · Chuyển hóa năng lượng</div>
+    </div>
+
+    <div class="sec">
+      <h2>Thao tác</h2>
+      <div class="row">
+        <button class="wide" id="bNear">Đưa lại gần ▶</button>
+        <button class="wide" id="bFar">◀ Kéo ra xa</button>
+        <button class="wide" id="bOsc">Qua lại</button>
+      </div>
+      <label class="rng">Tốc độ nam châm<span class="v" id="vV">trung bình</span>
+        <input type="range" id="rV" min="40" max="400" value="170"></label>
+      <div class="row">
+        <button class="wide" id="bStop">■ Dừng nam châm</button>
+        <button class="wide" id="bFlip">Đổi cực nam châm</button>
+        <button class="wide pri" id="bPause">⏸ Dừng hình</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Chế độ hỏi học sinh</h2>
+      <div class="row">
+        <button class="wide" id="bQ">Ẩn đáp án</button>
+        <button class="wide pri" id="bShow">Hiện đáp án</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Đúng / Sai</h2>
+      <div class="row">
+        <button class="wide" id="bOrig">Câu 35 (đề gốc)</button>
+        <button class="wide pri" id="bNew">Câu hỏi mới</button>
+      </div>
+      <div id="qbox" class="ds">
+        <div class="note">Bấm <b>Câu hỏi mới</b>: mô phỏng tự đặt tình huống và 4 ý a, b, c, d. Học sinh chọn Đúng/Sai cho từng ý rồi bấm <b>Chấm điểm</b>. Sau khi chấm, mỗi ý có nút <b>▶ Minh họa</b>.</div>
+      </div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kField" checked> Đường sức nam châm</label>
+        <label><input type="checkbox" id="kB" checked> Vectơ B tại cuộn dây</label>
+        <label><input type="checkbox" id="kBc" checked> Vectơ Bc</label>
+        <label><input type="checkbox" id="kIc" checked> Dòng cảm ứng</label>
+        <label><input type="checkbox" id="kPole" checked> Cực của mặt X</label>
+        <label><input type="checkbox" id="kF" checked> Lực từ</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2">
+        <div class="cell"><div class="k">Tốc độ nam châm</div><div class="val" id="oV">–</div></div>
+        <div class="cell"><div class="k">Số chỉ điện kế (vạch)</div><div class="val" id="oG">–</div></div>
+        <div class="cell ans"><div class="k">Φ qua cuộn dây (đvtđ)</div><div class="val" id="oPhi">–</div></div>
+        <div class="cell"><div class="k">Lệch lớn nhất lần này</div><div class="val" id="oPeak">–</div></div>
+        <div class="cell ans"><div class="k">Công suất điện (đvtđ)</div><div class="val" id="oP">–</div></div>
+        <div class="cell ans"><div class="k">Điện năng đã sinh ra</div><div class="val" id="oQ">–</div></div>
+      </div>
+      <div class="formula">|e<sub>c</sub>| = |ΔΦ / Δt| · i<sub>c</sub> = e<sub>c</sub> / R · Nam châm càng nhanh ⇒ Φ biến thiên càng nhanh ⇒ kim lệch càng nhiều</div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li>Chỉ khi từ thông qua cuộn dây <b>biến thiên</b> mới có dòng điện cảm ứng. Nam châm đứng yên ⇒ kim điện kế chỉ 0.</li>
+        <li><b>Faraday:</b> |e<sub>c</sub>| = |ΔΦ/Δt|. Nam châm chuyển động càng nhanh, kim lệch càng nhiều.</li>
+        <li><b>Lenz:</b> lại gần ⇒ mặt X <b>cùng tên</b> với cực nam châm ⇒ <b>đẩy</b>. Ra xa ⇒ mặt X <b>khác tên</b> ⇒ <b>hút</b>. Lực từ luôn cản trở chuyển động của nam châm.</li>
+        <li>Đưa nam châm lại gần rồi kéo ra xa ⇒ dòng điện cảm ứng đổi chiều, kim lệch về phía ngược lại.</li>
+        <li><b>Năng lượng:</b> công của lực kéo thắng lực cản (cơ năng) ⇒ <b>điện năng</b> ⇒ nhiệt trên dây. Đây là <b>cơ năng thành điện năng</b>, không phải ngược lại.</li>
+      </ul>
+    </div>
+
+    <button id="bReset">↺ Khôi phục ban đầu</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const W=900,H=520;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const gcv=document.getElementById('graph'),gctx=gcv.getContext('2d');
+const $=id=>document.getElementById(id);
+const fmt=(v,n=2)=>v.toFixed(n).replace('.',',');
+
+// Hình học (tọa độ logic W×H)
+const CY=170,ML=80,MH=22;                 // nam châm: nửa dài, nửa cao
+const X0=520,X1=790,RY=52,RXE=14,NT=10;   // cuộn dây: mặt X ở X0
+const XMIN=110,XMAX=X0-ML-12;             // giới hạn tâm nam châm
+const GX=655,GY=420,GR=46;                // điện kế
+const xL=X0+30,xR=X1-30;                  // chân hai đầu dây nối
+const turnX=i=>X0+26+i*(X1-X0-48)/(NT-1);
+
+const g=u=>1/Math.pow(1+(u/150)*(u/150),1.5);
+function flux(xm,pol){let s=0;for(let i=0;i<NT;i++)s+=g(turnX(i)-xm);return pol*s/NT}
+const PHIMAX=flux(XMAX,1);
+
+const S={};
+function initState(){
+  Object.assign(S,{
+    xm:200,pol:1,target:null,vset:170,osc:false,oscDir:1,
+    phi:0,phiPrev:0,emf:0,ic:0,v:0,th:0,om:0,peak:0,energy:0,
+    paused:false,qMode:false,revealed:false,phase:0,
+    hist:[],histT:0
+  });
+  settle();
+}
+function settle(){S.phi=S.phiPrev=flux(S.xm,S.pol);S.emf=0;S.ic=0;S.v=0;S.th=0;S.om=0}
+function hidden(){return S.qMode&&!S.revealed}
+const has=()=>Math.abs(S.ic)>0.03;
+// ic > 0: Bc hướng sang phải (+x) ⇒ mặt X là cực S; ic < 0 ⇒ mặt X là cực N
+const faceX=()=>has()?(S.ic<0?'N':'S'):null;
+const reading=()=>Math.max(-12,Math.min(12,S.th/(50*Math.PI/180)*10));
+
+// ====== Kích thước canvas ======
+let scale=1,offX=0,offY=0,cw=0,ch=0;
+function resize(){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  scale=Math.min(cw/W,(ch-40)/H);offX=(cw-W*scale)/2;offY=Math.max(36,(ch-H*scale)/2+14);
+  const q=gcv.getBoundingClientRect();gcv.width=q.width*dpr;gcv.height=q.height*dpr;gctx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(resize).observe($('stage'));new ResizeObserver(resize).observe(gcv);
+
+// ====== Tiện ích vẽ ======
+function head(x,y,ang,s,col){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(s,0);ctx.lineTo(-s*.8,-s*.6);ctx.lineTo(-s*.8,s*.6);ctx.closePath();ctx.fill();ctx.restore()}
+function arrow(x1,y1,x2,y2,col,w=3,hs=9){ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);const a=Math.atan2(y2-y1,x2-x1);ctx.lineTo(x2-Math.cos(a)*hs*.7,y2-Math.sin(a)*hs*.7);ctx.stroke();head(x2,y2,a,hs,col)}
+function vecLabel(txt,sub,x,y,col){ctx.fillStyle=col;ctx.font='italic 700 18px "Be Vietnam Pro",sans-serif';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(txt,x,y);const w=ctx.measureText(txt).width;
+  if(sub){ctx.font='600 12px "Be Vietnam Pro",sans-serif';ctx.fillText(sub,x+w+1,y+4)}
+  ctx.strokeStyle=col;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x,y-17);ctx.lineTo(x+w+2,y-17);ctx.stroke();head(x+w+3,y-17,0,4,col)}
+function tubeArc(x,y,rx,ry,a0,a1,dark,mid,light,w){
+  ctx.save();ctx.lineCap='butt';
+  ctx.strokeStyle=dark;ctx.lineWidth=w;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,a0,a1);ctx.stroke();
+  ctx.strokeStyle=mid;ctx.lineWidth=w*.6;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,a0,a1);ctx.stroke();
+  ctx.strokeStyle=light;ctx.lineWidth=w*.18;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,a0+.2,a1-.2);ctx.stroke();
+  ctx.restore();
+}
+function badge(txt,x,y,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,13,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='700 15px "Be Vietnam Pro",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,x,y+1)}
+function text(t,x,y,size=15,col='#2b3340',al='center',wt=600){ctx.fillStyle=col;ctx.font=`${wt} ${size}px "Be Vietnam Pro",sans-serif`;ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillText(t,x,y)}
+function poly(pts){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke()}
+function polyLen(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L}
+function pointAt(pts,s){for(let i=1;i<pts.length;i++){const l=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);if(s<=l){const k=s/l;return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k]}s-=l}return pts[pts.length-1]}
+
+// ====== Vẽ ======
+const COL={wire:'#2b3340',copper:'#b4632a',field:'#1e40af',ind:'#e2531f',N:'#dc2626',Sp:'#2563eb',F:'#7c3aed'};
+function draw(){
+  ctx.clearRect(0,0,cw,ch);
+  ctx.save();ctx.translate(offX,offY);ctx.scale(scale,scale);
+  const hid=hidden(),show=id=>$(id).checked,xm=S.xm,pol=S.pol;
+  const xN=xm+pol*ML,xS=xm-pol*ML;   // vị trí hai đầu cực
+
+  // Trục
+  ctx.setLineDash([3,5]);ctx.strokeStyle='#8a94a6';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(40,CY);ctx.lineTo(X1+60,CY);ctx.stroke();ctx.setLineDash([]);
+
+  // Đường sức từ của nam châm
+  if(show('kField')){
+    ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle=COL.field;ctx.lineWidth=1.5;ctx.setLineDash([6,5]);
+    for(const sg of[-1,1])for(let k=1;k<=3;k++){
+      const y0=CY+sg*7*k,yt=CY+sg*(MH+26+26*k),ex=40+34*k;
+      ctx.beginPath();ctx.moveTo(xN,y0);ctx.bezierCurveTo(xN+pol*ex,y0+sg*20,xN+pol*ex*.5,yt,xm,yt);ctx.bezierCurveTo(xS-pol*ex*.5,yt,xS-pol*ex,y0+sg*20,xS,y0);ctx.stroke();
+      ctx.setLineDash([]);head(xm,yt,pol>0?Math.PI:0,6,COL.field);ctx.setLineDash([6,5]);
+    }
+    // đường sức dọc trục hướng về phía cuộn dây
+    const xe=xm+ML;ctx.beginPath();ctx.moveTo(xe,CY);ctx.lineTo(X1+40,CY);ctx.stroke();ctx.setLineDash([]);
+    head((xe+X0)/2+4,CY,pol>0?0:Math.PI,6,COL.field);head(X1+30,CY,pol>0?0:Math.PI,6,COL.field);
+    ctx.restore();
+  }
+
+  // Nam châm
+  ctx.save();
+  const sh=ctx.createLinearGradient(0,CY-MH,0,CY+MH);sh.addColorStop(0,'rgba(255,255,255,.35)');sh.addColorStop(.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.15)');
+  ctx.fillStyle=COL.N;ctx.fillRect(Math.min(xm,xN),CY-MH,ML,MH*2);
+  ctx.fillStyle=COL.Sp;ctx.fillRect(Math.min(xm,xS),CY-MH,ML,MH*2);
+  ctx.fillStyle=sh;ctx.fillRect(xm-ML,CY-MH,ML*2,MH*2);
+  ctx.strokeStyle='#1f2937';ctx.lineWidth=1.6;ctx.strokeRect(xm-ML,CY-MH,ML*2,MH*2);
+  ctx.restore();
+  text('N',(xm+xN)/2,CY+1,22,'#fff','center',700);text('S',(xm+xS)/2,CY+1,22,'#fff','center',700);
+  // tay cầm
+  ctx.strokeStyle='#64748b';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(xm,CY-MH);ctx.lineTo(xm,CY-MH-26);ctx.stroke();ctx.setLineDash([]);
+  text('⇆ kéo',xm,CY-MH-36,12,'#475569','center',600);
+
+  // Dây nối và điện kế
+  ctx.strokeStyle=COL.wire;ctx.lineWidth=2.4;ctx.lineJoin='round';
+  const p1=[[xL,CY+RY-4],[xL,GY],[GX-GR,GY]],p2=[[GX+GR,GY],[xR,GY],[xR,CY+RY-4]];
+  poly(p1);poly(p2);
+  if(show('kIc')&&!hid&&has()){
+    ctx.fillStyle='rgba(226,83,31,.9)';
+    for(const P of[p1,p2]){const L=polyLen(P),gap=24;const ph=((S.phase%gap)+gap)%gap;
+      for(let s=ph;s<L;s+=gap){const q=pointAt(P,s);ctx.beginPath();ctx.arc(q[0],q[1],2.6,0,7);ctx.fill()}}
+  }
+  drawGalvo();
+
+  // Cuộn dây (thân)
+  const gr=ctx.createLinearGradient(0,CY-RY,0,CY+RY);gr.addColorStop(0,'#6b7280');gr.addColorStop(.35,'#9ca3af');gr.addColorStop(1,'#4b5563');
+  ctx.fillStyle=gr;ctx.strokeStyle='#374151';ctx.lineWidth=1.6;
+  ctx.beginPath();ctx.moveTo(X0,CY-RY);ctx.lineTo(X1,CY-RY);ctx.lineTo(X1,CY+RY);ctx.lineTo(X0,CY+RY);ctx.ellipse(X0,CY,RXE,RY,0,Math.PI/2,Math.PI*1.5);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#4b5563';ctx.beginPath();ctx.ellipse(X1,CY,RXE,RY,0,0,7);ctx.fill();ctx.stroke();
+  const showIc=show('kIc')&&!hid&&has();
+  for(let i=0;i<NT;i++){
+    const xi=turnX(i);
+    tubeArc(xi,CY,RXE,RY,Math.PI/2,Math.PI*1.5,'#6b3410',COL.copper,'#f2b48a',3.8);
+    // ic > 0 ⇒ dòng ở nửa vòng phía trước đi xuống; ic < 0 ⇒ đi lên
+    if(showIc)head(xi-RXE,CY,S.ic>0?Math.PI/2:-Math.PI/2,6.5,COL.ind);
+  }
+  // Nhãn mặt X
+  text('X',X0-2,CY-RY-16,18,'#111827','center',700);
+  if(show('kPole')&&!hid&&has()){const f=faceX();badge(f,X0-24,CY+RY+18,f==='N'?COL.N:COL.Sp);text('mặt X',X0-24,CY+RY+40,11.5,'#334155')}
+
+  // Vectơ B do nam châm tại cuộn dây và Bc
+  if(show('kB')&&!hid){
+    const L=20+90*Math.abs(S.phi)/PHIMAX;
+    arrow(X0+70,CY-16,X0+70+pol*L,CY-16,COL.field,3,10);vecLabel('B',null,X0+70+pol*L+(pol>0?6:-22),CY-24,COL.field);
+  }
+  if(show('kBc')&&!hid&&has()){
+    const L=Math.min(110,25+70*Math.abs(S.ic)),sg=Math.sign(S.ic);
+    arrow(X0+70,CY+16,X0+70+sg*L,CY+16,COL.ind,3,10);vecLabel('B','c',X0+70+sg*L+(sg>0?6:-30),CY+40,COL.ind);
+  }
+  // Lực từ: lên cuộn dây và lên nam châm (cặp lực trực đối)
+  if(show('kF')&&!hid&&has()&&Math.abs(S.phi)>0.005){
+    const repel=(S.ic<0)===(pol>0);   // mặt X cùng tên với cực đối diện ⇒ đẩy
+    const d=repel?1:-1,yF=CY-RY-44;
+    arrow((X0+X1)/2,yF,(X0+X1)/2+d*60,yF,COL.F,3,9);text(repel?'F đẩy cuộn dây':'F hút cuộn dây',(X0+X1)/2+d*60+(d>0?8:-8),yF-16,13,COL.F,d>0?'left':'right');
+    const xa=xm+ML-14;arrow(xa,CY-MH-58,xa-d*50,CY-MH-58,COL.F,3,9);text('F cản nam châm',xa-d*50,CY-MH-74,12.5,COL.F,'center');
+  }
+  ctx.restore();
+}
+function drawGalvo(){
+  const py=GY+22,L=52;
+  ctx.fillStyle='#fff';ctx.strokeStyle='#1f2937';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(GX,GY,GR,0,7);ctx.fill();ctx.stroke();
+  // thang chia
+  ctx.strokeStyle='#334155';ctx.lineWidth=1.2;
+  for(let k=-10;k<=10;k++){const a=k/10*50*Math.PI/180,r1=L-2,r2=k%5===0?L-11:L-7;
+    ctx.beginPath();ctx.moveTo(GX+r1*Math.sin(a),py-r1*Math.cos(a));ctx.lineTo(GX+r2*Math.sin(a),py-r2*Math.cos(a));ctx.stroke()}
+  text('0',GX,py-L+16,10.5,'#334155');
+  // kim
+  const a=S.th;ctx.strokeStyle='#b91c1c';ctx.lineWidth=2.4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(GX,py);ctx.lineTo(GX+(L-4)*Math.sin(a),py-(L-4)*Math.cos(a));ctx.stroke();ctx.lineCap='butt';
+  ctx.fillStyle='#111827';ctx.beginPath();ctx.arc(GX,py,4,0,7);ctx.fill();
+  text('G',GX,py+12,12,'#111827','center',700);
+  text('Điện kế',GX,GY+GR+18,15,'#111827','center',700);
+}
+
+// ====== Đồ thị ======
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),w=r.width,h=r.height;gctx.clearRect(0,0,w,h);
+  const pad=30,laneH=(h-24)/2,y1=8+laneH/2,y2=16+laneH*1.5;
+  gctx.font='11px "Be Vietnam Pro",sans-serif';gctx.textBaseline='middle';
+  gctx.strokeStyle='#1c2a47';gctx.lineWidth=1;
+  for(let i=0;i<=6;i++){const xx=pad+i*(w-pad-6)/6;gctx.beginPath();gctx.moveTo(xx,8);gctx.lineTo(xx,h-6);gctx.stroke()}
+  gctx.strokeStyle='#3a4b70';for(const y of[y1,y2]){gctx.beginPath();gctx.moveTo(pad,y);gctx.lineTo(w-6,y);gctx.stroke()}
+  gctx.textAlign='right';gctx.fillStyle='#93a3c0';gctx.fillText('0',pad-4,y1);gctx.fillText('0',pad-4,y2);
+  gctx.textAlign='left';gctx.fillStyle='#60a5fa';gctx.fillText('Φ(t)',pad+4,14);
+  gctx.fillStyle='#fb923c';gctx.fillText('i_c(t) – số chỉ điện kế',pad+4,laneH+22);
+  const N=S.hist.length;if(N<2)return;const span=120,X=i=>pad+(i-(N-span))*(w-pad-6)/span;
+  const hid=hidden();
+  gctx.lineWidth=2;
+  if(!hid){gctx.strokeStyle='#60a5fa';gctx.beginPath();S.hist.forEach((q,i)=>{const yy=y1-q[0]/PHIMAX*(laneH/2-4);i?gctx.lineTo(X(i),yy):gctx.moveTo(X(i),yy)});gctx.stroke()}
+  gctx.strokeStyle='#fb923c';gctx.beginPath();S.hist.forEach((q,i)=>{const yy=y2-Math.max(-1,Math.min(1,q[1]/12))*(laneH/2-4);i?gctx.lineTo(X(i),yy):gctx.moveTo(X(i),yy)});gctx.stroke();
+}
+
+// ====== Vật lí ======
+function step(dt){
+  if(S.paused||dt<=0)return;
+  const x0=S.xm;
+  if(S.osc&&S.target===null){S.target=S.oscDir>0?XMAX:XMIN;S.oscDir*=-1}
+  if(S.target!==null&&!drag){
+    const mv=S.vset*dt,d=S.target-S.xm;
+    if(Math.abs(d)<=mv){S.xm=S.target;S.target=null}else S.xm+=Math.sign(d)*mv;
+  }
+  S.v+=((S.xm-x0)/dt-S.v)*Math.min(1,dt*20);
+  S.phiPrev=S.phi;S.phi=flux(S.xm,S.pol);
+  const e=-(S.phi-S.phiPrev)/dt;S.emf+=(e-S.emf)*Math.min(1,dt*20);
+  S.ic=Math.abs(S.emf)<0.004?0:S.emf*2.8;
+  // kim điện kế: dao động tắt dần quanh vị trí tỉ lệ với i_c
+  const tgt=Math.max(-1.25,Math.min(1.25,S.ic))*50*Math.PI/180,w0=16,z=.65;
+  S.om+=(w0*w0*(tgt-S.th)-2*z*w0*S.om)*dt;S.th+=S.om*dt;
+  S.peak=Math.max(S.peak,Math.abs(reading()));
+  S.energy+=S.ic*S.ic*dt;
+  S.phase+=S.ic*90*dt;
+  S.histT+=dt;if(S.histT>0.05){S.histT=0;S.hist.push([S.phi,reading()]);if(S.hist.length>120)S.hist.shift()}
+}
+
+// ====== Giao diện ======
+const speedName=v=>v<100?'chậm':v<240?'trung bình':'nhanh';
+function moveState(){const v=S.v;return Math.abs(v)<4?'đứng yên':v>0?'lại gần':'ra xa'}
+function updateUI(){
+  const hid=hidden(),r=reading();
+  $('cMove').textContent=moveState();
+  $('cG').textContent=(Math.abs(r)<0.1?'0':(r>0?'lệch phải ':'lệch trái ')+fmt(Math.abs(r),1));
+  const ph=has()?(Math.abs(S.phi)>Math.abs(S.phiPrev)?'đang tăng':'đang giảm'):'không đổi';
+  $('cPhi').textContent=ph;$('cX').textContent=faceX()?(faceX()==='N'?'cực Bắc':'cực Nam'):'không là cực';
+  $('oV').textContent=Math.round(Math.abs(S.v))+' px/s';$('oG').textContent=fmt(r,1);
+  $('oPhi').textContent=fmt(Math.abs(S.phi),3);$('oPeak').textContent=fmt(S.peak,1)+' vạch';
+  $('oP').textContent=fmt(S.ic*S.ic,2);$('oQ').textContent=fmt(S.energy,2);
+  document.querySelectorAll('.ans').forEach(el=>el.style.visibility=hid?'hidden':'visible');
+  $('vV').textContent=speedName(S.vset);
+  $('bPause').textContent=S.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+  $('bOsc').classList.toggle('on',S.osc);
+  $('bQ').classList.toggle('on',S.qMode);$('bQ').textContent=S.qMode?'Đang ẩn đáp án':'Ẩn đáp án';
+  explainLive(hid);
+}
+let lastExplain='';
+function explainLive(hid){
+  let s;
+  if(hid)s='<div class="hid">Đáp án đang ẩn. Học sinh quan sát kim điện kế, dự đoán rồi bấm “Hiện đáp án”.</div>';
+  else{
+    const P=S.pol>0?'Bắc (N)':'Nam (S)',mv=moveState();
+    s='<ol>';
+    s+=`<li>Cực <b>${P}</b> của nam châm hướng về mặt X. Tại cuộn dây, B hướng sang ${S.pol>0?'phải (ra xa nam châm)':'trái (về phía nam châm)'}.</li>`;
+    if(!has())s+=`<li>Nam châm ${mv==='đứng yên'?'đứng yên':'chuyển động rất chậm'} ⇒ từ thông qua cuộn dây ${mv==='đứng yên'?'không đổi':'gần như không đổi'} ⇒ <b>không có dòng điện cảm ứng</b>, kim điện kế chỉ 0.</li>`;
+    else{
+      const inc=Math.abs(S.phi)>Math.abs(S.phiPrev),f=faceX(),same=(f==='N')===(S.pol>0);
+      s+=`<li>Nam châm ${inc?'lại gần':'ra xa'} ⇒ từ trường tại cuộn dây ${inc?'mạnh lên':'yếu đi'} ⇒ từ thông <b>${inc?'tăng':'giảm'}</b> ⇒ có dòng điện cảm ứng, kim điện kế lệch.</li>`;
+      s+=`<li>Định luật Lenz: Bc ${inc?'<b>ngược chiều</b>':'<b>cùng chiều</b>'} B ⇒ mặt X là cực <b>${f==='N'?'Bắc':'Nam'}</b> (${same?'cùng tên':'khác tên'} với cực đối diện) ⇒ cuộn dây bị <b>${same?'đẩy sang phải':'hút sang trái'}</b>.</li>`;
+      s+=`<li>Lực từ lên nam châm ${same?'đẩy nam châm ra':'kéo nam châm lại'} ⇒ <b>cản trở chuyển động</b>. Muốn nam châm chuyển động phải tốn công: <b>cơ năng → điện năng</b> → nhiệt.</li>`;
+      s+=`<li>Tốc độ ${Math.round(Math.abs(S.v))} px/s (${speedName(Math.abs(S.v))}): |e<sub>c</sub>| = |ΔΦ/Δt|, nam châm càng nhanh kim lệch càng nhiều.</li>`;
+    }
+    s+='</ol>';
+  }
+  if(s!==lastExplain){$('explain').innerHTML=s;lastExplain=s}
+}
+
+// ====== Điều khiển ======
+let seqId=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function cancelSeq(){seqId++}
+function moveTo(x,v){S.target=x;if(v)S.vset=v;S.peak=0}
+$('bNear').onclick=()=>{cancelSeq();S.osc=false;S.vset=+$('rV').value;moveTo(XMAX)};
+$('bFar').onclick=()=>{cancelSeq();S.osc=false;S.vset=+$('rV').value;moveTo(XMIN)};
+$('bOsc').onclick=()=>{cancelSeq();S.osc=!S.osc;S.vset=+$('rV').value;if(!S.osc)S.target=null;S.peak=0};
+$('bStop').onclick=()=>{cancelSeq();S.osc=false;S.target=null};
+$('rV').addEventListener('input',e=>{S.vset=+e.target.value});
+$('bFlip').onclick=()=>{S.pol*=-1;settle();hint('Đã đổi cực: cực '+(S.pol>0?'Bắc':'Nam')+' hướng về cuộn dây')};
+$('bPause').onclick=()=>{S.paused=!S.paused};
+$('bQ').onclick=()=>{S.qMode=!S.qMode;S.revealed=false};
+$('bShow').onclick=()=>{S.revealed=true};
+$('bReset').onclick=()=>{cancelSeq();initState();$('rV').value=170;quizIdle();hint('Đã khôi phục ban đầu')};
+
+// Kéo nam châm
+let drag=false,dragDX=0;
+function toLogic(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left-offX)/scale,(e.clientY-r.top-offY)/scale]}
+const onMagnet=(x,y)=>Math.abs(x-S.xm)<ML+8&&y>CY-MH-50&&y<CY+MH+10;
+cv.addEventListener('pointerdown',e=>{const[x,y]=toLogic(e);
+  if(onMagnet(x,y)){cancelSeq();drag=true;dragDX=x-S.xm;S.osc=false;S.target=null;S.peak=0;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'}});
+cv.addEventListener('pointermove',e=>{const[x,y]=toLogic(e);
+  if(drag)S.xm=Math.max(XMIN,Math.min(XMAX,x-dragDX));else cv.style.cursor=onMagnet(x,y)?'grab':'default'});
+const endDrag=()=>{drag=false;cv.style.cursor='default'};
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+
+let hintT;function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(()=>h.style.opacity=0,5000)}
+hint('Kéo nam châm lại gần hoặc ra xa cuộn dây, quan sát kim điện kế');
+
+// ====== Kịch bản minh họa ======
+async function waitStill(id){while(S.target!==null&&id===seqId)await sleep(50);return id===seqId}
+async function play(kind,z){
+  const id=++seqId,v0=+$('rV').value;S.osc=false;S.target=null;S.pol=z.pol;
+  const start=x=>{S.xm=x;settle();S.hist=[];S.peak=0};
+  const go=async(near,v)=>{moveTo(near?XMAX:XMIN,v);return waitStill(id)};
+  if(kind==='near'||kind==='far'){start(kind==='near'?XMIN:XMAX);await sleep(800);if(id!==seqId)return;await go(kind==='near',v0);return}
+  if(kind==='compare'){
+    const near=z.act==='near';start(near?XMIN:XMAX);hint('Lần 1: dịch chuyển CHẬM');await sleep(800);if(id!==seqId)return;
+    if(!await go(near,60))return;const p1=S.peak;await sleep(900);if(id!==seqId)return;
+    start(near?XMIN:XMAX);hint('Lần 2: dịch chuyển NHANH');await sleep(800);if(id!==seqId)return;
+    if(!await go(near,340))return;const p2=S.peak;
+    hint(`Lệch lớn nhất: chậm ${fmt(p1,1)} vạch · nhanh ${fmt(p2,1)} vạch`);S.vset=v0;return;
+  }
+  if(kind==='stop'){
+    start(XMIN);await sleep(700);if(id!==seqId)return;moveTo((XMIN+XMAX)/2+50,v0);if(!await waitStill(id))return;
+    hint('Nam châm dừng lại: Φ không đổi, kim điện kế trở về 0');return;
+  }
+  if(kind==='reverse'){
+    const near=z.act==='near';start(near?XMIN:XMAX);await sleep(700);if(id!==seqId)return;
+    hint(near?'Đưa lại gần…':'Kéo ra xa…');if(!await go(near,v0))return;await sleep(600);if(id!==seqId)return;
+    hint(near?'…rồi kéo ra xa: kim lệch về phía ngược lại':'…rồi đưa lại gần: kim lệch về phía ngược lại');await go(!near,v0);return;
+  }
+  if(kind==='flip'){S.pol=-z.pol;start(z.act==='near'?XMIN:XMAX);hint('Quay ngược nam châm: cực '+(S.pol>0?'Bắc':'Nam')+' hướng về cuộn dây');await sleep(900);if(id!==seqId)return;await go(z.act==='near',v0)}
+}
+
+// ====== Đúng / Sai ======
+const other=p=>p==='Bắc'?'Nam':'Bắc';
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const coin=()=>Math.random()<.5;
+function pool(z){
+  const P=z.pol>0?'Bắc':'Nam',near=z.act==='near',X=near?P:other(P),Q=other(P),Xf=near?Q:other(Q);
+  const mv=near?'lại gần':'ra xa';
+  const L=[];
+  L.push(coin()?{t:'Trong cuộn dây xuất hiện suất điện động cảm ứng và sinh ra dòng điện đi qua điện kế làm kim điện kế bị lệch.',v:true}
+               :{t:'Kim điện kế không bị lệch vì nam châm không tiếp xúc với cuộn dây.',v:false});
+  L[0].e='Nam châm chuyển động làm từ thông qua cuộn dây biến thiên ⇒ xuất hiện suất điện động và dòng điện cảm ứng; không cần tiếp xúc.';L[0].d=z.act;
+  const fast=coin();
+  L.push({t:`Kim điện kế bị lệch nhiều hơn nếu nam châm được dịch chuyển ${fast?'nhanh':'chậm'} hơn.`,v:fast,d:'compare',
+    e:'|e<sub>c</sub>| = |ΔΦ/Δt|: dịch chuyển nhanh hơn thì từ thông biến thiên nhanh hơn ⇒ dòng điện lớn hơn ⇒ kim lệch <b>nhiều hơn</b>; chậm hơn thì lệch ít hơn.'});
+  const ok=coin();
+  L.push({t:`Trong quá trình này đã có sự biến đổi ${ok?'cơ năng thành điện năng':'điện năng thành cơ năng'}.`,v:ok,d:z.act,
+    e:'Lực từ cản trở chuyển động của nam châm; công của lực kéo nam châm (cơ năng) chuyển hóa thành <b>điện năng</b> của dòng điện cảm ứng (rồi thành nhiệt).'});
+  const cl=coin()?X:other(X);
+  L.push({t:`Mặt X của cuộn dây trở thành cực ${cl}.`,v:cl===X,d:z.act,
+    e:`Φ ${near?'tăng':'giảm'} ⇒ theo Lenz, mặt X phải ${near?'đẩy':'hút'} cực ${P} của nam châm ⇒ mặt X là cực <b>${X}</b>.`});
+  const right=coin();
+  L.push({t:`Cuộn dây có xu hướng dịch chuyển sang ${right?'phải (ra xa nam châm)':'trái (về phía nam châm)'}.`,v:right===near,d:z.act,
+    e:`Mặt X là cực ${X}, ${near?'cùng tên':'khác tên'} với cực ${P} ⇒ cuộn dây bị <b>${near?'đẩy sang phải':'hút sang trái'}</b>.`});
+  const tang=coin();
+  L.push({t:`Từ thông qua cuộn dây ${tang?'tăng':'giảm'}.`,v:tang===near,d:z.act,
+    e:`Nam châm ${mv} ⇒ từ trường tại cuộn dây ${near?'mạnh lên':'yếu đi'} ⇒ từ thông <b>${near?'tăng':'giảm'}</b>.`});
+  L.push(coin()?{t:'Nếu dừng nam châm lại thì kim điện kế trở về vạch 0.',v:true}:{t:'Nếu dừng nam châm lại gần cuộn dây thì kim điện kế vẫn lệch như cũ.',v:false});
+  L[L.length-1].d='stop';L[L.length-1].e='Nam châm đứng yên ⇒ từ thông không đổi ⇒ không có dòng điện cảm ứng ⇒ kim chỉ 0.';
+  const opp=near?'kéo nam châm ra xa':'đưa nam châm lại gần',rev=coin();
+  L.push({t:`Sau đó nếu ${opp} thì kim điện kế lệch ${rev?'theo chiều ngược lại':'theo cùng chiều như trước'}.`,v:rev,d:'reverse',
+    e:'Từ thông đổi từ tăng sang giảm (hoặc ngược lại) ⇒ dòng điện cảm ứng <b>đổi chiều</b> ⇒ kim lệch về phía ngược lại.'});
+  const help=coin();
+  L.push({t:`Lực từ do cuộn dây tác dụng lên nam châm ${help?'giúp nam châm chuyển động nhanh hơn':'cản trở chuyển động của nam châm'}.`,v:!help,d:z.act,
+    e:'Theo Lenz, dòng cảm ứng chống lại nguyên nhân sinh ra nó ⇒ lực từ luôn <b>cản trở</b> chuyển động của nam châm.'});
+  const cf=coin()?Xf:other(Xf);
+  L.push({t:`Nếu quay ngược nam châm (đưa cực ${Q} về phía cuộn dây) rồi làm như trên thì mặt X trở thành cực ${cf}.`,v:cf===Xf,d:'flip',
+    e:`Cực ${Q} ${mv} ⇒ mặt X ${near?'cùng tên':'khác tên'} với cực ${Q} ⇒ mặt X là cực <b>${Xf}</b>.`});
+  return L;
+}
+const Q={cur:null,n:0,pts:0};
+const POINTS=[0,.1,.25,.5,1];
+function newQuestion(){
+  const z={pol:rnd([1,-1]),act:rnd(['near','far'])};
+  const L=pool(z),key=[3,4][Math.floor(Math.random()*2)];
+  const rest=L.map((_,i)=>i).filter(i=>i!==3&&i!==4).sort(()=>Math.random()-.5).slice(0,3);
+  const items=[...rest,key].sort((a,b)=>a-b).map(i=>L[i]);
+  const P=z.pol>0?'Bắc':'Nam';
+  start(z,`<span class="act">Câu hỏi mới</span>Dịch chuyển cực ${P} của một thanh nam châm ${z.act==='near'?'đến gần':'ra xa'} một cuộn dây kín (mặt X hướng về phía nam châm), cuộn dây nối với điện kế như hình.`,items);
+}
+function original(){
+  const z={pol:1,act:'near'};
+  const items=[
+    {t:'Trong cuộn dây xuất hiện suất điện động cảm ứng và sinh ra dòng điện đi qua điện kế làm kim điện kế bị lệch.',v:true,d:'near',
+      e:'Nam châm lại gần ⇒ từ thông qua cuộn dây tăng ⇒ xuất hiện suất điện động và dòng điện cảm ứng ⇒ kim lệch.'},
+    {t:'Kim điện kế bị lệch nhiều hơn nếu nam châm được dịch chuyển chậm hơn.',v:false,d:'compare',
+      e:'|e<sub>c</sub>| = |ΔΦ/Δt|: dịch chuyển chậm hơn thì từ thông biến thiên chậm hơn ⇒ kim lệch <b>ít hơn</b>.'},
+    {t:'Trong quá trình này đã có sự biến đổi điện năng thành cơ năng.',v:false,d:'near',
+      e:'Ngược lại: công của lực kéo nam châm (thắng lực cản do cuộn dây) là <b>cơ năng chuyển thành điện năng</b>.'},
+    {t:'Cuộn dây có xu hướng dịch chuyển sang phải, do dòng điện cảm ứng khiến mặt X của cuộn dây thành cực Bắc và chịu lực đẩy của cực Bắc của nam châm.',v:true,d:'near',
+      e:'Φ tăng ⇒ theo Lenz, mặt X là cực <b>Bắc</b>, cùng tên với cực Bắc của nam châm ⇒ bị <b>đẩy</b> sang phải.'}
+  ];
+  start(z,'<span class="act">Câu 35 (đề gốc)</span>Dịch chuyển cực Bắc của một thanh nam châm đến gần một cuộn dây kín như hình bên.',items);
+}
+function start(z,html,items){
+  Q.cur={z,items,pick:Array(items.length).fill(null),done:false};
+  S.qMode=true;S.revealed=false;play(z.act,z);
+  const b=$('qbox');
+  b.innerHTML=`<div class="qtext">${html}</div>`+items.map((it,i)=>`<div class="it" data-i="${i}"><div class="st"><b>${'abcd'[i]})</b> ${it.t}</div>
+    <div class="ctl"><button data-v="1">Đúng</button><button data-v="0">Sai</button><button class="demo" hidden>▶ Minh họa</button></div><div class="ex" hidden></div></div>`).join('')+
+    `<div class="row"><button class="wide pri" id="bGrade">Chấm điểm</button><button class="wide" id="bReplay">↻ Diễn lại</button></div><div id="fb"></div>`;
+  b.querySelectorAll('.it').forEach(el=>{const i=+el.dataset.i;
+    el.querySelectorAll('[data-v]').forEach(btn=>btn.onclick=()=>{if(Q.cur.done)return;Q.cur.pick[i]=btn.dataset.v==='1';
+      el.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x===btn))});
+    el.querySelector('.demo').onclick=()=>{play(items[i].d,z);hint('Minh họa ý '+'abcd'[i])};
+  });
+  $('bGrade').onclick=grade;$('bReplay').onclick=()=>play(z.act,z);
+  hint('Quan sát kim điện kế rồi chọn Đúng/Sai cho từng ý');
+}
+function grade(){
+  const c=Q.cur;if(c.done)return;
+  if(c.pick.some(p=>p===null)){$('fb').innerHTML='<div class="fb">Hãy chọn Đúng hoặc Sai cho cả 4 ý trước khi chấm.</div>';return}
+  c.done=true;let k=0;
+  $('qbox').querySelectorAll('.it').forEach(el=>{const i=+el.dataset.i,it=c.items[i],ok=c.pick[i]===it.v;if(ok)k++;
+    el.classList.add(ok?'ok':'no');el.querySelector('.demo').hidden=false;
+    const ex=el.querySelector('.ex');ex.hidden=false;ex.innerHTML=`<span class="tag ${ok?'ok':'no'}">${ok?'✓':'✗'} Ý này ${it.v?'ĐÚNG':'SAI'}.</span> ${it.e}`});
+  const pt=POINTS[k];Q.n++;Q.pts+=pt;
+  $('fb').innerHTML=`<div class="fb"><b>Đúng ${k}/4 ý → ${fmt(pt,pt===.25?2:1)} điểm.</b> Đáp án: ${c.items.map((it,i)=>'abcd'[i]+' '+(it.v?'Đ':'S')).join(' · ')}</div>`;
+  $('score').textContent=`Đã làm ${Q.n} câu · tổng ${fmt(Q.pts,2)} / ${Q.n} điểm (thang: 1 ý 0,1 · 2 ý 0,25 · 3 ý 0,5 · 4 ý 1 điểm)`;
+  S.revealed=true;
+}
+function quizIdle(){$('qbox').innerHTML='<div class="note">Bấm <b>Câu hỏi mới</b>: mô phỏng tự đặt tình huống và 4 ý a, b, c, d. Học sinh chọn Đúng/Sai cho từng ý rồi bấm <b>Chấm điểm</b>. Sau khi chấm, mỗi ý có nút <b>▶ Minh họa</b>.</div>';Q.cur=null}
+$('bNew').onclick=newQuestion;$('bOrig').onclick=original;
+
+// ====== Vòng lặp ======
+initState();resize();
+let last=performance.now();
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;step(dt);draw();drawGraph();updateUI();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

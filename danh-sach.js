@@ -11,5 +11,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/cam-ung-ong-day-bien-tro.html",
     tags: ["Lenz", "từ thông", "ống dây", "biến trở", "khung dây"]
+  },
+  {
+    ten: "Nam châm, cuộn dây và điện kế",
+    mota: "Kéo nam châm lại gần hoặc ra xa cuộn dây, quan sát kim điện kế, cực của mặt X, lực từ và sự chuyển hóa cơ năng thành điện năng. Luyện đề Đúng/Sai có chấm điểm và minh họa từng ý.",
+    chuong: "Cảm ứng điện từ",
+    lop: 12,
+    file: "sims/nam-cham-cuon-day-dien-ke.html",
+    tags: ["Lenz", "Faraday", "nam châm", "điện kế", "đúng sai", "năng lượng"]
   }
 ];
