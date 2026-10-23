@@ -83,5 +83,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/lo-nung-cao-tan-3d.html",
     tags: ["lò nung", "3D", "kéo thả", "lò cảm ứng", "Foucault", "Fuco", "nóng chảy"]
+  },
+  {
+    ten: "Sạc không dây 3D – cấu tạo và nguyên tắc",
+    mota: "Cuộn dây phẳng sơ cấp trong đế sạc tạo từ trường biến thiên; kéo thả điện thoại có cuộn thứ cấp lên đế để sinh suất điện động xoay chiều, chỉnh lưu bằng điốt nạp vào pin. Đồ thị i₁, e₂ và dòng nạp.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/sac-khong-day-3d.html",
+    tags: ["sạc không dây", "3D", "kéo thả", "cuộn dây phẳng", "điốt", "chỉnh lưu", "pin", "Chart.js"]
   }
 ];

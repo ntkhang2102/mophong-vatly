@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sạc không dây 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<script src="lib/chart.umd.min.js"></script>
+<script>window.Chart||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --i1:#60a5fa; --e2:#fb923c; --ip:#4ade80;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#0d2d63;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 150px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}.chip.ok b{color:#15803d}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 4px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.ct{font-size:13px;font-weight:600;margin-bottom:2px}
+.cw{position:relative;height:170px}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#e5e7eb;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .cw{height:160px}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="side">Nhìn ngang</button>
+      <button data-view="top">Từ trên xuống</button>
+      <button data-view="close">Lại gần</button>
+    </div>
+    <div class="hint" id="hint">Kéo điện thoại thả lên đế sạc · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Cấu tạo và nguyên tắc hoạt động của sạc không dây</h1>
+      <div class="sub">Vật lí 12 · Cảm ứng điện từ · Cuộn dây phẳng sơ cấp – thứ cấp · Chỉnh lưu</div>
+    </div>
+
+    <div class="sec">
+      <h2>Nguồn điện của đế sạc (cuộn sơ cấp)</h2>
+      <div class="row"><button class="wide" id="bOn"></button></div>
+      <div class="seg" id="segAC"><button data-v="1">∿ Xoay chiều</button><button data-v="0">⎓ Một chiều không đổi</button></div>
+      <label class="rng">Tốc độ hình (dòng thực tế 100 – 200 kHz)<span class="v" id="vF"></span><input type="range" id="rF" min="0.2" max="1.5" step="0.05" value="0.6"></label>
+    </div>
+
+    <div class="sec">
+      <h2>Điện thoại (cuộn thứ cấp)</h2>
+      <div class="row"><button class="wide pri" id="bPut">Đặt lên đế sạc</button><button class="wide" id="bTake">Nhấc ra</button></div>
+      <label class="rng">Khoảng cách điện thoại – đế sạc<span class="v" id="vGap"></span><input type="range" id="rGap" min="0" max="1" step="0.02" value="0.05"></label>
+      <div class="lbl">Bộ chỉnh lưu trong điện thoại</div>
+      <div class="seg" id="segRect"><button data-v="1">1 điốt (nửa chu kì)</button><button data-v="4">Cầu 4 điốt (cả chu kì)</button></div>
+      <div class="row"><button class="wide" id="bBat">Pin về 20%</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kField" checked> Từ trường (đường sức)</label>
+        <label><input type="checkbox" id="kCur" checked> Dòng điện chạy</label>
+        <label><input type="checkbox" id="kShell" checked> Nhìn xuyên vỏ</label>
+        <label><input type="checkbox" id="kLbl" checked> Chú thích</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Đồ thị</h2>
+      <div class="ct" style="color:var(--i1)">Dòng điện i₁ trong cuộn sơ cấp (đế sạc)</div>
+      <div class="cw"><canvas id="c1"></canvas></div>
+      <div class="ct"><span style="color:var(--e2)">Suất điện động cảm ứng e₂ ở cuộn thứ cấp</span> · <span style="color:var(--ip)">dòng nạp vào pin sau chỉnh lưu</span></div>
+      <div class="cw"><canvas id="c2"></canvas></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li>Sạc không dây hoạt động dựa trên <b>hiện tượng cảm ứng điện từ</b>, giống máy biến áp.</li>
+        <li><b>Đế sạc:</b> cuộn dây phẳng (cuộn sơ cấp) nối với nguồn xoay chiều tần số cao ⇒ sinh ra <b>từ trường biến thiên</b>. Tấm ferit phía dưới giúp hướng đường sức lên phía điện thoại.</li>
+        <li><b>Điện thoại:</b> cuộn dây phẳng (cuộn thứ cấp) đặt sát phía trên. Từ thông qua cuộn biến thiên ⇒ xuất hiện <b>suất điện động cảm ứng xoay chiều</b>: e = −N·ΔΦ/Δt.</li>
+        <li>Pin chỉ nạp được bằng dòng một chiều ⇒ cần <b>bộ chỉnh lưu (điốt)</b>. Một điốt chỉ cho dòng đi qua trong nửa chu kì; cầu 4 điốt dùng được cả hai nửa chu kì.</li>
+        <li>Đặt điện thoại <b>lệch tâm hoặc xa</b> đế sạc ⇒ ít đường sức qua cuộn thứ cấp ⇒ suất điện động nhỏ ⇒ sạc chậm hoặc không sạc.</li>
+        <li>Nguồn <b>một chiều không đổi</b> ⇒ từ trường không đổi ⇒ không có dòng cảm ứng (chỉ có xung lúc bật/tắt).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2;
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Thông số (1 đơn vị = 2 cm) ======
+const BASE_R=2.1,BASE_H=0.36,TOP=BASE_H+0.06,PC_Y=BASE_H-0.07;     // đế sạc, mặt trên, độ cao cuộn sơ cấp
+const E0=14,VD=0.7,RS=1.2;                                          // biên độ suất điện động khi ghép tốt nhất, sụt áp điốt, điện trở mạch nạp
+const st={on:true,ac:true,fa:0.6,rect:1,gap:0.05,bat:20,t:0,i1:0,i1p:0,e2:0,ip:0,icoil:0,pAvg:0,e2max:0,k:0,hist:[],onCharger:true};
+
+// ====== Cảnh 3D: nền kiểu bản vẽ kĩ thuật (xanh lam) ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d2d63);
+const camera=new THREE.PerspectiveCamera(40,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x1e3a8a,0.8));
+const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(5,10,7);scene.add(sun);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V(0,1,0);
+const grid=new THREE.GridHelper(16,32,0x5b8bd6,0x2a5299);scene.add(grid);
+
+// đường xoắn ốc phẳng (Archimedes); tham số tăng ⇒ ngược chiều kim đồng hồ khi nhìn từ trên
+function spiral(r0,r1,turns,y,a0){const pts=[],n=turns*64;for(let k=0;k<=n;k++){const a=a0+k/64*TAU,r=r0+(r1-r0)*k/n;pts.push(V(r*Math.cos(a),y,-r*Math.sin(a)))}return pts}
+const cuMat=new THREE.MeshStandardMaterial({color:0xd17a3c,metalness:.75,roughness:.28});
+function tube(pts,r,mat){return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),Math.max(40,pts.length*2),r,8,false),mat)}
+
+// ====== ĐẾ SẠC ======
+const charger=new THREE.Group();scene.add(charger);
+const shellMat=new THREE.MeshStandardMaterial({color:0x1f2937,roughness:.5,metalness:.3,transparent:true,opacity:.35,depthWrite:false});
+const baseMesh=new THREE.Mesh(new THREE.CylinderGeometry(BASE_R,BASE_R*1.04,BASE_H,64),shellMat);baseMesh.position.y=BASE_H/2;baseMesh.renderOrder=3;charger.add(baseMesh);
+const topMat=new THREE.MeshStandardMaterial({color:0xe5e7eb,roughness:.3,transparent:true,opacity:.18,depthWrite:false});
+const topMesh=new THREE.Mesh(new THREE.CylinderGeometry(BASE_R-0.05,BASE_R-0.05,0.05,64),topMat);topMesh.position.y=BASE_H+0.025;topMesh.renderOrder=4;charger.add(topMesh);
+const ferrite=new THREE.Mesh(new THREE.CylinderGeometry(1.85,1.85,0.06,48),new THREE.MeshStandardMaterial({color:0x3f3f46,roughness:.9}));ferrite.position.y=PC_Y-0.08;charger.add(ferrite);
+const ledMat=new THREE.MeshBasicMaterial({color:0x334155});
+const led=new THREE.Mesh(new THREE.TorusGeometry(BASE_R-0.02,0.03,8,80),ledMat);led.rotation.x=Math.PI/2;led.position.y=BASE_H;charger.add(led);
+// cuộn sơ cấp: bắt đầu ở phía −x, 12 vòng
+const pPts=spiral(0.32,1.72,12,PC_Y,Math.PI);
+charger.add(tube(pPts,0.032,cuMat));
+const pInner=pPts[0],pOuter=pPts[pPts.length-1];
+// hai đầu dây nối ra nguồn: đầu trong luồn dưới cuộn dây
+const SRC=V(-4.6,0,0);
+const leadA=[pInner,V(-0.32,PC_Y-0.05,0.02),V(-1.0,PC_Y-0.05,0.12),V(-2.2,0.18,0.15),V(-3.3,0.12,0.3),V(-3.85,0.5,0.3)];
+const leadB=[pOuter,V(-2.0,PC_Y,-0.1),V(-2.6,0.18,-0.25),V(-3.3,0.12,-0.3),V(-3.85,0.5,-0.3)];
+const cableMat=new THREE.MeshStandardMaterial({color:0x111827,roughness:.6});
+charger.add(tube(leadA,0.03,cuMat));charger.add(tube(leadB,0.03,cuMat));
+// đường đi của dòng điện sơ cấp (cho hạt chạy): vào đầu trong → xoắn ra ngoài → ra đầu ngoài
+const pPath=new THREE.CatmullRomCurve3([...leadA.slice().reverse().slice(0,-1),...pPts.filter((_,k)=>k%2===0),...leadB.slice(1)]);
+// nguồn điện
+const src=new THREE.Group();src.position.copy(SRC);scene.add(src);
+const srcBody=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.4,1.5),new THREE.MeshStandardMaterial({color:0x111827,roughness:.5,metalness:.3}));srcBody.position.y=0.7;src.add(srcBody);
+const scrC=document.createElement('canvas');scrC.width=256;scrC.height=180;const scrG=scrC.getContext('2d'),scrTex=new THREE.CanvasTexture(scrC);
+const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.25,0.88),new THREE.MeshBasicMaterial({map:scrTex}));scr.position.set(0,0.75,0.751);src.add(scr);
+const scr2=scr.clone();scr2.position.set(0.751,0.75,0);scr2.rotation.y=Math.PI/2;src.add(scr2);
+function drawSrc(){
+  const g=scrG;g.fillStyle='#0b1324';g.fillRect(0,0,256,180);g.fillStyle='#e5e7eb';g.font='bold 24px system-ui,sans-serif';g.textAlign='center';
+  g.fillText('NGUỒN ĐIỆN',128,32);g.strokeStyle=st.on?'#22d3ee':'#475569';g.lineWidth=5;g.beginPath();
+  if(st.on&&st.ac)for(let x=0;x<=190;x+=3){const y=95-30*Math.sin(x/190*TAU*2-st.t*TAU*st.fa);x?g.lineTo(33+x,y):g.moveTo(33+x,y)}
+  else{g.moveTo(33,st.on?78:95);g.lineTo(223,st.on?78:95)}g.stroke();
+  g.fillStyle=st.on?'#a5f3fc':'#94a3b8';g.font='bold 26px system-ui,sans-serif';g.fillText(st.on?(st.ac?'∿ XOAY CHIỀU':'⎓ MỘT CHIỀU'):'TẮT',128,160);scrTex.needsUpdate=true;
+}
+
+// ====== TỪ TRƯỜNG của cuộn sơ cấp ======
+const fieldG=new THREE.Group();scene.add(fieldG);
+const fMat=new THREE.LineDashedMaterial({color:0xbfe3ff,dashSize:.2,gapSize:.12,transparent:true,opacity:.85});
+const fCone=new THREE.MeshBasicMaterial({color:0xe0f2fe,transparent:true,opacity:.9});
+const fArrows=[];
+for(let k=0;k<8;k++){const az=k*Math.PI/4,c=Math.cos(az),s=Math.sin(az);
+  [[0.18,2.25,2.6,-0.9],[0.45,2.9,3.4,-1.2],[0.85,3.5,4.1,-1.5]].forEach(([rin,rout,top,bot],li)=>{
+    const P2=[[rin,PC_Y],[rin,(PC_Y+top)/2],[rin*1.3,top],[(rin+rout)/2,top+0.25],[rout,top*0.55],[rout,PC_Y],[rout*0.85,bot*0.8],[(rin+rout)/2,bot],[rin*1.15,bot*0.55]];
+    const pts=new THREE.CatmullRomCurve3(P2.map(([r,y])=>V(r*c,y,-r*s)),true).getPoints(140);
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),fMat);line.computeLineDistances();fieldG.add(line);
+    // mũi tên vừa đủ: trong lòng cuộn ở vòng trong cùng, bên ngoài ở vòng giữa (cách một mặt phẳng)
+    const marks=[];if(li===0)marks.push([rin,(PC_Y+top)/2,true]);if(li===1&&k%2===0)marks.push([rout,PC_Y+0.4,false]);
+    for(const [r,y,inside] of marks){const m=new THREE.Mesh(new THREE.ConeGeometry(.055,.17,10),fCone);m.position.set(r*c,y,-r*s);m.userData.inside=inside;fieldG.add(m);fArrows.push(m)}
+  });
+}
+// cột sáng ở tâm (từ trường mạnh nhất trong lòng cuộn dây)
+const beamMat=new THREE.MeshBasicMaterial({color:0x7dd3fc,transparent:true,opacity:.25,blending:THREE.AdditiveBlending,depthWrite:false});
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.38,3.2,32,1,true),beamMat);beam.position.y=PC_Y+1.6;scene.add(beam);
+
+// ====== ĐIỆN THOẠI ======
+const phone=new THREE.Group();scene.add(phone);
+const COIL_Z=0.55;      // tâm cuộn thứ cấp lệch về phía dưới thân máy
+const phShell=new THREE.MeshStandardMaterial({color:0x334155,roughness:.35,metalness:.4,transparent:true,opacity:.28,depthWrite:false});
+const phBody=new THREE.Mesh(new THREE.BoxGeometry(2.3,0.26,4.5),phShell);phBody.position.y=0.13;phBody.renderOrder=5;phone.add(phBody);
+const phC=document.createElement('canvas');phC.width=256;phC.height=500;const phG=phC.getContext('2d'),phTex=new THREE.CanvasTexture(phC);
+const phScrMat=new THREE.MeshBasicMaterial({map:phTex,transparent:true,opacity:.45,depthWrite:false});
+const phScr=new THREE.Mesh(new THREE.PlaneGeometry(2.1,4.3),phScrMat);phScr.rotation.x=-Math.PI/2;phScr.position.y=0.262;phScr.renderOrder=6;phone.add(phScr);
+function drawPhone(){
+  const g=phG,charging=st.ip>0.02||st.pAvg>0.2;g.fillStyle='#020617';g.fillRect(0,0,256,500);
+  g.fillStyle='#e5e7eb';g.font='bold 30px system-ui,sans-serif';g.textAlign='center';g.fillText('12:00',128,60);
+  g.strokeStyle='#e5e7eb';g.lineWidth=5;g.strokeRect(78,170,100,170);g.fillRect(108,155,40,15);
+  g.fillStyle=st.bat>25?'#22c55e':'#ef4444';const h=160*st.bat/100;g.fillRect(84,335-h,88,h);
+  g.fillStyle='#fff';g.font='bold 36px system-ui,sans-serif';g.fillText(Math.floor(st.bat)+'%',128,395);
+  g.font='bold 26px system-ui,sans-serif';g.fillStyle=charging?'#4ade80':'#94a3b8';g.fillText(charging?'⚡ Đang sạc':'Không sạc',128,440);phTex.needsUpdate=true;
+}
+// cuộn thứ cấp: 9 vòng ở mặt sau điện thoại, bắt đầu ở phía +x
+const sPts=spiral(0.22,1.0,9,0.035,0).map(p=>p.add(V(0,0,COIL_Z)));
+phone.add(tube(sPts,0.026,cuMat));
+const sInner=sPts[0],sOuter=sPts[sPts.length-1];
+// pin
+const BAT=V(0,0.13,-1.15);
+const batMesh=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.12,1.5),new THREE.MeshStandardMaterial({color:0x475569,roughness:.6}));batMesh.position.copy(BAT);phone.add(batMesh);
+const batFillMat=new THREE.MeshStandardMaterial({color:0x22c55e,emissive:0x14532d,emissiveIntensity:.6});
+const batFill=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.125,1),batFillMat);batFill.position.set(0,0.13,-1.15);phone.add(batFill);
+const termP=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.14,0.12),new THREE.MeshStandardMaterial({color:0xdc2626}));termP.position.set(0.55,0.14,-0.38);phone.add(termP);
+const termN=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.14,0.12),new THREE.MeshStandardMaterial({color:0x1e293b}));termN.position.set(-0.55,0.14,-0.38);phone.add(termN);
+// bộ chỉnh lưu: 1 điốt hoặc cầu 4 điốt trên mạch in nhỏ
+const pcb=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.03,0.42),new THREE.MeshStandardMaterial({color:0x166534,roughness:.7}));pcb.position.set(0.82,0.1,-0.12);phone.add(pcb);
+const dMat=new THREE.MeshStandardMaterial({color:0x111827,emissive:0xfacc15,emissiveIntensity:0,roughness:.4});
+function diode(){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.2,14),dMat);b.rotation.z=Math.PI/2;g.add(b);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(0.048,0.048,0.035,14),new THREE.MeshStandardMaterial({color:0xe5e7eb}));band.rotation.z=Math.PI/2;band.position.x=0.07;g.add(band);return g}
+const d1=new THREE.Group();const dd=diode();d1.add(dd);d1.position.set(0.82,0.14,-0.12);phone.add(d1);
+const d4=new THREE.Group();[[0,0.11,0.6],[0.13,0,-0.6],[0,-0.11,0.6],[-0.13,0,-0.6]].forEach(([x,z,r])=>{const q=diode();q.scale.setScalar(0.7);q.position.set(x,0,z);q.rotation.y=r;d4.add(q)});d4.position.set(0.82,0.14,-0.12);phone.add(d4);
+// dây: đầu ngoài cuộn → chỉnh lưu → cực (+) pin ; cực (−) pin → đầu trong cuộn (luồn dưới cuộn)
+const wOut=[sOuter,V(1.08,0.06,0.2),V(0.95,0.12,-0.05)],wToBat=[V(0.7,0.13,-0.2),V(0.6,0.14,-0.32)];
+const wIn=[V(-0.55,0.13,-0.32),V(-0.75,0.06,-0.1),V(-0.6,0.025,COIL_Z),V(0.05,0.022,COIL_Z),sInner];
+[wOut,wToBat,wIn].forEach(p=>phone.add(tube(p,0.02,cuMat)));
+const sPath=new THREE.CatmullRomCurve3([...wIn.slice(0,-1),...sPts.filter((_,k)=>k%2===0),...wOut.slice(1),...wToBat]);   // chiều dòng nạp: (−) → cuộn → điốt → (+)
+const sCoilPath=new THREE.CatmullRomCurve3(sPts.filter((_,k)=>k%2===0));
+
+// ====== Nhãn chữ ======
+function makeLabel(text,color='#0f172a',size=0.3,bg='rgba(255,255,255,.9)'){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle=bg;g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*w/60,size*h/60,1);s.renderOrder=30;s.userData.size=size;return s;
+}
+const labels=[];const lab=(parent,t,c,x,y,z,s)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);parent.add(l);labels.push(l);return l};
+lab(charger,'Cuộn dây phẳng sơ cấp\n(trong đế sạc)','#9a3412',-1.6,-0.45,2.3,0.27);
+lab(charger,'Tấm ferit','#3f3f46',1.9,-0.25,1.6,0.24);
+lab(src,'Nguồn điện','#0f172a',0,1.75,0,0.3);
+const lbField=lab(scene,'Từ trường biến thiên','#0369a1',2.4,3.8,0,0.3);
+lab(phone,'Cuộn dây phẳng thứ cấp\n(trong điện thoại)','#9a3412',-1.55,0.3,COIL_Z+0.75,0.22);
+const lbRect=lab(phone,'Điốt chỉnh lưu','#854d0e',1.75,0.5,-0.15,0.22);
+lab(phone,'Pin','#14532d',-1.45,0.45,-1.4,0.24);
+const lbPol=[makeLabel('+','#b91c1c',0.3),makeLabel('−','#1e3a8a',0.3)];   // cực của suất điện động ở hai đầu cuộn thứ cấp
+lbPol[0].position.set(1.25,0.3,0.45);lbPol[1].position.set(0.3,0.3,0.95);lbPol.forEach(l=>phone.add(l));
+
+// ====== Hạt dòng điện ======
+const dotsP=[],dotsS=[];const mk=(col,n,arr,par)=>{const m=new THREE.MeshBasicMaterial({color:col});for(let k=0;k<n;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),m);d.userData.u=k/n;par.add(d);arr.push(d)}};
+mk(0xfde047,60,dotsP,charger);mk(0x4ade80,44,dotsS,phone);
+const arrP=[];{const m=new THREE.MeshBasicMaterial({color:0xfacc15});for(let k=0;k<10;k++){const a=new THREE.Mesh(new THREE.ConeGeometry(.07,.2,10),m);a.userData.u=0.2+k*0.06;charger.add(a);arrP.push(a)}}
+
+// ====== Vị trí điện thoại: kéo thả ======
+const HOME=V(4.3,0,1.6);
+const ph={x:0,z:0,y:TOP+st.gap,lifted:false,vy:0};   // (x,z) là tâm cuộn thứ cấp
+function placePhone(){phone.position.set(ph.x,ph.y,ph.z-COIL_Z)}
+function coupling(){ // tỉ lệ đường sức qua cuộn thứ cấp (so với khi đặt sát, đúng tâm)
+  const d=Math.hypot(ph.x,ph.z),h=Math.max(0,ph.y+0.035-PC_Y-0.16);return 0.92*Math.exp(-((d/1.1)**2))*Math.exp(-h/0.55);
+}
+// camera quỹ đạo
+const cam={az:0.6,el:0.5,r:13,tx:-0.3,ty:0.8,tz:0.3};const tc={...cam};
+const VIEWS={iso:[0.6,0.5,13,-0.3,0.8,0.3],side:[0,0.06,12.5,-0.3,1.0,0],top:[0,1.45,12,0,0,0.3],close:[0.45,0.55,7,0,0.7,0]};
+function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.2)tc.r*=1.2/a}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),plane=new THREE.Plane(UP,0),hit=new THREE.Vector3();
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=13,drag=null,orbit=false;
+const LIFT=1.7;
+const phoneMeshes=()=>{const a=[];phone.traverse(o=>{if(o.isMesh)a.push(o)});return a};
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();
+  if(ptrs.size===2){drag=null;orbit=false;const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r;return}
+  setNdc(e);if(ray.intersectObjects(phoneMeshes()).length){plane.constant=-LIFT;const h=ray.ray.intersectPlane(plane,hit);drag={dx:h?ph.x-hit.x:0,dz:h?ph.z-hit.z:0};ph.lifted=true;st.onCharger=false;el.style.cursor='grabbing'}else orbit=true});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(phoneMeshes()).length?'grab':'default';return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,4,30);return}
+  if(drag){setNdc(e);plane.constant=-LIFT;if(ray.ray.intersectPlane(plane,hit)){ph.x=clamp(hit.x+drag.dx,-6.5,6.5);ph.z=clamp(hit.z+drag.dz,-4.5,5);ph.y+=(LIFT-ph.y)*0.4}}
+  else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.15,1.5)}});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;
+  if(drag&&!ptrs.size){const d=Math.hypot(ph.x,ph.z);
+    if(d<BASE_R){st.onCharger=true;hint(d<0.4?'Đã đặt điện thoại đúng tâm đế sạc':'Điện thoại đặt lệch tâm: ít đường sức qua cuộn thứ cấp hơn')}
+    else{st.onCharger=false;if(d<BASE_R+1.2){const k=(BASE_R+1.2)/d;ph.x*=k;ph.z*=k}if(ph.x<-3&&Math.abs(ph.z)<1.6)ph.x=-3;hint('Điện thoại đã ra khỏi đế sạc')}
+    ph.lifted=false;drag=null;el.style.cursor='default'}
+  if(!ptrs.size)orbit=false}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),4,30)},{passive:false});
+let hintT=setTimeout(hideHint,9000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Bảng điều khiển ======
+function syncUI(){
+  $('bOn').textContent=st.on?'Tắt nguồn đế sạc':'Bật nguồn đế sạc';$('bOn').classList.toggle('on',st.on);
+  $('segAC').querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v==='1')===st.ac));
+  $('segRect').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.rect));
+  $('vF').textContent='chậm '+Math.round(150000/st.fa).toLocaleString('vi-VN')+' lần';$('rF').value=st.fa;
+  $('vGap').textContent=Math.round(st.gap*20)+' mm';$('rGap').value=st.gap;
+  d1.visible=st.rect===1;d4.visible=st.rect===4;
+  const l=lbRect;l.material.map.dispose();const n=makeLabel(st.rect===1?'Điốt chỉnh lưu':'Cầu chỉnh lưu (4 điốt)','#854d0e',0.22);l.material=n.material;l.scale.copy(n.scale);
+}
+$('bOn').onclick=()=>{st.on=!st.on;syncUI()};
+$('segAC').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.ac=b.dataset.v==='1';syncUI();hint(st.ac?'Dòng xoay chiều: từ trường biến thiên, đổi chiều liên tục':'Dòng một chiều: từ trường không đổi ⇒ không có dòng cảm ứng')});
+$('segRect').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.rect=+b.dataset.v;syncUI()});
+$('rF').oninput=e=>{st.fa=+e.target.value;syncUI()};
+$('rGap').oninput=e=>{st.gap=+e.target.value;syncUI();if(!st.onCharger)putOn()};
+function putOn(){st.onCharger=true;ph.x=0;ph.z=0;hint('Đã đặt điện thoại lên đế sạc')}
+function takeOff(){st.onCharger=false;ph.x=HOME.x;ph.z=HOME.z;hint('Đã nhấc điện thoại ra khỏi đế sạc')}
+$('bPut').onclick=putOn;$('bTake').onclick=takeOff;$('bBat').onclick=()=>{st.bat=20};
+syncUI();
+
+// ====== Đồ thị (Chart.js) ======
+const charts=[];
+if(window.Chart){
+  Chart.defaults.color='#94a3b8';Chart.defaults.font.size=11;
+  const gridC='rgba(148,163,184,.15)';
+  const mk=(id,sets,y,y2)=>{const scales={x:{type:'linear',grid:{color:gridC},title:{display:true,text:'t (s, chiếu chậm)'},ticks:{maxTicksLimit:6,callback:v=>fmt(v,1)}},y:{grid:{color:c=>c.tick&&c.tick.value===0?'rgba(226,232,240,.5)':gridC},title:{display:true,text:y.t},min:y.min,max:y.max}};
+    if(y2)scales.y2={position:'right',grid:{display:false},title:{display:true,text:y2.t},min:y2.min,max:y2.max};
+    const c=new Chart($(id).getContext('2d'),{type:'scatter',data:{datasets:sets.map(s=>({data:[],showLine:true,borderColor:s.c,borderWidth:2.4,pointRadius:0,borderDash:s.dash||[],yAxisID:s.ax||'y',label:s.l}))},
+      options:{animation:false,responsive:true,maintainAspectRatio:false,parsing:false,events:[],plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}},tooltip:{enabled:false}},scales}});charts.push(c);return c};
+  mk('c1',[{c:'#60a5fa',l:'i₁ (A)'}],{t:'i₁ (A)',min:-1.2,max:1.2});
+  mk('c2',[{c:'#fb923c',l:'e₂ (V)'},{c:'#4ade80',l:'i nạp pin (A)',ax:'y2'}],{t:'e₂ (V)',min:-15,max:15},{t:'i nạp (A)',min:-8,max:8});
+}
+function updateCharts(){
+  if(!charts.length)return;const H=st.hist,t1=st.t,t0=t1-6;
+  charts[0].data.datasets[0].data=H.map(q=>({x:q[0],y:q[1]}));
+  charts[1].data.datasets[0].data=H.map(q=>({x:q[0],y:q[2]}));charts[1].data.datasets[1].data=H.map(q=>({x:q[0],y:q[3]}));
+  charts.forEach(c=>{c.options.scales.x.min=Math.max(0,t0);c.options.scales.x.max=Math.max(6,t1);c.update('none')});
+}
+
+// ====== Kết quả, giải thích, chip ======
+let lastE='',lastC='',lastR='';
+function ui(){
+  const k=st.k,charging=st.pAvg>0.2,U2=st.ac&&st.on?E0*k:0,Ip=st.pAvg/(3.6+0.6*st.bat/100);
+  const c=[['Nguồn',st.on?(st.ac?'xoay chiều':'một chiều'):'tắt'],['Đường sức qua cuộn thứ cấp',Math.round(k/0.92*100)+'%','ind'],['e₂ cực đại',fmt(U2,1)+' V','ind'],['Pin',Math.floor(st.bat)+'% '+(charging?'⚡':''),charging?'ok':'']]
+    .map(([a,b,cl])=>`<div class="chip ${cl||''}">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const r=[['Vị trí điện thoại',st.onCharger?(Math.hypot(ph.x,ph.z)<0.4?'trên đế, đúng tâm':'trên đế, lệch '+Math.round(Math.hypot(ph.x,ph.z)*20)+' mm'):'ngoài đế sạc'],['Suất điện động e₂ cực đại',fmt(U2,1)+' V'],
+    ['Dòng nạp trung bình',fmt(Ip,2)+' A'],['Công suất nạp',fmt(st.pAvg,1)+' W'],['Chỉnh lưu',st.rect===1?'1 điốt – nửa chu kì':'cầu 4 điốt – cả chu kì'],['Pin',Math.floor(st.bat)+'%']]
+    .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
+  let s='<ol>';
+  if(!st.on)s+='<li>Nguồn tắt: không có dòng điện trong cuộn sơ cấp ⇒ không có từ trường ⇒ không sạc.</li>';
+  else if(!st.ac)s+='<li>Dòng <b>một chiều không đổi</b> trong cuộn sơ cấp tạo ra từ trường <b>không đổi</b> (đường sức đứng yên, cột sáng không nhấp nháy).</li><li>Từ thông qua cuộn thứ cấp không biến thiên ⇒ <b>không có suất điện động cảm ứng</b> ⇒ không sạc được (chỉ có xung ngắn lúc bật/tắt nguồn).</li>';
+  else{
+    s+='<li>Dòng <b>xoay chiều</b> chạy trong cuộn dây phẳng sơ cấp (hạt vàng chạy tới – lui) ⇒ sinh ra <b>từ trường biến thiên</b>, đổi chiều liên tục (mũi tên đường sức lật chiều). Tấm ferit hướng đường sức lên phía trên.</li>';
+    if(k<0.03)s+='<li>Điện thoại ở <b>xa</b> đế sạc ⇒ hầu như không có đường sức qua cuộn thứ cấp ⇒ không có dòng cảm ứng. <b>Kéo điện thoại thả lên đế sạc</b>.</li>';
+    else{
+      s+=`<li>Khoảng ${Math.round(k/0.92*100)}% số đường sức (so với khi đặt sát, đúng tâm) đi qua cuộn dây phẳng thứ cấp ⇒ từ thông biến thiên ⇒ xuất hiện <b>suất điện động cảm ứng xoay chiều</b> e₂ = −N·ΔΦ/Δt, cực đại ≈ ${fmt(U2,1)} V (đồ thị màu cam).</li>`;
+      s+=st.rect===1?'<li><b>Điốt chỉnh lưu</b> chỉ cho dòng điện đi qua theo một chiều: dòng nạp vào pin chỉ có trong <b>nửa chu kì</b> khi e₂ đủ lớn, nửa chu kì còn lại bị chặn (đồ thị màu xanh lá là các xung dương).</li>'
+        :'<li><b>Cầu chỉnh lưu 4 điốt</b> đổi chiều nửa chu kì âm ⇒ dòng nạp vào pin luôn cùng một chiều trong <b>cả hai nửa chu kì</b> ⇒ nạp nhanh hơn 1 điốt.</li>';
+      s+=charging?`<li>Dòng một chiều nạp vào pin: công suất ≈ ${fmt(st.pAvg,1)} W, pin tăng dần (${Math.floor(st.bat)}%).</li>`:'<li>Suất điện động quá nhỏ (nhỏ hơn điện áp pin cộng sụt áp trên điốt) ⇒ <b>không nạp được</b>. Đặt điện thoại sát hơn hoặc đúng tâm hơn.</li>';
+    }
+  }
+  s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const QS=[
+  {q:'Sạc điện thoại không dây hoạt động dựa trên hiện tượng nào?',o:['Cảm ứng điện từ','Quang điện','Tác dụng nhiệt của dòng điện','Nhiễm điện do cọ xát'],e:'Từ trường biến thiên của cuộn sơ cấp làm từ thông qua cuộn thứ cấp biến thiên ⇒ xuất hiện suất điện động cảm ứng.',d:()=>{st.on=true;st.ac=true;putOn()}},
+  {q:'Vì sao trong điện thoại cần có điốt (bộ chỉnh lưu) giữa cuộn thứ cấp và pin?',o:['Vì dòng cảm ứng trong cuộn thứ cấp là xoay chiều, còn pin cần dòng một chiều','Vì điốt làm tăng suất điện động cảm ứng','Vì điốt tạo ra từ trường biến thiên','Vì điốt làm giảm nhiệt độ pin'],e:'Suất điện động cảm ứng đổi chiều theo nhịp từ trường ⇒ phải chỉnh lưu thành dòng một chiều mới nạp được pin.',d:()=>{st.on=true;st.ac=true;st.rect=1;putOn()}},
+  {q:'Nếu cuộn sơ cấp của đế sạc dùng dòng điện một chiều không đổi thì:',o:['Không sạc được vì từ thông qua cuộn thứ cấp không biến thiên','Sạc nhanh hơn','Sạc bình thường','Pin bị nạp ngược chiều'],e:'Dòng không đổi ⇒ từ trường không đổi ⇒ không có suất điện động cảm ứng (trừ lúc bật/tắt).',d:()=>{st.on=true;st.ac=false;putOn()}},
+  {q:'Nhấc điện thoại cách đế sạc vài centimet thì điện thoại không sạc được, vì:',o:['Rất ít đường sức qua cuộn thứ cấp ⇒ suất điện động cảm ứng quá nhỏ','Không khí cách điện chặn dòng điện','Cuộn sơ cấp ngừng có dòng điện','Điốt bị hỏng'],e:'Từ trường của cuộn dây phẳng giảm rất nhanh theo khoảng cách ⇒ từ thông qua cuộn thứ cấp nhỏ ⇒ e₂ không đủ lớn.',d:()=>{st.on=true;st.ac=true;st.gap=1;putOn()}},
+  {q:'Khi chỉ dùng một điốt chỉnh lưu, dòng điện nạp vào pin:',o:['Chỉ có trong một nửa chu kì, nửa chu kì còn lại bị chặn','Có trong cả hai nửa chu kì nhưng đổi chiều','Là dòng xoay chiều','Luôn bằng 0'],e:'Điốt chỉ cho dòng qua một chiều ⇒ nửa chu kì e₂ âm bị chặn. Cầu 4 điốt tận dụng được cả hai nửa chu kì.',d:()=>{st.on=true;st.ac=true;st.rect=1;st.gap=0.05;putOn()}},
+  {q:'Tấm ferit đặt bên dưới cuộn dây phẳng sơ cấp trong đế sạc có tác dụng:',o:['Dẫn và hướng đường sức từ lên phía điện thoại, giảm từ trường lọt xuống dưới','Làm tăng điện trở cuộn dây','Chỉnh lưu dòng điện','Làm mát pin điện thoại'],e:'Ferit là vật liệu từ ít hao phí, tập trung đường sức về phía cuộn thứ cấp ⇒ ghép tốt hơn, ít ảnh hưởng vật bên dưới.',d:()=>{st.on=true;st.ac=true;setView('side')}}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;q.d();syncUI();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+let last=performance.now(),uiT=0,chT=0,scT=0;const _t=V(0,0,0);
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;st.t+=dt;
+  // dòng sơ cấp
+  const om=TAU*st.fa;st.i1p=st.i1;
+  if(st.ac)st.i1=st.on?Math.sin(om*st.t):st.i1*Math.exp(-dt/0.12);
+  else st.i1+=((st.on?1:0)-st.i1)*(1-Math.exp(-dt/0.3));
+  // vị trí điện thoại
+  if(!ph.lifted){const ty=st.onCharger?TOP+st.gap:0;ph.vy-=20*dt;ph.y+=ph.vy*dt;if(ph.y<=ty){ph.y=ty;ph.vy=0}if(st.onCharger&&ph.y>ty+0.001&&ph.vy===0)ph.y=ty}
+  placePhone();
+  // suất điện động cảm ứng: e₂ = −k·E0·(di₁/dt)/ω  (Faraday – Lenz)
+  st.k=coupling();const di=(st.i1-st.i1p)/dt;st.e2=-st.k*E0*di/om;
+  const Vb=3.6+0.6*st.bat/100;
+  st.ip=st.rect===1?Math.max(0,st.e2-VD-Vb)/RS:Math.max(0,Math.abs(st.e2)-2*VD-Vb)/RS;
+  st.icoil=st.rect===1?st.ip:Math.sign(st.e2)*st.ip;    // dòng trong cuộn thứ cấp: 1 điốt ⇒ chỉ một chiều; cầu ⇒ xoay chiều
+  // công suất nạp trung bình trong đúng một chu kì gần nhất
+  const T=1/st.fa;let sum=0,n=0;for(let j=st.hist.length-1;j>=0&&st.hist[j][0]>st.t-T;j--){sum+=st.hist[j][4];n++}
+  st.pAvg=(sum+Vb*st.ip)/(n+1);
+  st.bat=Math.min(100,st.bat+st.pAvg*dt*0.12);
+  st.hist.push([st.t,st.i1,st.e2,st.ip,Vb*st.ip]);while(st.hist.length&&st.hist[0][0]<st.t-6.2)st.hist.shift();
+
+  // từ trường: độ đậm ∝ |i₁|, mũi tên lật chiều theo dấu i₁
+  const lvl=clamp(Math.abs(st.i1),0,1),sg=st.i1>=0?1:-1,showF=$('kField').checked&&lvl>0.03;
+  fieldG.visible=showF;beam.visible=showF;lbField.visible=showF&&$('kLbl').checked;
+  fMat.opacity=0.15+0.8*lvl;fCone.opacity=0.2+0.8*lvl;beamMat.opacity=0.08+0.32*lvl;
+  fArrows.forEach(m=>{const up=(m.userData.inside?1:-1)*sg>0;m.rotation.set(up?0:Math.PI,0,0)});
+  // hạt dòng điện
+  const showC=$('kCur').checked;
+  dotsP.forEach(d=>{d.visible=showC&&Math.abs(st.i1)>0.03;if(d.visible){d.userData.u=((d.userData.u+st.i1*dt*0.06)%1+1)%1;d.position.copy(pPath.getPointAt(d.userData.u))}});
+  arrP.forEach(a=>{a.visible=showC&&Math.abs(st.i1)>0.05;if(a.visible){a.position.copy(pPath.getPointAt(a.userData.u));_t.copy(pPath.getTangentAt(a.userData.u)).multiplyScalar(sg);a.quaternion.setFromUnitVectors(UP,_t)}});
+  const sOn=showC&&Math.abs(st.icoil)>0.02;
+  dotsS.forEach((d,k)=>{d.visible=sOn;if(sOn){const coilOnly=st.rect===4;   // cầu: hạt đổi chiều trong cuộn; mạch sau cầu vẽ theo chiều nạp
+      const inCoil=coilOnly&&k%2;d.userData.u=((d.userData.u+(inCoil?st.icoil:st.ip)*dt*0.05)%1+1)%1;d.position.copy((inCoil?sCoilPath:sPath).getPointAt(d.userData.u))}});
+  dMat.emissiveIntensity=clamp(st.ip*0.9,0,1.4);
+  ledMat.color.setHex(st.pAvg>0.2?0x38bdf8:(st.on?0x1e3a8a:0x334155));
+  lbPol.forEach(l=>l.visible=$('kLbl').checked&&Math.abs(st.e2)>0.6);
+  if(Math.abs(st.e2)>0.6){const p=st.e2>0;lbPol[0].position.set(p?1.25:0.3,0.3,p?0.45:0.95);lbPol[1].position.set(p?0.3:1.25,0.3,p?0.95:0.45)}
+  batFill.scale.set(1,1,Math.max(0.02,st.bat/100));batFill.position.z=-1.15+0.5*(1-st.bat/100);batFillMat.color.setHex(st.bat>25?0x22c55e:0xef4444);
+  // vỏ trong suốt / chú thích
+  const xr=$('kShell').checked;shellMat.opacity=xr?0.35:0.97;shellMat.depthWrite=!xr;phShell.opacity=xr?0.28:0.97;phShell.depthWrite=!xr;phScrMat.opacity=xr?0.45:1;topMat.opacity=xr?0.18:0.6;
+  labels.forEach(l=>{if(l!==lbField)l.visible=$('kLbl').checked});
+
+  uiT+=dt;chT+=dt;scT+=dt;
+  if(uiT>0.15){uiT=0;ui()}
+  if(chT>0.06){chT=0;updateCharts()}
+  if(scT>0.1){scT=0;drawSrc();drawPhone()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__sac3d={st,ph,phone,camera,renderer};   // dùng cho kiểm thử tự động
+ui();drawSrc();drawPhone();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

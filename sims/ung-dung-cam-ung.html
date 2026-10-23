@@ -207,7 +207,8 @@ const SAC=(()=>{
   return{
     id:'sac',tab:'📱 Sạc không dây',title:'Sạc điện thoại không dây',
     init(){st={on:true,ac:true,d:8,x:0,t:0,bat:20,i1:0,e2:0,hist:[],ht:0}},
-    controls:`<div class="row"><button class="wide" data-tog="on" data-t="Tắt đế sạc|Bật đế sạc"></button></div>
+    controls:`<a class="back" href="sac-khong-day-3d.html" style="font-size:13.5px;font-weight:700">🧊 Mở bản 3D: kéo thả điện thoại, điốt chỉnh lưu, đồ thị →</a>
+      <div class="row"><button class="wide" data-tog="on" data-t="Tắt đế sạc|Bật đế sạc"></button></div>
       <div class="lbl">Dòng điện trong cuộn dây của đế sạc</div>
       <div class="seg" data-key="ac"><button data-v="true">∿ Xoay chiều</button><button data-v="false">⎓ Một chiều không đổi</button></div>
       <label class="rng">Khoảng cách điện thoại – đế sạc<span class="v" data-show="d"></span><input type="range" data-key="d" min="2" max="160" value="8"></label>
