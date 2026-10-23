@@ -5,6 +5,14 @@
 //   tags   : từ khóa để tìm kiếm
 window.MO_PHONG = [
   {
+    ten: "Cân dòng điện – đo cảm ứng từ 3D",
+    mota: "Nam châm chữ U đặt trên cân điện tử, khung dây đồng treo trong khe từ. Thay đổi I, L, góc α, đảo chiều dòng điện; lực từ F = BIL sin α làm số chỉ cân thay đổi (định luật III Newton). Ghi bảng số liệu, vẽ đồ thị F – I, đo B của nam châm bí ẩn.",
+    chuong: "Từ trường",
+    lop: 12,
+    file: "sims/can-dong-dien-3d.html",
+    tags: ["lực từ", "cảm ứng từ", "cân dòng điện", "F = BIL sin α", "quy tắc bàn tay trái", "thực hành", "3D"]
+  },
+  {
     ten: "Dòng điện cảm ứng: ống dây, biến trở và khung dây",
     mota: "Dịch con chạy, đóng/mở khóa K, đưa khung lại gần hoặc ra xa để xem chiều dòng điện cảm ứng theo định luật Lenz. Có chế độ ẩn đáp án và đố nhanh 9 dạng câu hỏi.",
     chuong: "Cảm ứng điện từ",
