@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hạt nhân 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 160px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec[hidden]{display:none}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 3px;font-size:12.5px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+button:disabled{opacity:.45;cursor:default}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#graph{width:100%;height:200px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="near">Lại gần</button>
+      <button data-view="front">Nhìn chính diện</button>
+      <button data-view="top">Từ trên xuống</button>
+    </div>
+    <div class="hint" id="hint">Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Hạt nhân: phóng xạ – chu kì bán rã và phản ứng phân hạch dây chuyền (3D)</h1>
+      <div class="sub">Vật lí 12 · Vật lí hạt nhân · Hiện tượng phóng xạ, công nghiệp hạt nhân</div>
+    </div>
+
+    <div class="sec">
+      <h2>Chế độ</h2>
+      <div class="seg" id="segMode"><button data-v="decay">☢ Phóng xạ – chu kì bán rã</button><button data-v="fis">⚛ Phân hạch – lò phản ứng</button></div>
+    </div>
+
+    <div class="sec" id="secA">
+      <h2>Mẫu chất phóng xạ</h2>
+      <div class="seg" id="segIso"></div>
+      <div class="note" id="isoEq" style="font-size:14px"></div>
+      <label class="rng">Chu kì bán rã khi chiếu (thời gian mô phỏng)<span class="v" id="vT"></span><input type="range" id="rT" min="3" max="20" step="1" value="6"></label>
+      <div class="lbl">Số hạt nhân ban đầu N₀</div>
+      <div class="seg" id="segN"><button data-v="250">250</button><button data-v="500">500</button><button data-v="1000">1000</button></div>
+      <div class="lbl">Tấm chắn trước ống đếm</div>
+      <div class="seg" id="segSh"><button data-v="none">Không</button><button data-v="paper">Tờ giấy</button><button data-v="al">Nhôm vài mm</button><button data-v="pb">Chì vài cm</button></div>
+      <div class="row"><button class="wide pri" id="bRun">▶ Bắt đầu</button><button class="wide" id="bReset">↺ Mẫu mới</button></div>
+      <label class="chk"><input type="checkbox" id="kClick" checked> 🔊 Tiếng lách cách của ống đếm Geiger</label>
+    </div>
+
+    <div class="sec" id="secB" hidden>
+      <h2>Lò phản ứng hạt nhân</h2>
+      <label class="rng">Độ sâu thanh điều khiển (hấp thụ nơtron)<span class="v" id="vRod"></span><input type="range" id="rRod" min="0" max="100" step="1" value="40"></label>
+      <label class="chk"><input type="checkbox" id="kMod" checked> Có chất làm chậm nơtron (nước)</label>
+      <label class="chk"><input type="checkbox" id="kAuto"> Tự động điều khiển giữ công suất ổn định (k ≈ 1)</label>
+      <div class="row"><button class="wide pri" id="bShoot">➜ Bắn 1 nơtron vào lõi</button><button class="wide" id="bScram">⛔ Dừng khẩn cấp (hạ hết thanh)</button></div>
+      <div class="row"><button class="wide" id="bReB">↺ Nạp lại nhiên liệu, xóa nơtron</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kP" checked> Hạt / tia bay ra</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+        <label id="lCut"><input type="checkbox" id="kCut" checked> Cắt vỏ lò xem bên trong</label>
+      </div>
+      <div class="row"><button class="wide" id="bPause">⏸ Dừng hình</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li><b>Phóng xạ</b> là quá trình hạt nhân không bền <b>tự phát</b> phân rã, phát ra tia phóng xạ và biến đổi thành hạt nhân khác. Quá trình mang tính <b>ngẫu nhiên</b>, không chịu tác động của các yếu tố bên ngoài (nhiệt độ, áp suất…).</li>
+        <li><b>Định luật phóng xạ:</b> N = N₀·2<sup>−t/T</sup> = N₀·e<sup>−λt</sup>, với hằng số phóng xạ λ = ln2/T. Sau mỗi chu kì bán rã T, số hạt nhân còn lại giảm một nửa.</li>
+        <li><b>Độ phóng xạ</b> H = λN (Bq = phân rã/giây), cũng giảm theo quy luật hàm mũ: H = H₀·2<sup>−t/T</sup>.</li>
+        <li><b>Khả năng đâm xuyên:</b> tia α (hạt nhân ⁴₂He) bị chặn bởi tờ giấy; tia β (electron/pôzitron) bị chặn bởi tấm nhôm vài mm; tia γ (sóng điện từ) đâm xuyên mạnh, chỉ bị giảm đáng kể bởi lớp chì dày.</li>
+        <li><b>Phân hạch:</b> ¹₀n + ²³⁵₉₂U → hai hạt nhân trung bình + 2 hoặc 3 nơtron + năng lượng ≈ 200 MeV. Các nơtron sinh ra gây phân hạch mới ⇒ <b>phản ứng dây chuyền</b>.</li>
+        <li><b>Hệ số nhân nơtron k:</b> k &lt; 1 phản ứng tắt dần; k = 1 phản ứng tự duy trì, công suất ổn định (lò phản ứng); k &gt; 1 phản ứng tăng vọt, không kiểm soát được (bom nguyên tử). Thanh điều khiển (chứa bo, cađimi) hấp thụ nơtron để giữ k = 1.</li>
+        <li><b>Nhà máy điện hạt nhân:</b> năng lượng phân hạch làm nóng nước trong lò ⇒ hơi nước làm quay tua bin ⇒ máy phát điện (cảm ứng điện từ) tạo ra điện năng.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2,LN2=Math.LN2;
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Chất phóng xạ ======
+const ISO={
+  ra:{name:'Ra-226',eq:'²²⁶₈₈Ra → ²²²₈₆Rn + ⁴₂He (α)',T:'1600 năm',Tv:1600,unit:'năm',emit:['a']},
+  c:{name:'C-14',eq:'¹⁴₆C → ¹⁴₇N + ⁰₋₁e + ν̄ (β⁻)',T:'5730 năm',Tv:5730,unit:'năm',emit:['b']},
+  co:{name:'Co-60',eq:'⁶⁰₂₇Co → ⁶⁰₂₈Ni + ⁰₋₁e + ν̄ + γ (β⁻, γ)',T:'5,27 năm',Tv:5.27,unit:'năm',emit:['b','g']},
+  i:{name:'I-131',eq:'¹³¹₅₃I → ¹³¹₅₄Xe + ⁰₋₁e + ν̄ + γ (β⁻, γ)',T:'8,02 ngày',Tv:8.02,unit:'ngày',emit:['b','g']}};
+const SHIELD={none:{n:'không có'},paper:{n:'tờ giấy',stop:{a:1,b:0,g:0},th:0.03,col:0xf8fafc},al:{n:'tấm nhôm',stop:{a:1,b:1,g:0.08},th:0.12,col:0xcbd5e1},pb:{n:'tấm chì',stop:{a:1,b:1,g:0.8},th:0.45,col:0x52525b}};
+const st={mode:'decay',iso:'ra',Ts:6,N0:1000,sh:'none',run:false,t:0,paused:false,click:true,
+  N:1000,cnt:0,cntWin:[],decWin:[],hist:[],ht:0,
+  rod:40,mod:true,auto:false,nN:0,fisWin:[],histB:[],htB:0,tB:0,alarm:false};
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe5e9f0);
+const camera=new THREE.PerspectiveCamera(40,1,0.05,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a94a6,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(6,12,9);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xc7d7ff,0.35);fill.position.set(-7,4,-6);scene.add(fill);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V3(0,1,0);
+const M=(color,o={})=>new THREE.MeshStandardMaterial({color,roughness:.5,...o});
+const box=(w,h,d,mat,x,y,z,par)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);par.add(m);return m};
+const cyl=(r,h,mat,x,y,z,par,seg=32)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),mat);m.position.set(x,y,z);par.add(m);return m};
+const grid=new THREE.GridHelper(24,24,0xa3acb9,0xc8ced8);scene.add(grid);
+function makeLabel(text,color='#0f172a',size=0.3){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle='rgba(255,255,255,.9)';g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+const labels=[];const L=(t,c,x,y,z,s,par)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);par.add(l);labels.push(l);return l};
+
+// ================= CHẾ ĐỘ A: PHÓNG XẠ =================
+const GA=new THREE.Group();scene.add(GA);
+const SC=V3(0,2.2,0),SR=1.25,DX=2.7,DW=1.1;           // tâm mẫu, bán kính mẫu, mặt cửa sổ ống đếm, bán kính cửa sổ
+// giá đỡ mẫu và bình thủy tinh
+cyl(0.9,0.2,M(0x374151),0,0.1,0,GA);cyl(0.12,0.8,M(0x9ca3af,{metalness:.6}),0,0.6,0,GA,12);
+{const g=new THREE.Mesh(new THREE.SphereGeometry(SR+0.12,40,24),new THREE.MeshStandardMaterial({color:0xbfdbfe,transparent:true,opacity:.18,roughness:.1,depthWrite:false}));g.position.copy(SC);GA.add(g)}
+// ống đếm Geiger – Müller (cửa sổ hướng về mẫu) và máy đếm
+const tube=new THREE.Group();tube.position.set(DX,SC.y,0);GA.add(tube);
+{const c=cyl(DW+0.08,2.0,M(0x9ca3af,{metalness:.7,roughness:.3}),1.0,0,0,tube,40);c.rotation.z=Math.PI/2;
+ const w=new THREE.Mesh(new THREE.CircleGeometry(DW,40),new THREE.MeshStandardMaterial({color:0x7c2d12,roughness:.8,side:THREE.DoubleSide}));w.rotation.y=-Math.PI/2;w.position.x=-0.005;tube.add(w);
+ const r=new THREE.Mesh(new THREE.TorusGeometry(DW+0.04,0.06,8,40),M(0x6b7280,{metalness:.7}));r.rotation.y=Math.PI/2;tube.add(r)}
+const gmFlash=new THREE.Mesh(new THREE.CircleGeometry(DW*0.9,32),new THREE.MeshBasicMaterial({color:0xfde047,transparent:true,opacity:0,depthWrite:false}));gmFlash.rotation.y=-Math.PI/2;gmFlash.position.x=-0.03;tube.add(gmFlash);
+const counter=new THREE.Group();counter.position.set(DX+3.4,0.9,-1.6);counter.rotation.y=-0.3;GA.add(counter);
+box(2.6,1.8,1.4,M(0xfacc15,{roughness:.6}),0,0,0,counter);
+const cntC=document.createElement('canvas');cntC.width=384;cntC.height=128;const cntT=new THREE.CanvasTexture(cntC);
+{const m=new THREE.Mesh(new THREE.PlaneGeometry(2.0,0.66),new THREE.MeshBasicMaterial({map:cntT}));m.position.set(0,0.25,0.71);counter.add(m)}
+{const c=new THREE.CatmullRomCurve3([V3(DX+2.0,SC.y,0),V3(DX+2.6,SC.y-0.3,-0.4),V3(DX+3.0,1.4,-1.0),V3(DX+3.2,1.0,-0.95)]);GA.add(new THREE.Mesh(new THREE.TubeGeometry(c,24,0.05,6),M(0x111827)))}
+let lastCnt='';function drawCnt(){const t=String(st.cnt).padStart(5,'0');if(t===lastCnt)return;lastCnt=t;const g=cntC.getContext('2d');g.fillStyle='#111827';g.fillRect(0,0,384,128);g.fillStyle='#f87171';g.font='bold 84px "Courier New",monospace';g.textAlign='center';g.textBaseline='middle';g.fillText(t,192,70);cntT.needsUpdate=true}
+// tấm chắn
+const shieldM=new THREE.MeshStandardMaterial({color:0xf8fafc,roughness:.6,transparent:true,opacity:.92});
+const shield=new THREE.Mesh(new THREE.BoxGeometry(1,3.2,3.2),shieldM);GA.add(shield);
+const SHX=1.95;
+// hạt nhân trong mẫu: InstancedMesh, mẹ (tím) → con (xám)
+const NMAX=1000;const nucPos=[];
+for(let i=0;i<NMAX;i++){let p;do{p=V3(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1)}while(p.lengthSq()>1);nucPos.push(p.multiplyScalar(SR-0.06).add(SC))}
+const nuc=new THREE.InstancedMesh(new THREE.SphereGeometry(0.055,8,6),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.4}),NMAX);GA.add(nuc);
+const alive=new Uint8Array(NMAX),glow=new Float32Array(NMAX);const _m=new THREE.Matrix4(),_c=new THREE.Color();
+const PARENT=new THREE.Color(0x7c3aed),DAUGHTER=new THREE.Color(0xb6bec9),HOT=new THREE.Color(0xfde047);
+function resetSample(){for(let i=0;i<NMAX;i++){alive[i]=i<st.N0?1:0;glow[i]=0;_m.makeTranslation(nucPos[i].x,nucPos[i].y,nucPos[i].z);if(i>=st.N0)_m.makeScale(0,0,0);nuc.setMatrixAt(i,_m)}
+  nuc.instanceMatrix.needsUpdate=true;st.N=st.N0;st.t=0;st.cnt=0;st.cntWin=[];st.decWin=[];st.hist=[[0,st.N0]];st.ht=0;parts.forEach(p=>p.visible=false)}
+// hạt và tia bay ra: α (đỏ, chậm, tầm ngắn), β (xanh, nhanh), γ (vàng, vệt sáng rất nhanh)
+const PK={a:{col:0xdc2626,r:0.065,v:2.4,range:3.4},b:{col:0x2563eb,r:0.04,v:6,range:9},g:{col:0xeab308,r:0.03,v:11,range:12}};
+const parts=[];
+for(let k=0;k<260;k++){const m=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true}));m.visible=false;m.userData={};GA.add(m);parts.push(m)}
+function emit(type,p0){const m=parts.find(q=>!q.visible);if(!m)return;const P=PK[type];let d;do{d=V3(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1)}while(d.lengthSq()>1||d.lengthSq()<1e-4);d.normalize();
+  m.material.color.setHex(P.col);m.material.opacity=1;m.userData={type,p:p0.clone(),d,s:0,stop:-1,done:false,counted:false};m.visible=true;
+  const len=type==='g'?0.45:type==='b'?0.16:0.13;m.scale.set(P.r,len,P.r);m.quaternion.setFromUnitVectors(UP,d)}
+const lbSample=L('Mẫu chất phóng xạ','#6d28d9',-1.6,4.1,0.6,0.3,GA),lbGM=L('Ống đếm Geiger – Müller','#374151',DX+1.0,SC.y+1.55,0,0.3,GA);
+L('Máy đếm xung','#854d0e',DX+3.4,2.25,-1.6,0.3,GA);const lbSh=L('Tấm chắn','#334155',SHX,SC.y+2.0,1.0,0.28,GA);
+
+// ================= CHẾ ĐỘ B: LÒ PHẢN ỨNG =================
+const GB=new THREE.Group();scene.add(GB);GB.visible=false;
+const CX=4.2,CY=3.0,CZ=4.2,CH=3.2;                     // nửa kích thước lõi lò (x, z) và nửa chiều cao; tâm lõi ở y = CY + 0.4
+const YC0=0.4,YCT=YC0+2*CH;
+// vỏ lò (thép) cắt 1/4 để nhìn vào, nước làm chậm (xanh mờ)
+const shellM=new THREE.MeshStandardMaterial({color:0x94a3b8,metalness:.5,roughness:.4,side:THREE.DoubleSide});
+const shellFull=new THREE.Mesh(new THREE.CylinderGeometry(6.4,6.4,2*CH+0.6,48,1,true),shellM);shellFull.position.y=YC0+CH;GB.add(shellFull);
+const shellCut=new THREE.Mesh(new THREE.CylinderGeometry(6.4,6.4,2*CH+0.6,48,1,true,Math.PI/2,1.5*Math.PI),shellM);shellCut.position.y=YC0+CH;GB.add(shellCut);
+cyl(6.5,0.4,M(0x64748b,{metalness:.5}),0,YC0-0.5,0,GB,48);
+const water=new THREE.Mesh(new THREE.CylinderGeometry(6.3,6.3,2*CH,48),new THREE.MeshStandardMaterial({color:0x38bdf8,transparent:true,opacity:.13,depthWrite:false}));water.position.y=YC0+CH;GB.add(water);
+// thanh nhiên liệu (ống mảnh thẳng đứng) và hạt nhân U-235 trên đó
+const fuelM=new THREE.MeshStandardMaterial({color:0x65a30d,transparent:true,opacity:.35,roughness:.5,depthWrite:false});
+const sites=[];const NXZ=[-3,-1.5,0,1.5,3],NY=[1.2,2.6,4.0,5.4];
+NXZ.forEach(x=>NXZ.forEach(z=>{if(Math.hypot(x,z)>4.3)return;const m=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,2*CH-0.3,10),fuelM);m.position.set(x,YC0+CH,z);GB.add(m);NY.forEach(y=>sites.push({p:V3(x,YC0+y,z),ready:true,t:0}))}));
+const uMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(0.24,14,10),new THREE.MeshStandardMaterial({color:0x22c55e,roughness:.35}),sites.length);GB.add(uMesh);
+// thanh điều khiển: 4 thanh đặt giữa các hàng nhiên liệu, hạ xuống từ phía trên
+const RODS=[[-0.75,-2.25],[0.75,2.25],[-2.25,0.75],[2.25,-0.75],[-0.75,0.75],[0.75,-0.75]].map(([x,z])=>{const g=new THREE.Group();const r=cyl(0.24,2*CH,M(0x1f2937,{metalness:.4}),0,CH,0,g,16);cyl(0.32,0.25,M(0x9ca3af,{metalness:.6}),0,2*CH+0.1,0,g,16);g.position.set(x,0,z);GB.add(g);return{g,x,z}});
+const rodY=()=>YCT-2*CH*st.rod/100;                  // đáy thanh điều khiển
+// nơtron (InstancedMesh), mảnh phân hạch, chớp sáng
+const NNEU=380;const neu=new THREE.InstancedMesh(new THREE.SphereGeometry(0.14,10,8),new THREE.MeshBasicMaterial({color:0xffffff}),NNEU);GB.add(neu);
+{const c=new THREE.Color(0x0ea5e9);for(let i=0;i<NNEU;i++)neu.setColorAt(i,c)}
+const neutrons=[];                                   // {p,d,v,dist,fate:'fis'|'abs'|'leak',site,s}
+const frags=[];for(let k=0;k<80;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.18,12,8),new THREE.MeshStandardMaterial({color:0xf97316,transparent:true}));m.visible=false;m.userData={};GB.add(m);frags.push(m)}
+const flashes=[];for(let k=0;k<40;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.3,12,8),new THREE.MeshBasicMaterial({color:0xfde047,transparent:true,depthWrite:false}));m.visible=false;m.userData={};GB.add(m);flashes.push(m)}
+const absF=[];for(let k=0;k<30;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.16,10,8),new THREE.MeshBasicMaterial({color:0x60a5fa,transparent:true,depthWrite:false}));m.visible=false;m.userData={};GB.add(m);absF.push(m)}
+const lbFuel=L('Thanh nhiên liệu chứa U-235','#3f6212',-5.6,YCT+1.4,3.4,0.46,GB),lbRod=L('Thanh điều khiển\n(bo, cađimi hấp thụ nơtron)','#111827',3.8,YCT+1.9,-2.6,0.46,GB);
+const lbWater=L('Nước: làm chậm nơtron, tải nhiệt','#0369a1',5.2,YC0+0.8,4.2,0.46,GB);L('Vỏ lò bằng thép','#475569',-4.9,YC0+0.3,4.9,0.46,GB);
+// hệ số nhân nơtron
+const NU=2.5;
+function kEff(){const ins=st.rod/100;const pf=0.56*(1-0.78*ins)*(st.mod?1:0.3);return NU*pf}
+function pFis(){return kEff()/NU}
+function readySites(){return sites.filter(s=>s.ready)}
+function spawnNeutron(p){if(neutrons.length>=NNEU){st.alarm=true;return}
+  // định trước số phận của nơtron (theo xác suất): gây phân hạch / bị thanh điều khiển hấp thụ / thoát ra ngoài
+  const r=Math.random(),pf=pFis(),rs=readySites();let fate,target,site=null;
+  const ins=st.rod/100,pAbs=(1-pf)*(0.15+0.75*ins)/(0.15+0.75*ins+0.35);
+  if(r<pf){const pool=rs.length?rs:sites;site=pool[Math.floor(Math.random()*pool.length)];fate='fis';target=site.p.clone()}   // lõi có rất nhiều hạt nhân U-235: nhiên liệu không cạn
+  else if(r<pf+pAbs&&st.rod>2){fate='abs';const R=RODS[Math.floor(Math.random()*RODS.length)];target=V3(R.x+(Math.random()-.5)*0.3,rodY()+Math.random()*(YCT-rodY()),R.z+(Math.random()-.5)*0.3)}
+  else{fate='leak';let d;do{d=V3(Math.random()*2-1,(Math.random()*2-1)*0.6,Math.random()*2-1)}while(d.lengthSq()<0.05);d.normalize();target=p.clone().add(d.multiplyScalar(7))}
+  const d=target.clone().sub(p),dist=d.length();
+  neutrons.push({p:p.clone(),d:d.normalize(),dist,s:0,v:(st.mod?2.6:4.5)*(0.85+Math.random()*0.3),fate,site})}
+function fission(site){st.fisWin.push(st.tB);const p=site.p;site.ready=false;
+  const f=flash(flashes,p);
+  // hai mảnh phân hạch bay ngược chiều nhau (Ba – cam, Kr – hồng)
+  let d;do{d=V3(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1)}while(d.lengthSq()<0.05);d.normalize();
+  [[d,0xf97316],[d.clone().negate(),0xec4899]].forEach(([dd,c])=>{const m=frags.find(q=>!q.visible);if(!m)return;m.material.color.setHex(c);m.material.opacity=1;m.position.copy(p);m.userData={d:dd.clone(),life:0};m.visible=true});
+  const n=Math.random()<0.5?2:3;for(let k=0;k<n;k++)spawnNeutron(p);
+  site.t=0}
+function flash(pool,p){const m=pool.find(q=>!q.visible);if(!m)return;m.position.copy(p);m.userData={life:0};m.visible=true;m.scale.setScalar(0.5);return m}
+function resetB(){neutrons.length=0;sites.forEach(s=>{s.ready=true;s.t=0});frags.forEach(f=>f.visible=false);st.fisWin=[];st.histB=[];st.tB=0;st.alarm=false}
+
+// ====== Camera ======
+const cam={az:0.6,el:0.32,r:12,tx:1.6,ty:2.0,tz:0};const tc={...cam};
+const VIEWS={decay:{iso:[0.6,0.32,12,1.8,2.0,0],near:[0.45,0.15,5.2,0.6,2.2,0],front:[0.0001,0.05,10,2.0,2.2,0],top:[0.0001,1.5,11,2.0,2,0]},
+  fis:{iso:[0.75,0.5,28,0,3.6,0],near:[0.8,0.32,15,0,3.8,0],front:[0.0001,0.1,26,0,4,0],top:[0.0001,1.52,24,0,3.4,0]}};
+function setView(k){const v=VIEWS[st.mode][k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.2)tc.r*=Math.pow(1.2/a,0.8)}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=12;
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r}});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);if(!prev)return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,3,50);return}
+  tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.15,1.52)});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),3,50)},{passive:false});
+let hintT=setTimeout(hideHint,9000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Âm thanh lách cách của ống đếm ======
+let actx=null,noise=null;
+function click(){if(!st.click)return;try{if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)();const n=Math.floor(actx.sampleRate*0.004);noise=actx.createBuffer(1,n,actx.sampleRate);const d=noise.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n)}
+  const s=actx.createBufferSource(),g=actx.createGain();g.gain.value=0.5;s.buffer=noise;s.connect(g);g.connect(actx.destination);s.start()}catch(e){}}
+
+// ====== Bảng điều khiển ======
+$('segIso').innerHTML=Object.entries(ISO).map(([k,v])=>`<button data-v="${k}">${v.name}</button>`).join('');
+function syncUI(){
+  $('segMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.mode));
+  $('secA').hidden=st.mode!=='decay';$('secB').hidden=st.mode!=='fis';$('lCut').style.display=st.mode==='fis'?'':'none';
+  $('segIso').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.iso));
+  $('segN').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.N0));
+  $('segSh').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.sh));
+  const I=ISO[st.iso];$('isoEq').innerHTML=`<b>${I.eq}</b><br>Chu kì bán rã thực: T = ${I.T}. Trong mô phỏng thu nhỏ thành ${st.Ts} s.`;
+  $('vT').textContent=st.Ts+' s';$('rT').value=st.Ts;$('bRun').textContent=st.run?'⏸ Tạm dừng phân rã':'▶ Bắt đầu';
+  $('vRod').textContent=Math.round(st.rod)+'%';$('rRod').value=st.rod;$('kMod').checked=st.mod;$('kAuto').checked=st.auto;$('kClick').checked=st.click;
+  $('bPause').textContent=st.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+  GA.visible=st.mode==='decay';GB.visible=st.mode==='fis';
+  const S=SHIELD[st.sh];shield.visible=st.sh!=='none';if(shield.visible){shield.scale.x=S.th;shield.position.set(SHX,SC.y,0);shieldM.color.setHex(S.col)}
+}
+$('segMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.mode=b.dataset.v;syncUI();setView('iso');hint(st.mode==='fis'?'Bấm “Bắn 1 nơtron vào lõi” để khởi động phản ứng dây chuyền':'Bấm “Bắt đầu” để mẫu chất phân rã')});
+$('segIso').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.iso=b.dataset.v;resetSample();st.run=false;syncUI()});
+$('segN').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.N0=+b.dataset.v;resetSample();st.run=false;syncUI()});
+$('segSh').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.sh=b.dataset.v;st.cntWin=[];syncUI();hint('Đã đặt '+SHIELD[st.sh].n+' trước ống đếm')});
+$('rT').oninput=e=>{st.Ts=+e.target.value;syncUI()};
+$('bRun').onclick=()=>{st.run=!st.run;if(st.run&&st.N===0)resetSample();click();syncUI()};
+$('bReset').onclick=()=>{resetSample();st.run=false;syncUI()};
+$('kClick').onchange=e=>{st.click=e.target.checked};
+$('rRod').oninput=e=>{st.rod=+e.target.value;st.auto=false;syncUI()};
+$('kMod').onchange=e=>{st.mod=e.target.checked;syncUI();hint(st.mod?'Nước làm chậm nơtron ⇒ U-235 dễ hấp thụ nơtron chậm và phân hạch':'Không có chất làm chậm: nơtron nhanh khó gây phân hạch U-235 ⇒ phản ứng tắt dần')};
+$('kAuto').onchange=e=>{st.auto=e.target.checked;syncUI()};
+$('bShoot').onclick=()=>{spawnNeutron(V3(-6,YC0+CH,0.3));hint('Đã bắn 1 nơtron vào lõi lò')};
+$('bScram').onclick=()=>{st.auto=false;st.rod=100;syncUI();hint('Dừng khẩn cấp: toàn bộ thanh điều khiển hạ xuống ⇒ k < 1 ⇒ phản ứng tắt')};
+$('bReB').onclick=()=>{resetB()};
+$('bPause').onclick=()=>{st.paused=!st.paused;syncUI()};
+resetSample();syncUI();
+
+// ====== Đồ thị ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  const x0=40,y0=h-32,W=w-x0-12,H=y0-16;g.font='10.5px system-ui,sans-serif';
+  g.strokeStyle='#3a4b70';g.lineWidth=1;g.beginPath();g.moveTo(x0,12);g.lineTo(x0,y0);g.lineTo(x0+W,y0);g.stroke();
+  if(st.mode==='decay'){
+    const tm=5*st.Ts,X=t=>x0+t/tm*W,Y=n=>y0-n/st.N0*H;
+    g.fillStyle='#93a3c0';g.textAlign='center';for(let k=0;k<=5;k++){g.strokeStyle='#1c2a47';g.beginPath();g.moveTo(X(k*st.Ts),12);g.lineTo(X(k*st.Ts),y0);g.stroke();g.fillText(k?k+'T':'0',X(k*st.Ts),y0+12)}
+    g.textAlign='right';[[1,'N₀'],[0.5,'N₀/2'],[0.25,'N₀/4'],[0.125,'N₀/8']].forEach(([f,t])=>{g.strokeStyle='#1c2a47';g.beginPath();g.moveTo(x0,Y(f*st.N0));g.lineTo(x0+W,Y(f*st.N0));g.stroke();g.fillText(t,x0-3,Y(f*st.N0)+3)});
+    g.setLineDash([5,4]);g.strokeStyle='#94a3b8';g.lineWidth=1.5;g.beginPath();for(let t=0;t<=tm;t+=tm/200){const y=Y(st.N0*Math.pow(2,-t/st.Ts));t?g.lineTo(X(t),y):g.moveTo(X(t),y)}g.stroke();g.setLineDash([]);
+    g.strokeStyle='#a78bfa';g.lineWidth=2.5;g.beginPath();st.hist.forEach(([t,n],i)=>{if(t>tm)return;i?g.lineTo(X(t),Y(n)):g.moveTo(X(t),Y(n))});g.stroke();
+    g.textAlign='left';g.fillStyle='#a78bfa';g.fillText('━ N đếm trong mô phỏng',x0+4,h-5);g.fillStyle='#94a3b8';g.fillText('- - N₀·2^(−t/T)',x0+150,h-5);g.fillText('t',x0+W-6,y0-4);g.fillText('N',x0+26,20);
+  }else{
+    const tm=30,hs=st.histB,t1=st.tB,t0=Math.max(0,t1-tm),nm=Math.max(20,...hs.map(q=>q[1]))*1.15,X=t=>x0+(t-t0)/tm*W,Y=n=>y0-n/nm*H;
+    g.fillStyle='#93a3c0';g.textAlign='right';[0,0.5,1].forEach(f=>{g.strokeStyle='#1c2a47';g.beginPath();g.moveTo(x0,Y(f*nm/1.15));g.lineTo(x0+W,Y(f*nm/1.15));g.stroke();g.fillText(Math.round(f*nm/1.15),x0-3,Y(f*nm/1.15)+3)});
+    g.strokeStyle='#38bdf8';g.lineWidth=2.5;g.beginPath();hs.forEach(([t,n],i)=>{if(t<t0)return;i&&hs[i-1][0]>=t0?g.lineTo(X(t),Y(n)):g.moveTo(X(t),Y(n))});g.stroke();
+    // k (trục phải: 0 … 2)
+    g.strokeStyle='#fbbf24';g.lineWidth=1.5;g.beginPath();hs.forEach(([t,,k],i)=>{if(t<t0)return;const y=y0-k/2*H;i&&hs[i-1][0]>=t0?g.lineTo(X(t),y):g.moveTo(X(t),y)});g.stroke();
+    g.setLineDash([3,4]);g.strokeStyle='#fbbf2466';g.beginPath();g.moveTo(x0,y0-H/2);g.lineTo(x0+W,y0-H/2);g.stroke();g.setLineDash([]);
+    g.textAlign='left';g.fillStyle='#38bdf8';g.fillText('━ số nơtron trong lõi',x0+4,h-5);g.fillStyle='#fbbf24';g.fillText('━ hệ số k (vạch đứt: k = 1)',x0+130,h-5);g.fillStyle='#93a3c0';g.fillText('30 s gần nhất',x0+W-70,20);
+  }
+}
+
+// ====== Kết quả, chip, giải thích ======
+let lastE='',lastC='',lastR='';
+function ui(){
+  let c,r,s='<ol>';
+  if(st.mode==='decay'){
+    const I=ISO[st.iso],lam=LN2/st.Ts,H=lam*st.N,tT=st.t/st.Ts,rate=st.cntWin.length/Math.min(Math.max(st.t,0.5),5);
+    c=[['Chất',I.name],['t',fmt(tT,2)+' T'],['N',st.N+' / '+st.N0]];
+    r=[['Số hạt nhân còn lại N',String(st.N)],['Lí thuyết N₀·2^(−t/T)',fmt(st.N0*Math.pow(2,-tT),0)],['Đã phân rã',String(st.N0-st.N)+' ('+fmt((1-st.N/st.N0)*100,0)+'%)'],
+       ['Thời gian tương ứng thực tế',fmt(tT*I.Tv,I.Tv<10?1:0)+' '+I.unit],['Độ phóng xạ H = λN',fmt(H,1)+' phân rã/s'],['Ống đếm ghi được',fmt(rate,1)+' xung/s']];
+    s+=`<li>Mẫu ${I.name} gồm ${st.N0} hạt nhân không bền (tím). Mỗi hạt nhân phân rã <b>ngẫu nhiên</b> – không biết trước hạt nào sẽ phân rã lúc nào – nhưng với rất nhiều hạt, số phân rã tuân theo quy luật thống kê.</li>`;
+    s+=`<li>Khi phân rã, hạt nhân phát ra ${I.emit.map(e=>({a:'hạt α (đỏ)',b:'hạt β⁻ (xanh)',g:'tia γ (vàng)'})[e]).join(' và ')} rồi biến thành hạt nhân con (xám): ${I.eq}.</li>`;
+    s+=`<li>Sau mỗi chu kì bán rã T, số hạt nhân còn lại giảm một nửa: N = N₀·2<sup>−t/T</sup>. Hiện t = ${fmt(tT,2)}T ⇒ lí thuyết còn ${fmt(st.N0*Math.pow(2,-tT),0)} hạt, mô phỏng còn ${st.N} hạt (sai khác nhỏ do tính ngẫu nhiên).</li>`;
+    s+=`<li>Độ phóng xạ H = λN giảm theo thời gian ⇒ ống đếm kêu thưa dần.${st.sh!=='none'?` Có ${SHIELD[st.sh].n}: ${st.sh==='paper'?'chặn được tia α, tia β và γ vẫn đi qua':st.sh==='al'?'chặn tia α và β, tia γ vẫn đi qua':'chặn α, β và phần lớn tia γ'}.`:''}</li>`;
+  }else{
+    const k=kEff(),n=neutrons.length,fr=st.fisWin.length/3,stt=k<0.97?'dưới tới hạn (k < 1)':k<=1.03?'tới hạn (k ≈ 1)':'vượt tới hạn (k > 1)';
+    c=[['k',fmt(k,2)],['Nơtron',String(n)],['Trạng thái',st.alarm?'⚠ VƯỢT TẦM KIỂM SOÁT':k<0.97?'tắt dần':k<=1.03?'ổn định':'tăng nhanh']];
+    r=[['Hệ số nhân nơtron k',fmt(k,2)+' – '+stt],['Số nơtron trong lõi',String(n)],['Số phân hạch mỗi giây',fmt(fr,1)],['Công suất (≈ 200 MeV × số phân hạch/s)',fmt(fr*200*1.602e-13*1e12,1)+' pW (thu nhỏ)'],
+       ['Thanh điều khiển',Math.round(st.rod)+'% '+(st.auto?'(tự động)':'')],['Chất làm chậm',st.mod?'có (nước)':'không']];
+    s+='<li>Một nơtron chậm bị hạt nhân U-235 (xanh lá) hấp thụ ⇒ hạt nhân phân hạch thành hai mảnh (cam, hồng), giải phóng khoảng <b>200 MeV</b> và <b>2 – 3 nơtron mới</b> (xanh dương).</li>';
+    s+='<li>Các nơtron mới có thể: gây phân hạch tiếp, bị <b>thanh điều khiển</b> hấp thụ (chớp xanh), hoặc thoát ra ngoài lõi. Hệ số nhân k = số nơtron trung bình gây phân hạch tiếp sau mỗi phân hạch.</li>';
+    s+=k<0.97?`<li>Hiện k = ${fmt(k,2)} &lt; 1 ⇒ số nơtron giảm dần ⇒ phản ứng <b>tắt dần</b>. ${st.mod?'Rút bớt thanh điều khiển để tăng k.':'Không có nước làm chậm nên nơtron quá nhanh, U-235 khó bắt được.'}</li>`
+      :k<=1.03?`<li>Hiện k ≈ 1 ⇒ phản ứng <b>tự duy trì</b>, số nơtron và công suất gần như không đổi – đây là chế độ làm việc của lò phản ứng.</li>`
+      :`<li>Hiện k = ${fmt(k,2)} &gt; 1 ⇒ số nơtron <b>tăng theo cấp số nhân</b> ⇒ công suất tăng vọt, nguy hiểm (bom nguyên tử có k &gt; 1). Hạ thanh điều khiển để đưa k về 1.</li>`;
+    if(st.alarm)s+='<li><b>⚠ Số nơtron vượt giới hạn mô phỏng – phản ứng mất kiểm soát!</b> Bấm “Dừng khẩn cấp” để hạ hết thanh điều khiển.</li>';
+    s+='<li>Trong nhà máy điện hạt nhân, nhiệt lượng tỏa ra làm nóng nước ⇒ hơi nước làm quay tua bin ⇒ máy phát điện biến cơ năng thành điện năng.</li>';
+  }
+  s+='</ol>';
+  const ch=c.map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(ch!==lastC){$('chips').innerHTML=ch;lastC=ch}
+  const rr=r.map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val" style="font-size:14px">${b}</div></div>`).join('');if(rr!==lastR){$('res').innerHTML=rr;lastR=rr}
+  if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const toA=(o={})=>{st.mode='decay';Object.assign(st,o);resetSample();st.run=true;setView('iso')};
+const toB=(o={})=>{st.mode='fis';resetB();Object.assign(st,o);for(let k=0;k<3;k++)spawnNeutron(V3(-6,YC0+CH,0.3));setView('iso')};
+const QS=[
+  {q:'Một chất phóng xạ có chu kì bán rã T. Sau thời gian 2T, số hạt nhân còn lại bằng bao nhiêu phần số hạt nhân ban đầu?',o:['1/4','1/2','1/8','3/4'],e:'N = N₀·2^(−2) = N₀/4.',d:()=>toA()},
+  {q:'Tia phóng xạ nào bị chặn lại bởi một tờ giấy?',o:['Tia α','Tia β⁻','Tia γ','Cả ba loại tia'],e:'Hạt α có khả năng đâm xuyên kém nhất, bị tờ giấy chặn lại.',d:()=>toA({iso:'ra',sh:'paper'})},
+  {q:'Tia có khả năng đâm xuyên mạnh nhất là:',o:['Tia γ','Tia α','Tia β⁻','Tia β⁺'],e:'Tia γ là sóng điện từ năng lượng cao, đi qua được tấm nhôm, chỉ bị lớp chì dày làm giảm đáng kể.',d:()=>toA({iso:'co',sh:'al'})},
+  {q:'Khi tăng nhiệt độ của mẫu chất phóng xạ, chu kì bán rã của nó:',o:['Không đổi','Tăng lên','Giảm đi','Bằng 0'],e:'Phóng xạ là quá trình tự phát trong hạt nhân, không phụ thuộc vào các tác động bên ngoài như nhiệt độ, áp suất.',d:()=>toA()},
+  {q:'Hằng số phóng xạ λ liên hệ với chu kì bán rã T theo công thức:',o:['λ = ln2 / T','λ = T / ln2','λ = T·ln2','λ = 1 / T²'],e:'Từ N = N₀e^(−λt) và N(T) = N₀/2 ⇒ λT = ln2.',d:()=>toA()},
+  {q:'Trong lò phản ứng hạt nhân của nhà máy điện, hệ số nhân nơtron k phải được giữ:',o:['k = 1','k > 1','k < 1','k = 0'],e:'k = 1: phản ứng dây chuyền tự duy trì, công suất ổn định.',d:()=>toB({auto:true,rod:40,mod:true})},
+  {q:'Thanh điều khiển trong lò phản ứng hạt nhân có tác dụng:',o:['Hấp thụ bớt nơtron để điều chỉnh hệ số nhân k','Làm chậm nơtron','Cung cấp nhiên liệu','Làm nguội lò'],e:'Thanh chứa bo, cađimi hấp thụ mạnh nơtron; hạ thanh xuống ⇒ k giảm, rút lên ⇒ k tăng.',d:()=>toB({auto:false,rod:85,mod:true})},
+  {q:'Khi k > 1, phản ứng dây chuyền:',o:['Tăng nhanh, không kiểm soát được (như bom nguyên tử)','Tắt dần','Duy trì ổn định','Dừng ngay lập tức'],e:'Mỗi thế hệ có nhiều nơtron hơn thế hệ trước ⇒ số phân hạch tăng theo cấp số nhân.',d:()=>toB({auto:false,rod:0,mod:true})},
+  {q:'Một phản ứng phân hạch U-235 giải phóng năng lượng cỡ:',o:['200 MeV','2 MeV','20 eV','2000 MeV'],e:'Mỗi phân hạch tỏa khoảng 200 MeV, phần lớn là động năng của các mảnh phân hạch.',d:()=>toB({auto:true,rod:40,mod:true})}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;st.paused=false;q.d();syncUI();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+const _p=V3(0,0,0);let last=performance.now(),uiT=0;
+function stepA(dt){
+  if(st.run){
+    st.t+=dt;const p=1-Math.exp(-LN2/st.Ts*dt),I=ISO[st.iso];
+    for(let i=0;i<st.N0;i++)if(alive[i]&&Math.random()<p){alive[i]=0;st.N--;glow[i]=1;st.decWin.push(st.t);I.emit.forEach(e=>emit(e,nucPos[i]))}
+    st.ht+=dt;if(st.ht>0.1){st.ht=0;st.hist.push([st.t,st.N])}
+    if(st.N===0)st.run=false;
+  }
+  // hạt bay: kiểm tra tấm chắn và cửa sổ ống đếm
+  const S=SHIELD[st.sh];
+  parts.forEach(m=>{if(!m.visible)return;const u=m.userData,P=PK[u.type];
+    if(u.done){m.material.opacity-=dt*3;if(m.material.opacity<=0)m.visible=false;return}
+    const xPrev=u.p.x;u.s+=P.v*dt;u.p.addScaledVector(u.d,P.v*dt);m.position.copy(u.p);
+    if(u.s>P.range){u.done=true;return}
+    // tấm chắn: mặt phẳng x = SHX (độ dày nhỏ so với hình)
+    if(st.sh!=='none'&&xPrev<SHX-S.th/2&&u.p.x>=SHX-S.th/2&&Math.abs(u.p.y-SC.y)<1.6&&Math.abs(u.p.z)<1.6){if(u.blk===undefined)u.blk=Math.random()<S.stop[u.type];if(u.blk){u.p.x=SHX-S.th/2-0.01;m.position.copy(u.p);u.done=true;return}}
+    // cửa sổ ống đếm
+    if(xPrev<DX&&u.p.x>=DX){if(Math.hypot(u.p.y-SC.y,u.p.z)<DW){st.cnt++;st.cntWin.push(st.t);gmFlash.material.opacity=0.9;click()}u.done=true}});
+  gmFlash.material.opacity=Math.max(0,gmFlash.material.opacity-dt*5);
+  while(st.cntWin.length&&st.cntWin[0]<st.t-5)st.cntWin.shift();
+  // tô màu hạt nhân
+  for(let i=0;i<st.N0;i++){if(glow[i]>0)glow[i]=Math.max(0,glow[i]-dt*2);nuc.setColorAt(i,alive[i]?PARENT:_c.copy(DAUGHTER).lerp(HOT,glow[i]))}
+  if(nuc.instanceColor)nuc.instanceColor.needsUpdate=true;
+}
+function stepB(dt){
+  st.tB+=dt;
+  // nhiên liệu “mới” thay thế hạt nhân vừa phân hạch sau vài giây (lõi lò chứa rất nhiều hạt nhân)
+  sites.forEach(s=>{if(!s.ready&&s.t>=0){s.t+=dt;if(s.t>0.8)s.ready=true}});
+  // nơtron chuyển động tới đích đã định
+  for(let i=neutrons.length-1;i>=0;i--){const n=neutrons[i];n.s+=n.v*dt;n.p.addScaledVector(n.d,n.v*dt);
+    if(n.s>=n.dist){neutrons.splice(i,1);
+      if(n.fate==='fis')fission(n.site);else if(n.fate==='abs')flash(absF,n.p)}}
+  // tự động điều khiển: giữ số nơtron quanh mức đặt
+  if(st.auto){const n=neutrons.length,target=60;
+    // chọn k mong muốn theo độ lệch số nơtron, suy ra độ sâu thanh cần đặt; thanh di chuyển với tốc độ hữu hạn
+    const kd=clamp(1+0.6*(target-n)/target,0.8,1.3),pf=kd/NU/(st.mod?1:0.3)/0.56,rodT=clamp((1-pf)/0.78*100,0,100);
+    st.rod+=clamp(rodT-st.rod,-40*dt,40*dt);if(n<3&&Math.random()<dt*1.5)spawnNeutron(V3(-6,YC0+CH,0.3));$('vRod').textContent=Math.round(st.rod)+'%';$('rRod').value=st.rod}
+  if(neutrons.length<NNEU*0.8)st.alarm=false;
+  while(st.fisWin.length&&st.fisWin[0]<st.tB-3)st.fisWin.shift();
+  st.htB+=dt;if(st.htB>0.2){st.htB=0;st.histB.push([st.tB,neutrons.length,kEff()]);while(st.histB.length&&st.histB[0][0]<st.tB-31)st.histB.shift()}
+  frags.forEach(f=>{if(!f.visible)return;const u=f.userData;u.life+=dt;f.position.addScaledVector(u.d,1.6*dt*(1-u.life*0.6));f.material.opacity=1-u.life/1.4;if(u.life>1.4)f.visible=false});
+  [...flashes,...absF].forEach(f=>{if(!f.visible)return;const u=f.userData;u.life+=dt*2.2;f.scale.setScalar(0.5+u.life*1.6);f.material.opacity=0.85*(1-u.life);if(u.life>=1)f.visible=false});
+}
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!st.paused){if(st.mode==='decay')stepA(dt);else stepB(dt)}
+  const showP=$('kP').checked,showL=$('kL').checked;
+  if(st.mode==='decay'){parts.forEach(m=>{if(m.visible&&!showP)m.visible=false});drawCnt();lbSh.visible=showL&&st.sh!=='none'}
+  else{
+    // vẽ nơtron, hạt nhân U-235, thanh điều khiển
+    for(let i=0;i<NNEU;i++){const n=neutrons[i];if(n&&showP)_m.makeTranslation(n.p.x,n.p.y,n.p.z);else _m.makeScale(0,0,0);neu.setMatrixAt(i,_m)}neu.instanceMatrix.needsUpdate=true;
+    sites.forEach((s,i)=>{if(s.ready||s.t<0)_m.makeTranslation(s.p.x,s.p.y,s.p.z);else _m.makeScale(0,0,0);uMesh.setMatrixAt(i,_m)});uMesh.instanceMatrix.needsUpdate=true;
+    RODS.forEach(R=>R.g.position.y=rodY()-YC0+YC0);
+    const cut=$('kCut').checked;shellFull.visible=!cut;shellCut.visible=cut;
+    water.material.color.setHex(st.mod?0x38bdf8:0xe2e8f0);water.material.opacity=st.mod?0.13:0.04;
+  }
+  labels.forEach(l=>{if(l!==lbSh)l.visible=showL&&(l.parent!==GB||cam.r>18)});lbWater.visible=showL&&st.mode==='fis'&&st.mod&&cam.r>18;
+  uiT+=dt;if(uiT>0.15){uiT=0;ui();drawGraph()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__hn={stepA,stepB,st,neutrons,sites,kEff,spawnNeutron,resetSample,resetB,syncUI,camera,cam,tc,setView};   // dùng cho kiểm thử tự động
+ui();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

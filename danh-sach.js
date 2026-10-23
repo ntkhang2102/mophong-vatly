@@ -163,5 +163,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/khi-li-tuong-xi-lanh-3d.html",
     tags: ["khí lí tưởng", "Boyle", "Charles", "đẳng nhiệt", "đẳng áp", "đẳng tích", "động học phân tử", "pV = nRT", "3D"]
+  },
+  {
+    ten: "Hạt nhân 3D: phóng xạ – chu kì bán rã, phân hạch dây chuyền",
+    mota: "Hai chế độ. (1) Mẫu Ra-226, C-14, Co-60, I-131 phân rã ngẫu nhiên, phát tia α, β, γ; ống đếm Geiger kêu lách cách; tấm chắn giấy/nhôm/chì; đồ thị N = N₀·2^(−t/T). (2) Lò phản ứng: nơtron gây phân hạch U-235, thanh điều khiển, nước làm chậm, hệ số k, dừng khẩn cấp, tự động giữ k ≈ 1.",
+    chuong: "Vật lí hạt nhân",
+    lop: 12,
+    file: "sims/hat-nhan-3d.html",
+    tags: ["phóng xạ", "chu kì bán rã", "tia alpha", "tia beta", "tia gamma", "Geiger", "phân hạch", "phản ứng dây chuyền", "lò phản ứng", "nhà máy điện hạt nhân", "3D"]
   }
 ];
