@@ -311,7 +311,8 @@ const GUITAR=(()=>{
   return{
     id:'guitar',tab:'🎸 Đàn ghi-ta điện',title:'Đàn ghi-ta điện',
     init(){st={steel:true,mag:true,s:1,amp:14,sound:false,Y:0,t:0,tp:-99,phi:0,phiP:0,e:0,hist:[],ht:0,first:true}},
-    controls:`<div class="row"><button class="wide pri" data-act="pluck">🎸 Gảy dây đàn</button></div>
+    controls:`<a class="back" href="guitar-dien-3d.html" style="font-size:13.5px;font-weight:700">🧊 Mở bản 3D: kéo dây để gảy, 6 dây, 2 pickup, ampli →</a>
+      <div class="row"><button class="wide pri" data-act="pluck">🎸 Gảy dây đàn</button></div>
       <label class="rng">Độ mạnh khi gảy<span class="v" data-show="amp"></span><input type="range" data-key="amp" min="4" max="20" value="14"></label>
       <select data-key="s" aria-label="Chọn dây đàn"></select>
       <div class="lbl">Chất liệu dây đàn</div>

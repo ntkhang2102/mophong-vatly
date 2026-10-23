@@ -37,12 +37,12 @@ window.MO_PHONG = [
     tags: ["sạc không dây", "điện thoại", "máy biến áp", "cảm ứng điện từ"]
   },
   {
-    ten: "Đàn ghi-ta điện",
-    mota: "Dây thép bị nam châm từ hóa, dao động làm từ thông qua cuộn dây biến thiên. Gảy đàn, xem tín hiệu điện, nghe âm thanh thật; thử dây nylon và bỏ nam châm.",
+    ten: "Đàn ghi-ta điện 3D",
+    mota: "Không gian 3D: đàn 6 dây, hai bộ thu (pickup) gồm nam châm và cuộn dây, ampli và loa. Kéo dây để gảy, thấy đoạn dây nhiễm từ, đường sức co giãn, dòng điện cảm ứng; nghe tiếng đàn thật; so sánh dây nylon, bỏ nam châm, số vòng dây, vị trí pickup.",
     chuong: "Ứng dụng cảm ứng điện từ",
     lop: 12,
-    file: "sims/ung-dung-cam-ung.html#guitar",
-    tags: ["ghi ta điện", "guitar", "cuộn cảm ứng", "nam châm", "âm thanh"]
+    file: "sims/guitar-dien-3d.html",
+    tags: ["ghi ta điện", "guitar", "pickup", "cuộn cảm ứng", "nam châm", "âm thanh", "3D"]
   },
   {
     ten: "Thí nghiệm về dòng điện Foucault 3D",
