@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Khí lí tưởng trong xi lanh 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 160px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec[hidden]{display:none}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 3px;font-size:12.5px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+button:disabled{opacity:.45;cursor:default}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#graph{width:100%;height:220px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="near">Lại gần phân tử</button>
+      <button data-view="front">Nhìn chính diện</button>
+      <button data-view="top">Từ trên xuống</button>
+    </div>
+    <div class="hint" id="hint">Kéo tay cầm pít-tông lên/xuống (quá trình đẳng nhiệt) · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Khí lí tưởng trong xi lanh – mô hình động học phân tử (3D)</h1>
+      <div class="sub">Vật lí 12 · Định luật Boyle, định luật Charles, quá trình đẳng tích · pV = nRT</div>
+    </div>
+
+    <div class="sec">
+      <h2>Quá trình biến đổi</h2>
+      <div class="seg" id="segP"><button data-v="T">Đẳng nhiệt<br><small>Boyle</small></button><button data-v="p">Đẳng áp<br><small>Charles</small></button><button data-v="V">Đẳng tích</button></div>
+      <label class="rng" id="lV">Thể tích V<span class="v" id="vV"></span><input type="range" id="rV" min="0.5" max="3" step="0.05" value="1.5"></label>
+      <label class="rng" id="lT">Nhiệt độ T<span class="v" id="vT"></span><input type="range" id="rT" min="150" max="600" step="5" value="300"></label>
+      <label class="rng" id="lp">Áp suất p (quả nặng trên pít-tông)<span class="v" id="vp"></span><input type="range" id="rp" min="40" max="300" step="5" value="100"></label>
+      <div class="row"><button class="wide pri" id="bAuto">▶ Chạy tự động</button><button class="wide" id="bClr">Xóa đồ thị</button></div>
+      <div class="note" id="pNote"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kM" checked> Phân tử khí</label>
+        <label><input type="checkbox" id="kC" checked> Tô màu theo tốc độ</label>
+        <label><input type="checkbox" id="kTr" checked> Vết 1 phân tử</label>
+        <label><input type="checkbox" id="kH"> Chớp sáng khi va chạm pít-tông</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+      </div>
+      <div class="row"><button class="wide" id="bPause">⏸ Dừng hình</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+      <div class="seg" id="segG"><button data-v="pV">Đồ thị p – V</button><button data-v="VT">V – T</button><button data-v="pT">p – T</button></div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li><b>Mô hình động học phân tử:</b> khí gồm rất nhiều phân tử chuyển động hỗn loạn không ngừng; nhiệt độ càng cao, phân tử chuyển động càng nhanh. <b>Áp suất</b> của khí do các phân tử <b>va chạm</b> vào thành bình gây ra.</li>
+        <li><b>Đẳng nhiệt (Boyle):</b> T không đổi ⇒ <b>p·V = hằng số</b>, p tỉ lệ nghịch với V; đường đẳng nhiệt trên đồ thị p – V là đường hypebol.</li>
+        <li><b>Đẳng áp (Charles):</b> p không đổi ⇒ <b>V/T = hằng số</b>; đồ thị V – T là đường thẳng kéo dài đi qua gốc O (0 K).</li>
+        <li><b>Đẳng tích:</b> V không đổi ⇒ <b>p/T = hằng số</b>; đồ thị p – T là đường thẳng kéo dài đi qua gốc O.</li>
+        <li><b>Phương trình trạng thái:</b> pV/T = hằng số, hay <b>pV = nRT</b> (R = 8,31 J/(mol·K)); T là nhiệt độ tuyệt đối: T(K) = t(°C) + 273.</li>
+        <li>Động năng tịnh tiến trung bình của phân tử: <b>E = (3/2)kT</b> ⇒ tốc độ căn quân phương v = √(3RT/M).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2,RG=8.31;
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Thông số ======
+const NMOL=0.04;                                   // lượng khí (mol): ở 300 K, 1 L ⇒ p ≈ 100 kPa
+const R=2,Y0=0.3,HPL=2.4,RM=0.09,NP=160;           // bán kính trong xi lanh, đáy khí, chiều cao ứng với 1 L, bán kính phân tử, số phân tử vẽ
+const VMIN=0.5,VMAX=3,TMIN=150,TMAX=600;
+const S0=3.2;                                      // độ lệch chuẩn mỗi thành phần vận tốc ở 300 K (đơn vị hình/giây, chiếu chậm)
+const st={proc:'T',V:1.5,T:300,p:0,graph:'pV',paused:false,auto:null,trail:[],hits:0,hitT:0,pKin:0,impulse:0,imT:0,hist:[],drag:false};
+const pOf=(V,T)=>NMOL*RG*T/V;                      // kPa khi V tính bằng lít
+st.p=pOf(st.V,st.T);
+const hOf=V=>V*HPL;
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe5e9f0);
+const camera=new THREE.PerspectiveCamera(40,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a94a6,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(6,12,9);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xc7d7ff,0.35);fill.position.set(-7,4,-6);scene.add(fill);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V3(0,1,0);
+const M=(color,o={})=>new THREE.MeshStandardMaterial({color,roughness:.5,...o});
+const cyl=(r,h,mat,x,y,z,par=scene,seg=40)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),mat);m.position.set(x,y,z);par.add(m);return m};
+const box=(w,h,d,mat,x,y,z,par=scene)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);par.add(m);return m};
+const grid=new THREE.GridHelper(20,20,0xa3acb9,0xc8ced8);grid.position.y=-0.75;scene.add(grid);
+const mats={steel:M(0x9ca3af,{metalness:.6,roughness:.35}),dark:M(0x374151,{metalness:.4,roughness:.5}),piston:M(0x64748b,{metalness:.5,roughness:.4}),
+  rubber:M(0x111827,{roughness:.8}),wt:M(0x52525b,{metalness:.6,roughness:.35}),brass:M(0xb88a2e,{metalness:.7,roughness:.3}),red:M(0xdc2626),white:M(0xf8fafc)};
+// bếp điện (đế nung) dưới xi lanh
+const heatM=new THREE.MeshStandardMaterial({color:0x3f3f46,emissive:0xff3b0a,emissiveIntensity:0,roughness:.6});
+cyl(R+0.9,0.5,mats.dark,0,-0.5,0);const coil=cyl(R+0.4,0.08,heatM,0,-0.21,0);
+// đáy và thành xi lanh bằng thủy tinh
+cyl(R+0.15,Y0,mats.steel,0,Y0/2-0.0,0);
+const glass=new THREE.Mesh(new THREE.CylinderGeometry(R+0.12,R+0.12,8.4,48,1,true),new THREE.MeshStandardMaterial({color:0xbfdbfe,transparent:true,opacity:.22,roughness:.1,side:THREE.DoubleSide,depthWrite:false}));
+glass.position.y=Y0+4.2;scene.add(glass);
+const rim=new THREE.Mesh(new THREE.TorusGeometry(R+0.12,0.06,8,48),mats.steel);rim.rotation.x=Math.PI/2;rim.position.y=Y0+8.4;scene.add(rim);
+// vạch chia thể tích trên thành (0,5 L)
+const tickG=new THREE.Group();scene.add(tickG);
+for(let v=0.5;v<=3.001;v+=0.25){const big=Math.abs(v*2-Math.round(v*2))<1e-6;const t=box(big?0.5:0.28,0.025,0.02,new THREE.MeshBasicMaterial({color:0x1e3a8a}),0,Y0+hOf(v),R+0.13,tickG);t.position.x=-(big?0.25:0.14)+0.0}
+// không khí trong xi lanh: khối mờ màu theo nhiệt độ
+const gasM=new THREE.MeshBasicMaterial({color:0x93c5fd,transparent:true,opacity:.12,depthWrite:false});
+const gas=new THREE.Mesh(new THREE.CylinderGeometry(R-0.01,R-0.01,1,40),gasM);scene.add(gas);
+// pít-tông, cán, tay cầm
+const pist=new THREE.Group();scene.add(pist);
+cyl(R-0.02,0.42,mats.piston,0,0.21,0,pist);[0.1,0.32].forEach(y=>{const o=new THREE.Mesh(new THREE.TorusGeometry(R-0.02,0.04,6,48),mats.rubber);o.rotation.x=Math.PI/2;o.position.y=y;pist.add(o)});
+cyl(0.16,3.4,mats.steel,0,0.42+1.7,0,pist,16);
+const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,2.2,16),M(0x1d4ed8,{roughness:.4}));handle.rotation.z=Math.PI/2;handle.position.y=0.42+3.4;pist.add(handle);
+// quả nặng (đẳng áp): chồng đĩa trên pít-tông
+const wts=new THREE.Group();pist.add(wts);const wtM=[];
+for(let k=0;k<8;k++){const w=cyl(1.3,0.24,mats.wt,0,0.55+k*0.27,0,wts,32);wtM.push(w)}
+// chốt khóa (đẳng tích): hai thanh xuyên ngang phía trên pít-tông
+const pins=new THREE.Group();scene.add(pins);
+for(const s of[1,-1]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.4,12),mats.red);p.rotation.z=Math.PI/2;p.position.set(s*(R-0.1),0,0);pins.add(p);
+  const n=cyl(0.17,0.2,mats.red,s*(R+0.65),0,0,pins,12);n.rotation.z=Math.PI/2}
+// áp kế: ống nối và mặt đồng hồ
+const PGX=R+1.6,PGY=1.0;
+{const t=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.5,12),mats.brass);t.rotation.z=Math.PI/2;t.position.set(R+0.75,PGY*0.7,0);scene.add(t)}
+cyl(0.1,0.6,mats.brass,PGX,PGY*0.7+0.3,0,scene,12);
+const dial=new THREE.Group();dial.position.set(PGX,PGY+1.05,0);dial.rotation.y=0.5;scene.add(dial);
+{const c=cyl(1.0,0.25,mats.brass,0,0,0,dial,40);c.rotation.x=Math.PI/2;
+ const cv=document.createElement('canvas');cv.width=cv.height=512;const g=cv.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(256,256,250,0,TAU);g.fill();
+ g.strokeStyle='#0f172a';g.fillStyle='#0f172a';g.textAlign='center';g.textBaseline='middle';
+ for(let v=0;v<=400;v+=10){const a=(-225+270*v/400)*Math.PI/180,big=v%50===0;g.lineWidth=big?5:2;g.beginPath();g.moveTo(256+Math.cos(a)*(big?190:212),256+Math.sin(a)*(big?190:212));g.lineTo(256+Math.cos(a)*236,256+Math.sin(a)*236);g.stroke();
+   if(v%100===0){g.font='bold 44px system-ui,sans-serif';g.fillText(v,256+Math.cos(a)*145,256+Math.sin(a)*145)}}
+ g.font='bold 34px system-ui,sans-serif';g.fillText('kPa',256,340);
+ const f=new THREE.Mesh(new THREE.CircleGeometry(0.95,48),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)}));f.position.z=0.13;dial.add(f)}
+const needle=new THREE.Group();needle.position.z=0.15;dial.add(needle);
+{const n=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.8,0.02),mats.red);n.position.y=0.36;needle.add(n);const c=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.06,12),mats.dark);c.rotation.x=Math.PI/2;needle.add(c)}
+// nhiệt kế đứng cạnh, đầu dò cắm vào đáy xi lanh
+const TX=-(R+1.6);
+const thG=new THREE.Group();thG.position.set(TX,0,0.4);scene.add(thG);
+cyl(0.22,6.2,new THREE.MeshStandardMaterial({color:0xe0f2fe,transparent:true,opacity:.45,roughness:.1,depthWrite:false}),0,3.4,0,thG,16);
+const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.34,16,12),mats.red);bulb.position.y=0.25;thG.add(bulb);
+const col=cyl(0.1,1,mats.red,0,0,0,thG,12);
+const thT=y=>0.45+5.6*(y-100)/(650-100);           // độ cao cột đỏ ứng với T (K)
+for(let T=100;T<=650;T+=50){const big=T%100===0;box(big?0.42:0.26,0.025,0.02,new THREE.MeshBasicMaterial({color:0x0f172a}),0.3,thT(T),0.0,thG)}
+// dây đầu dò
+{const c=new THREE.CatmullRomCurve3([V3(TX,0.2,0.4),V3(TX+0.6,-0.1,0.8),V3(-R-0.2,0.15,0.6)]);scene.add(new THREE.Mesh(new THREE.TubeGeometry(c,20,0.04,6),mats.rubber))}
+
+// ====== Phân tử: InstancedMesh, tô màu theo tốc độ ======
+const molM=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.35});
+const mols=new THREE.InstancedMesh(new THREE.SphereGeometry(RM,10,8),molM,NP);scene.add(mols);
+const P=new Float32Array(NP*3),Vv=new Float32Array(NP*3);
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v)}
+const sig0=T=>S0*Math.sqrt(T/300);
+for(let i=0;i<NP;i++){const a=Math.random()*TAU,r=(R-RM)*Math.sqrt(Math.random());P[3*i]=r*Math.cos(a);P[3*i+2]=r*Math.sin(a);P[3*i+1]=Y0+RM+Math.random()*(hOf(st.V)-2*RM);
+  const s=sig0(st.T);Vv[3*i]=gauss()*s;Vv[3*i+1]=gauss()*s;Vv[3*i+2]=gauss()*s}
+for(let c=0;c<3;c++){let s2=0;for(let i=0;i<NP;i++)s2+=Vv[3*i+c]**2;const k=Math.sqrt(NP*sig0(st.T)**2/s2);for(let i=0;i<NP;i++)Vv[3*i+c]*=k}   // chuẩn hóa từng thành phần: ⟨vx²⟩ = ⟨vy²⟩ = ⟨vz²⟩ = σ² (khí lí tưởng: phân tử không va chạm nhau nên không tự cân bằng)
+let curT=st.T;                                       // nhiệt độ ứng với vận tốc hiện có của các phân tử
+// phân tử được theo dõi: phân tử số 0 to hơn, màu vàng, kèm vết
+const tracked=new THREE.Mesh(new THREE.SphereGeometry(RM*1.7,14,10),new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xf59e0b,emissiveIntensity:.5}));scene.add(tracked);
+const TRN=260,trGeo=new THREE.BufferGeometry();trGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TRN*3),3));
+const trail=new THREE.Line(trGeo,new THREE.LineBasicMaterial({color:0xd97706}));scene.add(trail);let trN=0;
+// chớp sáng khi va chạm vào pít-tông
+const flashes=[];const flM=new THREE.MeshBasicMaterial({color:0xf97316,transparent:true,opacity:.8,depthWrite:false});
+for(let k=0;k<30;k++){const f=new THREE.Mesh(new THREE.CircleGeometry(0.16,12),flM.clone());f.rotation.x=Math.PI/2;f.visible=false;f.userData.life=0;scene.add(f);flashes.push(f)}
+const _m=new THREE.Matrix4(),_c=new THREE.Color();
+function speedColor(v,s){const k=clamp(v/(s*1.6*1.7),0,1);return _c.setHSL(0.66-0.66*k,0.85,0.5)}
+
+// ====== Nhãn ======
+function makeLabel(text,color='#0f172a',size=0.3){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle='rgba(255,255,255,.9)';g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+const labels=[];const L=(t,c,x,y,z,s)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);labels.push(l);return l};
+const lbPist=L('Pít-tông','#334155',-2.6,0,1.2,0.32),lbW=L('Quả nặng (giữ p không đổi)','#334155',2.4,0,1.2,0.3),lbPin=L('Chốt khóa (giữ V không đổi)','#b91c1c',2.9,0,0.4,0.3);
+L('Áp kế','#78350f',PGX+0.4,PGY+2.45,0.6,0.32);L('Nhiệt kế','#b91c1c',TX-0.2,6.9,0.4,0.32);const lbHeat=L('Bếp điện','#9a3412',2.6,-0.35,2.2,0.3);
+[200,400,600].forEach(T=>L(T+' K','#334155',TX-0.85,thT(T),0.4,0.27));
+const lbGas=L('Khí lí tưởng','#1e40af',-1.0,0,2.5,0.3);
+
+// ====== Âm thanh: không dùng. Camera, kéo pít-tông ======
+const cam={az:0.5,el:0.3,r:17,tx:0.4,ty:4,tz:0};const tc={...cam};
+const VIEWS={iso:[0.5,0.3,17,0.4,4,0],near:[0.7,0.2,7,0,2.4,0],front:[0.0001,0.05,16,0.4,4.2,0],top:[0.0001,1.52,12,0,4,0]};
+function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<0.9&&k!=='near')tc.r*=Math.pow(0.9/a,0.6)}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hit=new THREE.Vector3();let dPlane=null,dY0=0,dV0=0;
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=17,orbit=false;
+const pistMeshes=[];pist.traverse(o=>{if(o.isMesh&&!wtM.includes(o))pistMeshes.push(o)});
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();
+  if(ptrs.size===2){st.drag=false;orbit=false;const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r;return}
+  setNdc(e);const h=ray.intersectObjects(pistMeshes)[0];
+  if(h){if(st.proc!=='T'){hint(st.proc==='V'?'Pít-tông đang bị chốt khóa (đẳng tích)':'Đẳng áp: pít-tông tự dịch chuyển khi nhiệt độ thay đổi – hãy đổi T');return}
+    st.drag=true;stopAuto();const n=V3(camera.position.x,0,camera.position.z).normalize();dPlane=new THREE.Plane().setFromNormalAndCoplanarPoint(n,h.point);dY0=h.point.y;dV0=st.V;el.style.cursor='grabbing'}
+  else orbit=true});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(pistMeshes).length?(st.proc==='T'?'grab':'not-allowed'):'default';return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,4,40);return}
+  if(st.drag){setNdc(e);if(ray.ray.intersectPlane(dPlane,hit)){st.V=Math.round(clamp(dV0+(hit.y-dY0)/HPL,VMIN,VMAX)*100)/100;applyState();syncUI()}}
+  else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.2,1.52)}});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;if(st.drag&&!ptrs.size){st.drag=false;el.style.cursor='default'}if(!ptrs.size)orbit=false}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),4,40)},{passive:false});
+let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Trạng thái: hai đại lượng đặt, đại lượng còn lại tính từ pV = nRT ======
+// Đẳng nhiệt: đặt V, T ⇒ p. Đẳng áp: đặt p, T ⇒ V. Đẳng tích: đặt V, T ⇒ p.
+function applyState(){
+  if(st.proc==='p'){st.V=NMOL*RG*st.T/st.p;if(st.V>VMAX||st.V<VMIN){st.V=clamp(st.V,VMIN,VMAX);st.T=st.p*st.V/(NMOL*RG)}}
+  else st.p=pOf(st.V,st.T);
+  addPoint();
+}
+// ngắt nét: đổi sang đường đẳng nhiệt / đẳng áp khác thì không nối hai đường với nhau
+function brk(){if(st.hist.length&&st.hist[st.hist.length-1])st.hist.push(null)}
+function addPoint(){const q=[st.p,st.V,st.T,st.proc];const l=st.hist[st.hist.length-1];if(l===null){st.hist.push(q);return}if(!l||Math.abs(l[0]-q[0])>0.5||Math.abs(l[1]-q[1])>0.01||Math.abs(l[2]-q[2])>1||l[3]!==q[3]){st.hist.push(q);if(st.hist.length>600)st.hist.shift()}}
+
+// ====== Bảng điều khiển ======
+function syncUI(){
+  $('segP').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.proc));
+  $('segG').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.graph));
+  $('vV').textContent=fmt(st.V,2)+' L';$('rV').value=st.V;$('vT').textContent=Math.round(st.T)+' K ('+Math.round(st.T-273)+' °C)';$('rT').value=st.T;
+  $('vp').textContent=Math.round(st.p)+' kPa';$('rp').value=Math.round(st.p);
+  $('rV').disabled=st.proc!=='T';$('rp').disabled=st.proc!=='p';$('lV').style.opacity=st.proc==='T'?1:.55;$('lp').style.opacity=st.proc==='p'?1:.55;
+  $('pNote').innerHTML={T:'Nhiệt độ được giữ không đổi. <b>Kéo tay cầm pít-tông</b> hoặc kéo thanh trượt V để nén / giãn khí. Thanh nhiệt độ chọn đường đẳng nhiệt khác.',
+    p:'Các quả nặng giữ áp suất không đổi. Thay đổi <b>nhiệt độ T</b> (bếp điện) – pít-tông tự dịch chuyển.',V:'Pít-tông bị chốt khóa, thể tích không đổi. Thay đổi <b>nhiệt độ T</b> và quan sát áp kế.'}[st.proc];
+  $('bAuto').textContent=st.auto?'■ Dừng chạy tự động':'▶ Chạy tự động';$('bPause').textContent=st.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+}
+$('segP').querySelectorAll('button').forEach(b=>b.onclick=()=>{stopAuto();st.proc=b.dataset.v;st.graph={T:'pV',p:'VT',V:'pT'}[st.proc];if(st.proc==='p')st.p=Math.round(clamp(st.p,40,300)/5)*5;applyState();syncUI();
+  hint({T:'Đẳng nhiệt: T không đổi – kéo pít-tông',p:'Đẳng áp: p không đổi – đổi nhiệt độ',V:'Đẳng tích: V không đổi – đổi nhiệt độ'}[st.proc])});
+$('segG').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.graph=b.dataset.v;syncUI()});
+$('rV').oninput=e=>{stopAuto();st.V=+e.target.value;applyState();syncUI()};
+$('rT').oninput=e=>{stopAuto();if(st.proc==='T')brk();st.T=+e.target.value;applyState();syncUI()};
+$('rp').oninput=e=>{stopAuto();brk();st.p=+e.target.value;applyState();syncUI()};
+$('bClr').onclick=()=>{st.hist=[];addPoint()};
+$('bPause').onclick=()=>{st.paused=!st.paused;syncUI()};
+function stopAuto(){if(st.auto){st.auto=null;syncUI()}}
+$('bAuto').onclick=()=>{if(st.auto){stopAuto();return}
+  // đi chậm từ đầu này sang đầu kia của dải giá trị rồi quay lại
+  st.auto={key:st.proc==='T'?'V':'T',dir:1,lo:st.proc==='T'?0.6:200,hi:st.proc==='T'?3:550};if(st.proc==='p'){st.auto.hi=Math.min(550,VMAX*st.p/(NMOL*RG));st.auto.lo=Math.max(160,VMIN*st.p/(NMOL*RG))}
+  brk();st[st.auto.key]=st.auto.lo;applyState();syncUI()};
+syncUI();
+
+// ====== Đồ thị ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+const AX={pV:{x:1,y:0,xm:3.2,ym:400,xl:'V (L)',yl:'p (kPa)'},VT:{x:2,y:1,xm:650,ym:3.2,xl:'T (K)',yl:'V (L)'},pT:{x:2,y:0,xm:650,ym:400,xl:'T (K)',yl:'p (kPa)'}};
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  const A=AX[st.graph],x0=40,y0=h-36,W=w-x0-14,H=y0-14,X=v=>x0+v/A.xm*W,Y=v=>y0-v/A.ym*H;
+  g.strokeStyle='#1c2a47';g.lineWidth=1;g.font='10.5px system-ui,sans-serif';g.fillStyle='#93a3c0';
+  const xs=A.xm>100?100:0.5,ys=A.ym>100?100:0.5;
+  g.textAlign='center';for(let v=0;v<=A.xm+1e-9;v+=xs){g.beginPath();g.moveTo(X(v),14);g.lineTo(X(v),y0);g.stroke();g.fillText(String(v).replace('.',','),X(v),y0+12)}
+  g.textAlign='right';for(let v=0;v<=A.ym+1e-9;v+=ys){g.beginPath();g.moveTo(x0,Y(v));g.lineTo(x0+W,Y(v));g.stroke();g.fillText(String(v).replace('.',','),x0-4,Y(v)+3)}
+  g.strokeStyle='#3a4b70';g.beginPath();g.moveTo(x0,14);g.lineTo(x0,y0);g.lineTo(x0+W,y0);g.stroke();
+  g.fillStyle='#cbd5e1';g.textAlign='right';g.fillText(A.xl,x0+W,y0-4);g.textAlign='left';g.fillText(A.yl,x0+4,22);
+  // đường lí thuyết qua trạng thái hiện tại (nét đứt), kéo dài về gốc O với đồ thị theo T
+  g.setLineDash([5,4]);g.strokeStyle='#64748b';g.lineWidth=1.5;g.beginPath();
+  if(st.graph==='pV'){const c=st.p*st.V;for(let v=0.3;v<=3.2;v+=0.02){const p=c/v;if(p>A.ym*1.05)continue;g.lineTo(X(v),Y(Math.min(p,A.ym)))}}
+  else{const k=st.graph==='VT'?st.V/st.T:st.p/st.T;g.moveTo(X(0),Y(0));g.lineTo(X(A.xm),Y(Math.min(A.ym,k*A.xm)))}
+  g.stroke();g.setLineDash([]);
+  // vết các trạng thái đã đi qua
+  const C={T:'#60a5fa',p:'#4ade80',V:'#fb923c'};
+  for(let i=1;i<st.hist.length;i++){const a=st.hist[i-1],b=st.hist[i];if(!a||!b||a[3]!==b[3])continue;g.strokeStyle=C[b[3]];g.lineWidth=2.5;g.beginPath();g.moveTo(X(a[A.x]),Y(a[A.y]));g.lineTo(X(b[A.x]),Y(b[A.y]));g.stroke()}
+  const cur=[st.p,st.V,st.T];g.fillStyle='#f8fafc';g.beginPath();g.arc(X(cur[A.x]),Y(Math.min(cur[A.y],A.ym)),5,0,TAU);g.fill();
+  g.font='11px system-ui,sans-serif';g.textAlign='left';let lx=x0+6;[['Đẳng nhiệt','#60a5fa'],['Đẳng áp','#4ade80'],['Đẳng tích','#fb923c']].forEach(([t,c])=>{g.fillStyle=c;g.fillText('━ '+t,lx,h-6);lx+=g.measureText('━ '+t).width+12});
+  g.fillStyle='#94a3b8';g.fillText('- - lí thuyết',lx,h-6);
+}
+
+// ====== Kết quả, chip, giải thích ======
+let lastE='',lastC='',lastR='';
+function ui(){
+  const c=[['p',Math.round(st.p)+' kPa'],['V',fmt(st.V,2)+' L'],['T',Math.round(st.T)+' K']].map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const vrms=Math.sqrt(3*RG*st.T/0.028);
+  const r=[['p·V (kPa·L = J)',fmt(st.p*st.V,1)],['V / T (L/K)',fmt(st.V/st.T*1000,3)+'·10⁻³'],['p / T (kPa/K)',fmt(st.p/st.T,3)],['p·V / T = nR',fmt(st.p*st.V/st.T,4)],
+    ['p tính từ va chạm phân tử',st.pKin?Math.round(st.pKin)+' kPa':'đang đo…'],['Tốc độ căn quân phương (khí N₂)',Math.round(vrms)+' m/s']]
+    .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
+  let s='<ol>';
+  s+=`<li>Trong xi lanh có ${NMOL} mol khí (hình vẽ ${NP} phân tử đại diện, chuyển động chiếu chậm). Các phân tử chuyển động <b>hỗn loạn</b>, va chạm vào thành bình và pít-tông ⇒ gây ra <b>áp suất</b>.</li>`;
+  if(st.proc==='T')s+=`<li><b>Đẳng nhiệt</b> (T = ${Math.round(st.T)} K): tốc độ trung bình của phân tử không đổi. Nén khí (V giảm) ⇒ mật độ phân tử tăng ⇒ số va chạm lên mỗi đơn vị diện tích trong 1 s tăng ⇒ <b>p tăng</b>.</li><li>Kết quả: p·V ≈ ${fmt(st.p*st.V,1)} không đổi (định luật <b>Boyle</b>); đồ thị p – V là đường hypebol.</li>`;
+  if(st.proc==='p')s+=`<li><b>Đẳng áp</b> (p = ${Math.round(st.p)} kPa do các quả nặng): đun nóng ⇒ phân tử chuyển động nhanh hơn, va chạm mạnh hơn ⇒ đẩy pít-tông lên ⇒ <b>V tăng</b> cho đến khi áp suất khí lại cân bằng với áp suất ngoài.</li><li>Kết quả: V/T không đổi (định luật <b>Charles</b>); đồ thị V – T là đường thẳng kéo dài qua gốc O.</li>`;
+  if(st.proc==='V')s+=`<li><b>Đẳng tích</b> (V = ${fmt(st.V,2)} L, pít-tông bị chốt): đun nóng ⇒ phân tử chuyển động nhanh hơn ⇒ va chạm <b>thường xuyên hơn và mạnh hơn</b> ⇒ <b>p tăng</b> (kim áp kế quay).</li><li>Kết quả: p/T không đổi; đồ thị p – T là đường thẳng kéo dài qua gốc O (0 K).</li>`;
+  s+=`<li>Ô “p tính từ va chạm phân tử” cộng động lượng các phân tử truyền cho pít-tông trong mỗi giây rồi chia cho diện tích – kết quả xấp xỉ bằng p = nRT/V = ${Math.round(st.p)} kPa.</li>`;
+  s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const go=(proc,V,T,p)=>{stopAuto();brk();st.proc=proc;st.graph={T:'pV',p:'VT',V:'pT'}[proc];if(V)st.V=V;if(T)st.T=T;if(p)st.p=p;applyState()};
+const QS=[
+  {q:'Nén đẳng nhiệt một lượng khí từ 2 L xuống 1 L thì áp suất của khí:',o:['Tăng gấp đôi','Giảm một nửa','Không đổi','Tăng gấp bốn'],e:'Boyle: p₁V₁ = p₂V₂ ⇒ V giảm 2 lần thì p tăng 2 lần.',d:()=>{go('T',1,300)}},
+  {q:'Áp suất chất khí lên thành bình là do:',o:['Các phân tử khí va chạm vào thành bình','Trọng lượng của các phân tử khí','Lực hút giữa các phân tử khí và thành bình','Các phân tử khí đứng yên ép lên thành'],e:'Mỗi va chạm truyền động lượng cho thành bình; vô số va chạm tạo lực đều đặn ⇒ áp suất.',d:()=>{go('V',1.5,300);$('kH').checked=true}},
+  {q:'Trong quá trình đẳng áp, khi nhiệt độ tuyệt đối tăng gấp đôi thì thể tích khí:',o:['Tăng gấp đôi','Giảm một nửa','Không đổi','Tăng gấp bốn'],e:'Charles: V/T = hằng số ⇒ V tỉ lệ thuận với T.',d:()=>{go('p',null,500,100)}},
+  {q:'Đun nóng đẳng tích một lượng khí. Nhận xét nào đúng?',o:['Áp suất tăng vì phân tử chuyển động nhanh hơn, va chạm mạnh và nhiều hơn','Áp suất giảm','Thể tích tăng','Số phân tử khí tăng'],e:'V không đổi, T tăng ⇒ p/T không đổi ⇒ p tăng.',d:()=>{go('V',1.2,550)}},
+  {q:'Đường đẳng nhiệt trong hệ tọa độ p – V có dạng:',o:['Đường hypebol','Đường thẳng qua gốc tọa độ','Đường thẳng song song trục V','Đường parabol'],e:'p = hằng số / V ⇒ hypebol.',d:()=>{go('T',0.6,300);st.graph='pV'}},
+  {q:'Đồ thị V – T của quá trình đẳng áp, khi kéo dài sẽ đi qua:',o:['Gốc tọa độ (T = 0 K)','Điểm T = 273 K','Điểm V = 1 L','Không đi qua điểm đặc biệt nào'],e:'V = (nR/p)·T ⇒ đường thẳng qua gốc O, ứng với 0 K = −273 °C.',d:()=>{go('p',null,300,100);st.graph='VT'}},
+  {q:'Nhiệt độ 27 °C ứng với nhiệt độ tuyệt đối:',o:['300 K','27 K','246 K','327 K'],e:'T = t + 273 = 27 + 273 = 300 K.',d:()=>{go('T',1.5,300)}},
+  {q:'Khi nhiệt độ của khí tăng, tốc độ chuyển động trung bình của các phân tử:',o:['Tăng','Giảm','Không đổi','Bằng 0'],e:'Động năng trung bình (3/2)kT tăng theo T ⇒ phân tử chuyển động nhanh hơn.',d:()=>{go('V',1.5,600)}}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;st.paused=false;q.d();syncUI();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+// hệ số đổi áp suất hình vẽ (động lượng truyền cho pít-tông / s / diện tích, khối lượng phân tử = 1) sang kPa:
+// p_hình = N·σ²/V_hình, σ² ∝ T ⇒ chọn hệ số để p_hình·K = nRT/V (V_hình là thể tích mà tâm phân tử chiếm được)
+const KPf=V=>NMOL*RG*300/(NP*S0*S0)*Math.PI*(R-RM)*(R-RM)*(HPL-2*RM/V);
+let last=performance.now(),uiT=0,hy=hOf(st.V),pistV=0,pRef=st.p;
+addPoint();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!st.paused){
+    // chạy tự động
+    if(st.auto){const a=st.auto,sp=a.key==='V'?0.35:60;st[a.key]+=a.dir*sp*dt;if(st[a.key]>=a.hi){st[a.key]=a.hi;a.dir=-1}if(st[a.key]<=a.lo){st[a.key]=a.lo;a.dir=1}applyState();syncUI()}
+    // đổi nhiệt độ ⇒ đổi tốc độ phân tử
+    if(Math.abs(st.T-curT)>0.01){const k=Math.sqrt(st.T/curT);for(let i=0;i<NP*3;i++)Vv[i]*=k;curT=st.T}
+    // pít-tông dịch chuyển mượt về vị trí mới
+    const hT=hOf(st.V),hPrev=hy;hy+=(hT-hy)*(1-Math.exp(-dt/0.15));pistV=(hy-hPrev)/dt;
+    const top=Y0+hy-RM,R2=(R-RM)*(R-RM);let imp=0;
+    const sub=3,h=dt/sub;
+    for(let s=0;s<sub;s++)for(let i=0;i<NP;i++){const j=3*i;
+      P[j]+=Vv[j]*h;P[j+1]+=Vv[j+1]*h;P[j+2]+=Vv[j+2]*h;
+      const rr=P[j]*P[j]+P[j+2]*P[j+2];
+      if(rr>R2){const r=Math.sqrt(rr),nx=P[j]/r,nz=P[j+2]/r,vn=Vv[j]*nx+Vv[j+2]*nz;if(vn>0){Vv[j]-=2*vn*nx;Vv[j+2]-=2*vn*nz}P[j]=nx*(R-RM)*0.999;P[j+2]=nz*(R-RM)*0.999}
+      if(P[j+1]<Y0+RM){P[j+1]=Y0+RM;if(Vv[j+1]<0)Vv[j+1]=-Vv[j+1]}
+      if(P[j+1]>top){P[j+1]=top;if(Vv[j+1]>0){imp+=2*Vv[j+1];Vv[j+1]=-Vv[j+1];
+        if($('kH').checked&&Math.random()<0.5){const f=flashes.find(f=>!f.visible);if(f){f.visible=true;f.userData.life=0;f.position.set(P[j],top+RM-0.01,P[j+2])}}}}}
+    // áp suất “đo” từ động lượng truyền cho pít-tông (lấy trung bình trượt ~1,5 s)
+    st.impulse+=imp;st.imT+=dt;if(st.imT>2){const pk=st.impulse/st.imT/(Math.PI*(R-RM)*(R-RM))*KPf(st.V);
+      // trạng thái vừa thay đổi trong lúc đo ⇒ bỏ kết quả, đo lại
+      if(Math.abs(st.p-pRef)>0.03*st.p||Math.abs(hy-hOf(st.V))>0.05)st.pKin=0;else st.pKin=st.pKin?st.pKin*0.55+0.45*pk:pk;st.impulse=0;st.imT=0;pRef=st.p}
+    flashes.forEach(f=>{if(!f.visible)return;f.userData.life+=dt*4;f.material.opacity=0.8*(1-f.userData.life);f.scale.setScalar(1+f.userData.life);if(f.userData.life>=1)f.visible=false});
+  }
+  // vẽ phân tử
+  const showM=$('kM').checked,colorBy=$('kC').checked,s=sig0(st.T);mols.visible=showM;
+  if(showM){for(let i=0;i<NP;i++){const j=3*i;_m.makeTranslation(P[j],P[j+1],P[j+2]);mols.setMatrixAt(i,_m);
+      mols.setColorAt(i,colorBy?speedColor(Math.hypot(Vv[j],Vv[j+1],Vv[j+2]),S0):_c.set(0x3b82f6))}
+    mols.instanceMatrix.needsUpdate=true;if(mols.instanceColor)mols.instanceColor.needsUpdate=true}
+  const showTr=$('kTr').checked;tracked.visible=trail.visible=showTr&&showM;tracked.position.set(P[0],P[1],P[2]);
+  if(showTr&&!st.paused){const a=trGeo.attributes.position.array;if(trN<TRN)trN++;a.copyWithin(3,0,(TRN-1)*3);a[0]=P[0];a[1]=P[1];a[2]=P[2];if(trN===1)for(let k=1;k<TRN;k++){a[3*k]=P[0];a[3*k+1]=P[1];a[3*k+2]=P[2]}trGeo.attributes.position.needsUpdate=true;trGeo.setDrawRange(0,trN)}
+  // pít-tông, khối khí, quả nặng, chốt
+  pist.position.y=Y0+hy;gas.scale.y=hy;gas.position.y=Y0+hy/2;
+  const warm=clamp((st.T-150)/450,0,1);gasM.color.setHSL(0.6-0.6*warm,0.8,0.6);gasM.opacity=0.08+0.08*warm;
+  wts.visible=st.proc==='p';const nW=clamp(Math.round(st.p/40),1,8);wtM.forEach((w,k)=>w.visible=k<nW);
+  pins.visible=st.proc==='V';pins.position.y=Y0+hy+0.55;
+  heatM.emissiveIntensity=st.proc==='T'?0.05:0.15+1.2*warm;
+  needle.rotation.z=-(-225+270*clamp(st.p,0,400)/400+90)*Math.PI/180;
+  col.scale.y=thT(st.T)-0.25;col.position.y=0.25+(thT(st.T)-0.25)/2;
+  // nhãn
+  const showL=$('kL').checked;labels.forEach(l=>l.visible=showL);
+  lbPist.position.y=Y0+hy+0.6;lbW.visible=showL&&st.proc==='p';lbW.position.y=Y0+hy+0.55+0.27*nW+0.3;lbPin.visible=showL&&st.proc==='V';lbPin.position.y=Y0+hy+1.1;
+  lbGas.position.y=Y0+Math.min(hy*0.5,2.2);lbHeat.visible=showL&&st.proc!=='T';
+  uiT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__khi={st,P,Vv,applyState,syncUI,camera,cam,tc,setView,pOf};   // dùng cho kiểm thử tự động
+ui();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

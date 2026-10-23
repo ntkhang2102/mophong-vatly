@@ -155,5 +155,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/khi-li-tuong-bot-khi.html",
     tags: ["khí lí tưởng", "pV = nRT", "áp suất thủy tĩnh", "bọt khí", "độ sâu"]
+  },
+  {
+    ten: "Khí lí tưởng trong xi lanh – động học phân tử 3D",
+    mota: "Xi lanh thủy tinh với 160 phân tử chuyển động hỗn loạn (tô màu theo tốc độ, vết một phân tử). Đẳng nhiệt (kéo pít-tông), đẳng áp (quả nặng + bếp điện), đẳng tích (chốt khóa); áp kế, nhiệt kế, đồ thị p–V, V–T, p–T; áp suất tính từ va chạm phân tử khớp pV = nRT.",
+    chuong: "Khí lí tưởng",
+    lop: 12,
+    file: "sims/khi-li-tuong-xi-lanh-3d.html",
+    tags: ["khí lí tưởng", "Boyle", "Charles", "đẳng nhiệt", "đẳng áp", "đẳng tích", "động học phân tử", "pV = nRT", "3D"]
   }
 ];
