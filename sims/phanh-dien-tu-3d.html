@@ -167,7 +167,7 @@ if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không
 
 // ====== Thông số ======
 const DR=3,DT=0.14,DY=1.7;                    // bán kính, bề dày, độ cao mặt giữa của đĩa
-const PM=2.3,PW=0.55,PD=0.42,GAP=0.26;        // tâm cực từ (phía trước, z = PM), nửa rộng, nửa sâu, khe hở trên/dưới đĩa
+const PM=2.3,PW=0.55,PD=0.42,GAP=0.62;        // tâm cực từ (phía trước, z = PM), nửa rộng, nửa sâu, khe hở trên/dưới đĩa
 const W0=6;                                   // tốc độ góc khi bấm “Quay đĩa” (rad/s, hình chiếu chậm)
 const SIG={nhom:0.6,dong:1,nhua:0},COL={nhom:0xc9ced6,dong:0xc4733f,nhua:0xf1f5f9};
 const NAME={nhom:'Đĩa nhôm',dong:'Đĩa đồng',nhua:'Đĩa nhựa'};
@@ -256,17 +256,21 @@ for(const x of[-0.36,0,0.36])for(const z of[PM-0.26,PM,PM+0.26]){
 
 // ====== Dòng điện Fu-cô: hai xoáy trên mặt đĩa, hai bên vùng từ trường ======
 const eddyG=new THREE.Group();brakeG.add(eddyG);
-const eMat=new THREE.LineDashedMaterial({color:0xb91c1c,dashSize:.12,gapSize:.08,transparent:true,opacity:1});
-const eCone=new THREE.MeshBasicMaterial({color:0xdc2626});
-const EX=PW+0.62,ERS=[0.22,0.42,0.62],yE=DY+DT/2+0.02;
+// vòng dòng điện: lõi vàng sáng + viền nâu sẫm để nổi rõ trên đĩa nhôm, đồng hay nhựa
+const eCore=new THREE.MeshBasicMaterial({color:0xfde047,transparent:true,opacity:1});
+const eEdge=new THREE.MeshBasicMaterial({color:0x7c2d12,transparent:true,opacity:1});
+const eCone=new THREE.MeshBasicMaterial({color:0xef4444});
+const EX=PW+0.62,ERS=[0.24,0.44,0.64],yE=DY+DT/2+0.03;
 const vort=[-1,1].map(sd=>{const g=new THREE.Group();g.position.set(sd*EX,yE,PM);eddyG.add(g);const cones=[];
-  ERS.forEach(r=>{const pts=[];for(let i=0;i<=64;i++){const b=i/64*TAU;pts.push(V(r*Math.cos(b),0,-r*Math.sin(b)))}
-    const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),eMat);l.computeLineDistances();g.add(l);
-    for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(.055,.16,8),eCone);c.userData={r,o:k/3};g.add(c);cones.push(c)}});
+  ERS.forEach(r=>{
+    const edge=new THREE.Mesh(new THREE.TorusGeometry(r,0.038,8,72),eEdge);edge.rotation.x=Math.PI/2;edge.position.y=-0.006;g.add(edge);
+    const core=new THREE.Mesh(new THREE.TorusGeometry(r,0.022,8,72),eCore);core.rotation.x=Math.PI/2;core.position.y=0.012;g.add(core);
+    for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(.085,.24,10),eCone);c.userData={r,o:k/3};g.add(c);cones.push(c)}});
   return{g,cones,sd}});
 // dòng dưới cực từ (đoạn chung của hai xoáy, chạy theo bán kính)
 const midG=new THREE.Group();eddyG.add(midG);const midCones=[];
-for(let k=0;k<4;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(.06,.18,8),eCone);c.position.set(0,yE,PM-0.3+k*0.2);midG.add(c);midCones.push(c)}
+const midBar=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.03,PD*2+0.3),eCore);midBar.position.set(0,yE+0.012,PM);midG.add(midBar);
+for(let k=0;k<4;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(.085,.24,10),eCone);c.position.set(0,yE+0.03,PM-0.3+k*0.2);midG.add(c);midCones.push(c)}
 
 // ====== Vectơ v (vận tốc phần đĩa dưới cực từ) và lực phanh F ======
 function mkArrow(color){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.35});
@@ -282,7 +286,7 @@ function makeLabel(text,color='#0f172a',size=0.3){
   g.fillStyle='rgba(255,255,255,.9)';g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
   g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
   const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
-  s.scale.set(size*w/60,size*h/60,1);s.renderOrder=30;return s}
+  s.scale.set(size*0.7*w/60,size*0.7*h/60,1);s.renderOrder=30;return s}   // chữ nhỏ gọn (70%)
 const labels=[];const L=(t,c,x,y,z,s,par=scene)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);par.add(l);labels.push(l);return l};
 let lbDisc=L(NAME.nhom,'#1f2937',-2.9,DY+0.75,-1.2,0.32);
 L('Nam châm điện\n(lõi thép + cuộn dây)','#374151',1.6,yTopFace+1.6,BACK,0.27,brakeG);
@@ -417,7 +421,7 @@ function loop(now){
   // dòng Fu-cô: cường độ ∝ |ω|·σ·I; phía đi vào (từ thông tăng) xoáy ngược chiều kim đồng hồ khi nhìn từ trên (B hướng xuống)
   const A=clamp(Math.abs(st.w)/W0*SIG[st.mat]*st.I*(st.slot?0.35:1),0,1),moveRight=st.w>0;
   const showE=$('kE').checked&&st.brake&&A>0.04;eddyG.visible=showE;lbE.visible=showE&&$('kL').checked;
-  if(showE){eMat.opacity=0.35+0.65*A;
+  if(showE){eCore.opacity=eEdge.opacity=0.45+0.55*A;
     vort.forEach(v=>{const entering=(v.sd<0)===moveRight,ccw=entering;
       v.cones.forEach(c=>{const b=(c.userData.o+st.ph*(ccw?1:-1))*TAU,r=c.userData.r;c.position.set(r*Math.cos(b),0,-r*Math.sin(b));
         _t.set(-Math.sin(b),0,-Math.cos(b)).multiplyScalar(ccw?1:-1);c.quaternion.setFromUnitVectors(UP,_t);c.scale.setScalar(0.7+0.6*A)})});
