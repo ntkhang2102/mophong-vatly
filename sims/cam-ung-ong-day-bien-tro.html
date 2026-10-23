@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ống dây – biến trở – khung dây</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Bố cục: vùng hình (canvas nền bạc) bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --stage:#e5e9f0; --ink:#2b3340;
+  --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; --ind:#e2531f; --field:#1e40af;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:var(--stage);min-width:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 20px)}
+.chip{background:rgba(255,255,255,.92);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:6px 11px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}
+.chip.ind b{color:var(--ind)}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.85);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2)}
+button.wide{flex:1}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.formula{font-size:13px;color:#cbd5e1;background:#0b1427;border-radius:8px;padding:6px 8px;border:1px dashed var(--line)}
+#graph{width:100%;height:170px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.explain .hid{color:var(--muted);font-style:italic}
+.qbox{display:flex;flex-direction:column;gap:8px}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.qtext .act{display:block;color:#fde68a;font-weight:600;margin-bottom:3px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+select{font-family:inherit;font-size:13px;background:#0b1427;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:6px 8px;width:100%}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.demo{display:flex;flex-wrap:wrap;gap:5px}
+.demo button{font-size:12px;padding:5px 8px}
+@media (max-width:860px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:58vh;min-height:330px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="chips">
+      <div class="chip">I = <b id="cI">0</b></div>
+      <div class="chip">R<sub>b</sub> = <b id="cR">0</b></div>
+      <div class="chip ans">Φ: <b id="cPhi">–</b></div>
+      <div class="chip ind ans">i<sub>c</sub>: <b id="cIc">–</b></div>
+    </div>
+    <div class="hint" id="hint">Kéo con chạy trên biến trở hoặc kéo khung dây dọc trục ống dây</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Dòng điện cảm ứng: ống dây, biến trở và khung dây</h1>
+      <div class="sub">Vật lí 12 · Định luật Lenz · Chiều dòng điện cảm ứng</div>
+    </div>
+
+    <div class="sec">
+      <h2>Thao tác</h2>
+      <label class="rng">Vị trí con chạy (M → N)<span class="v" id="vP">50%</span>
+        <input type="range" id="rP" min="0" max="100" value="50"></label>
+      <div class="row">
+        <button class="wide" id="bM">◀ Dịch về M</button>
+        <button class="wide" id="bN">Dịch về N ▶</button>
+        <button class="wide" id="bOsc">Qua lại</button>
+      </div>
+      <div class="row">
+        <button class="wide" id="bK">Mở khóa K</button>
+        <button class="wide" id="bNear">Khung lại gần</button>
+        <button class="wide" id="bFar">Khung ra xa</button>
+      </div>
+      <label class="rng">Tốc độ chuyển động<span class="v" id="vS">1,0×</span>
+        <input type="range" id="rS" min="2" max="20" value="10"></label>
+      <div class="row">
+        <button class="wide pri" id="bPause">⏸ Dừng hình</button>
+        <button class="wide" id="bPol">Đổi cực nguồn</button>
+        <button class="wide" id="bWind">Đổi chiều quấn</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Chế độ hỏi học sinh</h2>
+      <div class="row">
+        <button class="wide" id="bQ">Ẩn đáp án</button>
+        <button class="wide pri" id="bShow">Hiện đáp án</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row">
+        <button class="wide" id="bOrig">Câu 36 (đề gốc)</button>
+        <button class="wide pri" id="bNew">Câu hỏi mới</button>
+      </div>
+      <select id="selType" aria-label="Dạng câu hỏi">
+        <option value="all">Dạng câu hỏi: trộn ngẫu nhiên</option>
+        <option value="soVoiI">Chiều i_c so với I trong ống dây</option>
+        <option value="nhinPhai">Chiều i_c nhìn từ phía khung dây</option>
+        <option value="nhinTrai">Chiều i_c nhìn từ phía ống dây</option>
+        <option value="hutDay">Khung bị hút hay đẩy</option>
+        <option value="matKhung">Cực từ ở mặt khung đối diện ống dây</option>
+        <option value="Bc">Chiều vectơ B_c tại tâm khung</option>
+        <option value="coThong">Từ thông tăng hay giảm</option>
+        <option value="coDong">Có dòng cảm ứng hay không</option>
+        <option value="cucOng">Cực từ ở đầu ống dây gần khung</option>
+      </select>
+      <div class="qbox" id="qbox">
+        <div class="note">Bấm <b>Câu hỏi mới</b>: mô phỏng tự đặt tình huống, ẩn đáp án và diễn lại hiện tượng. Học sinh quan sát chiều I, cách quấn dây rồi chọn đáp án.</div>
+      </div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kI" checked> Dòng điện I</label>
+        <label><input type="checkbox" id="kField" checked> Đường sức từ</label>
+        <label><input type="checkbox" id="kB" checked> Vectơ B tại khung</label>
+        <label><input type="checkbox" id="kBc" checked> Vectơ Bc</label>
+        <label><input type="checkbox" id="kIc" checked> Dòng cảm ứng</label>
+        <label><input type="checkbox" id="kPole" checked> Cực N, S</label>
+        <label><input type="checkbox" id="kF" checked> Lực từ lên khung</label>
+        <label><input type="checkbox" id="kView" checked> Hình nhìn từ phải</label>
+        <label><input type="checkbox" id="kSide" checked> Nhãn cạnh trước/sau</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2">
+        <div class="cell"><div class="k">Suất điện động E</div><div class="val">12 V</div></div>
+        <div class="cell"><div class="k">Điện trở biến trở R<sub>b</sub></div><div class="val" id="oR">–</div></div>
+        <div class="cell"><div class="k">Cường độ I</div><div class="val" id="oI">–</div></div>
+        <div class="cell"><div class="k">Xu hướng của I</div><div class="val" id="oTrend">–</div></div>
+        <div class="cell ans"><div class="k">Φ qua khung (đvtđ)</div><div class="val" id="oPhi">–</div></div>
+        <div class="cell ans"><div class="k">i<sub>c</sub> (đơn vị tương đối)</div><div class="val" id="oIc">–</div></div>
+      </div>
+      <div class="formula">I = E / (R<sub>L</sub> + R<sub>b</sub>), R<sub>L</sub> = 4 Ω, R<sub>0</sub> = 20 Ω · B ~ I · Φ = B·S</div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li>Con chạy chỉ dùng phần biến trở từ <b>M</b> đến con chạy (đoạn từ con chạy đến N để hở, không có dòng điện). Dịch về M: R<sub>b</sub> giảm, I tăng. Dịch về N: R<sub>b</sub> tăng, I giảm.</li>
+        <li>Từ trường ống dây tỉ lệ với I. Chiều B trong lòng ống: quy tắc nắm tay phải.</li>
+        <li><b>Định luật Lenz:</b> dòng cảm ứng có chiều sao cho từ trường của nó chống lại sự biến thiên từ thông. Φ tăng thì Bc ngược B; Φ giảm thì Bc cùng B.</li>
+        <li>Với khung đặt đồng trục: I tăng ⇒ i<sub>c</sub> <b>ngược chiều</b> I, khung bị <b>đẩy</b>. I giảm ⇒ i<sub>c</sub> <b>cùng chiều</b> I, khung bị <b>hút</b>.</li>
+        <li>I không đổi và khung đứng yên ⇒ Φ không đổi ⇒ không có dòng cảm ứng.</li>
+      </ul>
+    </div>
+
+    <button id="bReset">↺ Khôi phục ban đầu</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const W=900,H=520;
+const E=12,RL=4,R0=20,TAU=0.22;
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const gcv=document.getElementById('graph'),gctx=gcv.getContext('2d');
+const $=id=>document.getElementById(id);
+const fmt=(v,n=2)=>v.toFixed(n).replace('.',',');
+
+// Hình học
+const X0=260,X1=520,CY=150,RY=48,RXE=14;
+const RH0=230,RH1=430,RY_R=470;
+const LRX=24,LRY=72; // bán trục elip của khung dây
+
+const S={};
+function initState(){
+  Object.assign(S,{
+    p:0.5,pT:0.5,d:110,dT:110,K:true,pol:1,wind:1,
+    I:0,Ip:0,phi:0,phiPrev:0,emf:0,ic:0,
+    paused:false,osc:false,oscDir:1,speed:1,
+    qMode:false,revealed:false,phase:0,phaseC:0,t:0,
+    hist:[],histT:0,trend:0,lastIndT:-9,lastIc:0
+  });
+  settle();
+}
+function c(){return S.pol*S.wind}           // +1: B trong lòng ống hướng sang phải, đầu phải là N
+function Rb(){return R0*S.p}
+function Itarget(){return S.K?E/(RL+Rb()):0}
+function f(d){return 1/Math.pow(1+(d/95)*(d/95),1.5)}
+function Bx(){return c()*S.I*f(S.d)}
+function settle(){S.I=Itarget();S.phi=Bx();S.phiPrev=S.phi;S.emf=0;S.ic=0;S.trend=0}
+function hidden(){return S.qMode&&!S.revealed}
+
+// ====== Kích thước canvas ======
+let scale=1,offX=0,offY=0,cw=0,ch=0;
+function resize(){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  cw=r.width;ch=r.height;cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  scale=Math.min(cw/W,(ch-40)/H);offX=(cw-W*scale)/2;offY=Math.max(36,(ch-H*scale)/2+14);
+  const g=gcv.getBoundingClientRect();gcv.width=g.width*dpr;gcv.height=g.height*dpr;gctx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(resize).observe($('stage'));new ResizeObserver(resize).observe(gcv);
+
+// ====== Tiện ích vẽ ======
+function head(x,y,ang,s,col){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(s,0);ctx.lineTo(-s*.8,-s*.6);ctx.lineTo(-s*.8,s*.6);ctx.closePath();ctx.fill();ctx.restore()}
+function arrow(x1,y1,x2,y2,col,w=3,hs=9){ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);const a=Math.atan2(y2-y1,x2-x1);ctx.lineTo(x2-Math.cos(a)*hs*.7,y2-Math.sin(a)*hs*.7);ctx.stroke();head(x2,y2,a,hs,col)}
+function vecLabel(txt,sub,x,y,col){ctx.fillStyle=col;ctx.font='italic 700 18px "Be Vietnam Pro",sans-serif';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(txt,x,y);const w=ctx.measureText(txt).width;
+  if(sub){ctx.font='600 12px "Be Vietnam Pro",sans-serif';ctx.fillText(sub,x+w+1,y+4)}
+  ctx.strokeStyle=col;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x,y-17);ctx.lineTo(x+w+2,y-17);ctx.stroke();head(x+w+3,y-17,0,4,col)}
+// Cung elip vẽ như sợi dây có khối: viền tối, lõi màu, vệt sáng
+function tubeArc(x,y,rx,ry,rot,a0,a1,dark,mid,light,w){
+  ctx.save();ctx.lineCap='butt';
+  ctx.strokeStyle=dark;ctx.lineWidth=w;ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,a0,a1);ctx.stroke();
+  ctx.strokeStyle=mid;ctx.lineWidth=w*.6;ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,a0,a1);ctx.stroke();
+  ctx.strokeStyle=light;ctx.lineWidth=w*.18;ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,a0+.2,a1-.2);ctx.stroke();
+  ctx.restore();
+}
+// Mũi tên tiếp tuyến tại góc tham số th trên elip; forward = chiều tăng th (mặt trước: đi xuống)
+function arcHead(x,y,rx,ry,rot,th,forward,s,col,alpha){
+  const px=rx*Math.cos(th),py=ry*Math.sin(th),tx=-rx*Math.sin(th),ty=ry*Math.cos(th);
+  const cr=Math.cos(rot),sr=Math.sin(rot);
+  const X=x+px*cr-py*sr,Y=y+px*sr+py*cr,TX=tx*cr-ty*sr,TY=tx*sr+ty*cr;
+  let a=Math.atan2(TY,TX);if(!forward)a+=Math.PI;
+  ctx.save();ctx.globalAlpha=alpha;head(X,Y,a,s,col);ctx.restore();
+}
+function badge(txt,x,y,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,13,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='700 15px "Be Vietnam Pro",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,x,y+1)}
+function text(t,x,y,size=15,col='#2b3340',al='center',wt=600){ctx.fillStyle=col;ctx.font=`${wt} ${size}px "Be Vietnam Pro",sans-serif`;ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillText(t,x,y)}
+function poly(pts){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke()}
+function polyLen(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L}
+function pointAt(pts,s){for(let i=1;i<pts.length;i++){const l=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);if(s<=l){const k=s/l;return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k]}s-=l}return pts[pts.length-1]}
+
+function sx(){return RH0+S.p*(RH1-RH0)}
+function loopX(){return X1+S.d}
+// Hai đoạn mạch theo chiều dòng điện khi pol = +1
+function path1(){const x=sx();return[[532,RY_R],[470,RY_R],[470,425],[x,425],[x,RY_R],[150,RY_R],[150,250],[290,250],[290,CY+RY]]}
+function path2(){return[[500,CY+RY],[500,250],[720,250],[720,RY_R],[548,RY_R]]}
+
+// ====== Vẽ ======
+const COL={wire:'#2b3340',copper:'#b4632a',field:'#1e40af',ind:'#e2531f',N:'#dc2626',Sp:'#2563eb'};
+function draw(){
+  ctx.clearRect(0,0,cw,ch);
+  ctx.save();ctx.translate(offX,offY);ctx.scale(scale,scale);
+  const hid=hidden(),cc=c(),Imax=E/RL;
+  const show=id=>$(id).checked;
+  const lx=loopX();
+
+  // Trục ống dây
+  ctx.setLineDash([3,5]);ctx.strokeStyle='#8a94a6';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X0-60,CY);ctx.lineTo(Math.max(lx+60,X1+80),CY);ctx.stroke();ctx.setLineDash([]);
+
+  // Khung dây: cạnh sau (xa mắt) vẽ trước, nằm dưới đường sức và vectơ
+  ctx.fillStyle='#64748b';ctx.fillRect(lx-26,32,52,7);
+  ctx.strokeStyle='#64748b';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(lx,39);ctx.lineTo(lx,CY-LRY);ctx.stroke();
+  ctx.save();ctx.lineCap='round';ctx.strokeStyle='#a8a29e';ctx.lineWidth=4.2;ctx.beginPath();ctx.ellipse(lx,CY,LRX,LRY,0,-Math.PI/2,Math.PI/2);ctx.stroke();
+  ctx.strokeStyle='#d6b8a3';ctx.lineWidth=2.2;ctx.beginPath();ctx.ellipse(lx,CY,LRX,LRY,0,-Math.PI/2,Math.PI/2);ctx.stroke();ctx.restore();
+
+  // Đường sức từ
+  if(show('kField')&&!hid&&S.I>0.02){
+    const a=Math.min(1,0.25+0.75*S.I/Imax);ctx.globalAlpha=a;
+    ctx.strokeStyle=COL.field;ctx.lineWidth=1.5;ctx.setLineDash([6,5]);
+    const mid=(X0+X1)/2;
+    for(const sgn of[-1,1]){for(let k=1;k<=3;k++){
+      const y0=CY+sgn*11*k,yt=CY+sgn*(RY+18+22*k),ex=60+38*k;
+      ctx.beginPath();ctx.moveTo(X1+RXE,y0);ctx.bezierCurveTo(X1+ex,y0,X1+ex*.6,yt,mid,yt);ctx.bezierCurveTo(X0-ex*.6,yt,X0-ex,y0,X0,y0);ctx.stroke();
+      ctx.setLineDash([]);head(mid,yt,cc>0?Math.PI:0,6,COL.field);ctx.setLineDash([6,5]);
+    }}
+    // trong lòng ống + đường trục
+    for(let k=-2;k<=2;k++){const y=CY+k*13;ctx.beginPath();ctx.moveTo(k===0?X0-50:X0,y);ctx.lineTo(k===0?X1+200:X1+RXE,y);ctx.stroke()}
+    ctx.setLineDash([]);
+    for(let k=-2;k<=2;k++){head(X0+70,CY+k*13,cc>0?0:Math.PI,6,COL.field)}
+    head(X1+150,CY,cc>0?0:Math.PI,6,COL.field);
+    ctx.globalAlpha=1;
+  }
+
+  // Ống dây
+  const g=ctx.createLinearGradient(0,CY-RY,0,CY+RY);g.addColorStop(0,'#f6efe6');g.addColorStop(.35,'#fffaf3');g.addColorStop(1,'#d9cbb8');
+  ctx.fillStyle=g;ctx.strokeStyle='#4b5563';ctx.lineWidth=1.6;
+  ctx.beginPath();ctx.moveTo(X0,CY-RY);ctx.lineTo(X1,CY-RY);ctx.lineTo(X1,CY+RY);ctx.lineTo(X0,CY+RY);ctx.ellipse(X0,CY,RXE,RY,0,Math.PI/2,Math.PI*1.5);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#e8dccb';ctx.beginPath();ctx.ellipse(X1,CY,RXE,RY,0,0,7);ctx.fill();ctx.stroke();
+  // Các vòng dây: cùng elip với mặt đáy ống (rx = RXE, ry = RY), chỉ vẽ nửa phía trước, hai đầu chạm đúng mép trên/dưới
+  const NT=9,showI=show('kI')&&S.I>0.02;
+  const turnX=i=>X0+38+i*(X1-X0-64)/(NT-1);
+  for(let i=0;i<NT;i++){
+    const xi=turnX(i);
+    tubeArc(xi,CY,RXE,RY,0,Math.PI/2,Math.PI*1.5,'#6b3410',COL.copper,'#f2b48a',3.8);
+    if(showI)arcHead(xi,CY,RXE,RY,0,Math.PI,cc<0,6.5,'#111827',1);
+  }
+  if(showI){text('I',(X0+X1)/2+60,CY-RY-14,17,'#111827','center',700)}
+  if(show('kSide')){text('mũi tên vẽ trên nửa vòng dây phía trước (gần mắt)',(X0+X1)/2+5,268,11.5,'#475569','center',500)}
+
+  // Cực ống dây
+  if(show('kPole')&&!hid&&S.I>0.02){
+    badge(cc>0?'N':'S',X1-4,CY-RY-18,cc>0?COL.N:COL.Sp);
+    badge(cc>0?'S':'N',X0-4,CY-RY-18,cc>0?COL.Sp:COL.N);
+  }
+
+  // Dây nối mạch
+  ctx.strokeStyle=COL.wire;ctx.lineWidth=2.4;ctx.lineJoin='round';
+  poly([[290,CY+RY],[290,250],[150,250],[150,RY_R],[RH0,RY_R]]);
+  poly([[470,RY_R],[532,RY_R]]);
+  poly([[500,CY+RY],[500,250],[720,250],[720,RY_R],[670,RY_R]]);
+  poly([[620,RY_R],[548,RY_R]]);
+  // con chạy nối với N
+  const x=sx();
+  poly([[x,446],[x,425],[470,425],[470,RY_R]]);
+  // Biến trở
+  ctx.fillStyle='#fff';ctx.fillRect(RH0,RY_R-9,RH1-RH0,18);
+  ctx.fillStyle='rgba(245,158,11,.35)';ctx.fillRect(RH0,RY_R-9,x-RH0,18);
+  ctx.strokeStyle=COL.wire;ctx.lineWidth=2;ctx.strokeRect(RH0,RY_R-9,RH1-RH0,18);
+  arrow(x,436,x,RY_R-10,'#111827',2.4,8);
+  
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,440,11,0,7);ctx.stroke();
+  text('M',RH0-14,RY_R+22,16);text('N',RH1+14,RY_R+22,16);text('R₀',(RH0+RH1)/2,RY_R+26,15);
+  // Nguồn
+  const lp=S.pol>0?532:548,sp=S.pol>0?548:532;
+  ctx.strokeStyle=COL.wire;ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(lp,RY_R-20);ctx.lineTo(lp,RY_R+20);ctx.stroke();
+  ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(sp,RY_R-10);ctx.lineTo(sp,RY_R+10);ctx.stroke();
+  text('+',lp+(S.pol>0?-10:10),RY_R-26,15,'#b91c1c');text('−',sp+(S.pol>0?10:-10),RY_R-26,15,'#1d4ed8');
+  text('E',540,RY_R+32,16);
+  // Khóa K
+  ctx.fillStyle=S.K?'rgba(34,197,94,.14)':'rgba(239,68,68,.12)';
+  ctx.beginPath();ctx.roundRect?ctx.roundRect(604,RY_R-46,82,64,10):ctx.rect(604,RY_R-46,82,64);ctx.fill();
+  ctx.fillStyle='#fff';ctx.strokeStyle=COL.wire;ctx.lineWidth=2;
+  for(const xx of[620,670]){ctx.beginPath();ctx.arc(xx,RY_R,4.5,0,7);ctx.fill();ctx.stroke()}
+  const tipX=S.K?623:630,tipY=S.K?RY_R-3:RY_R-34;
+  ctx.lineCap='round';ctx.strokeStyle='#111827';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(670,RY_R);ctx.lineTo(tipX,tipY);ctx.stroke();ctx.lineCap='butt';
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(tipX+6,tipY-(S.K?6:4),5,0,7);ctx.fill();
+  text('K',645,RY_R+26,16);
+  text(S.K?'đóng':'mở',645,RY_R-38,11.5,S.K?'#15803d':'#b91c1c','center',700);
+
+  // Mũi tên I trên dây và chấm chuyển động
+  if(show('kI')&&S.I>0.02){
+    head(222,250,S.pol>0?0:Math.PI,8,'#111827');text('I',222,234,16,'#111827','center',700);
+    const dotCol='rgba(37,99,235,.9)';
+    for(const P of[path1(),path2()]){
+      const L=polyLen(P),gap=26;let ph=((S.phase%gap)+gap)%gap;
+      ctx.fillStyle=dotCol;
+      for(let s=ph;s<L;s+=gap){const q=pointAt(P,s);ctx.beginPath();ctx.arc(q[0],q[1],2.6,0,7);ctx.fill()}
+    }
+  }
+
+  const ic=S.ic,has=Math.abs(ic)>0.02;
+  // Dòng cảm ứng trên khung
+  if(show('kIc')&&!hid&&has){
+    const s=6+Math.min(5,Math.abs(ic)*6);
+    arcHead(lx,CY,LRX,LRY,0,0,ic<0,s*.85,COL.ind,.5); // cạnh sau
+    vecLabel('i','c',lx-LRX-36,CY-40,COL.ind);
+    // cực ở mặt khung đối diện ống dây
+    if(show('kPole')){const face=ic>0?'S':'N';badge(face,lx-LRX-22,CY+34,face==='N'?COL.N:COL.Sp)}
+  }
+  // Vectơ B tại khung
+  if(show('kB')&&!hid&&Math.abs(Bx())>0.01){
+    const L=Math.min(120,25+70*Math.abs(Bx()));const sg=Math.sign(Bx());
+    arrow(lx,CY-12,lx+sg*L,CY-12,COL.field,3,10);vecLabel('B',null,lx+sg*L+(sg>0?6:-22),CY-20,COL.field);
+  }
+  if(show('kBc')&&!hid&&has){
+    const L=Math.min(120,25+60*Math.abs(ic));const sg=Math.sign(ic);
+    arrow(lx,CY+12,lx+sg*L,CY+12,COL.ind,3,10);vecLabel('B','c',lx+sg*L+(sg>0?6:-30),CY+34,COL.ind);
+  }
+  // Lực từ lên khung
+  if(show('kF')&&!hid&&has&&Math.abs(Bx())>0.01){
+    const repel=Math.sign(ic)===-Math.sign(Bx());const fd=repel?1:-1;
+    arrow(lx-fd*0,CY-92,lx+fd*55,CY-92,'#7c3aed',3,9);
+    text(repel?'F (đẩy)':'F (hút)',lx+fd*55+fd*30,CY-92,14,'#7c3aed');
+  }
+
+  // Khung dây: cạnh trước (gần mắt) vẽ sau cùng, đè lên trục và vectơ
+  tubeArc(lx,CY,LRX,LRY,0,Math.PI/2,Math.PI*1.5,'#5a1f0a','#c2410c','#fdba74',7);
+  if(show('kIc')&&!hid&&has){
+    const s=7+Math.min(5,Math.abs(ic)*6);
+    arcHead(lx,CY,LRX,LRY,0,Math.PI-0.45,ic<0,s,COL.ind,1);arcHead(lx,CY,LRX,LRY,0,Math.PI+0.45,ic<0,s,COL.ind,1);
+  }
+  if(show('kSide')){
+    text('cạnh trước (gần mắt)',lx-6,CY+LRY+11,11.5,'#7c2d12','right',600);
+    text('cạnh sau',lx+6,CY+LRY+11,11.5,'#78716c','left',600);
+  }
+
+  // Hình nhìn từ phải
+  if(show('kView')){
+    const vx=825,vy=372,R=46;
+    ctx.fillStyle='rgba(255,255,255,.75)';ctx.strokeStyle='#c7cfdc';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(vx-72,vy-92,144,186,10):ctx.rect(vx-72,vy-92,144,186);ctx.fill();ctx.stroke();
+    text('Nhìn từ phải sang',vx,vy-76,12.5,'#334155');
+    ctx.strokeStyle='#7c2d12';ctx.lineWidth=3;ctx.beginPath();ctx.arc(vx,vy,R,0,7);ctx.stroke();
+    // dòng I của ống (nét đứt xanh, vòng trong) : c=+1 → ngược kim
+    if(S.I>0.02){
+      ctx.strokeStyle='#2563eb';ctx.lineWidth=1.8;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(vx,vy,R-16,0,7);ctx.stroke();ctx.setLineDash([]);
+      circHead(vx,vy,R-16,cc>0?-1:1,'#2563eb',6);
+      text('I',vx,vy-R+30,12,'#2563eb');
+    }
+    if(!hid){
+      if(has){circHead(vx,vy,R,ic>0?-1:1,COL.ind,8);
+        text(ic>0?'i_c ngược kim đh':'i_c cùng kim đh',vx,vy+R+18,12,COL.ind,'center',700);}
+      else text('Không có i_c',vx,vy+R+18,12,'#475569');
+      // B tại khung hướng ra/vào
+      if(Math.abs(Bx())>0.01){const out=Bx()>0;dotCross(vx,vy,out,'#1e40af')}
+      text('B: '+(Math.abs(Bx())>0.01?(Bx()>0?'⊙ hướng ra':'⊗ hướng vào'):'0'),vx,vy+R+34,11.5,'#1e40af');
+    } else text('?',vx,vy+6,26,'#64748b');
+  }
+  ctx.restore();
+}
+function circHead(x,y,R,dirSign,col,s){ // dirSign -1: ngược kim đh (trên màn hình), +1: cùng kim
+  for(const a0 of[-Math.PI/2,Math.PI/2]){const px=x+R*Math.cos(a0),py=y+R*Math.sin(a0);
+    const tang=a0+(dirSign>0?Math.PI/2:-Math.PI/2);head(px,py,tang,s,col)}
+}
+function dotCross(x,y,out,col){ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.stroke();
+  if(out){ctx.beginPath();ctx.arc(x,y,2.8,0,7);ctx.fill()}else{ctx.beginPath();ctx.moveTo(x-6,y-6);ctx.lineTo(x+6,y+6);ctx.moveTo(x+6,y-6);ctx.lineTo(x-6,y+6);ctx.stroke()}}
+
+// ====== Đồ thị ======
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),w=r.width,h=r.height;gctx.clearRect(0,0,w,h);
+  const pad=34,top=8,mid=h/2,lane=h/2-14;
+  gctx.font='11px "Be Vietnam Pro",sans-serif';gctx.textBaseline='middle';
+  // lưới
+  gctx.strokeStyle='#1c2a47';gctx.lineWidth=1;
+  for(let i=0;i<=7;i++){const yy=top+i*(lane/7);gctx.beginPath();gctx.moveTo(pad,yy);gctx.lineTo(w-6,yy);gctx.stroke()}
+  for(let i=0;i<=6;i++){const xx=pad+i*(w-pad-6)/6;gctx.beginPath();gctx.moveTo(xx,top);gctx.lineTo(xx,h-6);gctx.stroke()}
+  gctx.fillStyle='#93a3c0';gctx.textAlign='right';gctx.fillText('3 A',pad-4,top+lane/7*1);gctx.fillText('0',pad-4,top+lane);
+  gctx.textAlign='left';gctx.fillStyle='#60a5fa';gctx.fillText('I(t) · mỗi ô 0,5 A',pad+4,top+7);
+  const y0=mid+8+(h-mid-14)/2,lh=(h-mid-14)/2;
+  gctx.strokeStyle='#3a4b70';gctx.beginPath();gctx.moveTo(pad,y0);gctx.lineTo(w-6,y0);gctx.stroke();
+  gctx.fillStyle='#fb923c';gctx.fillText('i_c(t) · đơn vị tương đối',pad+4,mid+14);
+  gctx.fillStyle='#93a3c0';gctx.textAlign='right';gctx.fillText('0',pad-4,y0);
+  const N=S.hist.length;if(N<2)return;const span=120;
+  const X=i=>pad+(i-(N-span))*(w-pad-6)/span;
+  gctx.lineWidth=2;gctx.strokeStyle='#60a5fa';gctx.beginPath();
+  S.hist.forEach((q,i)=>{const yy=top+lane-(q[0]/3.5)*lane;i?gctx.lineTo(X(i),yy):gctx.moveTo(X(i),yy)});gctx.stroke();
+  if(!hidden()){gctx.strokeStyle='#fb923c';gctx.beginPath();
+    S.hist.forEach((q,i)=>{const yy=y0-Math.max(-1,Math.min(1,q[1]/0.8))*lh;i?gctx.lineTo(X(i),yy):gctx.moveTo(X(i),yy)});gctx.stroke();}
+}
+
+// ====== Vật lí ======
+function step(dt){
+  if(S.paused||dt<=0)return;
+  S.t+=dt;const sp=S.speed;
+  if(S.osc){S.pT=S.oscDir>0?0.92:0.08;if(Math.abs(S.p-S.pT)<0.005)S.oscDir*=-1}
+  const mvP=0.55*sp*dt;S.p+=Math.max(-mvP,Math.min(mvP,S.pT-S.p));
+  const mvD=140*sp*dt;S.d+=Math.max(-mvD,Math.min(mvD,S.dT-S.d));
+  S.Ip=S.I;S.I+=(Itarget()-S.I)*(1-Math.exp(-dt/TAU));
+  const dI=(S.I-S.Ip)/dt;S.trend=Math.abs(dI)>0.03?Math.sign(dI):0;
+  S.phiPrev=S.phi;S.phi=Bx();
+  const e=-(S.phi-S.phiPrev)/dt;S.emf+=(e-S.emf)*Math.min(1,dt*18);
+  S.ic=Math.abs(S.emf)<0.004?0:S.emf*1.2;
+  S.phase+=S.pol*S.I*45*dt;
+  S.histT+=dt;if(S.histT>0.05){S.histT=0;S.hist.push([S.I,S.ic]);if(S.hist.length>120)S.hist.shift()}
+}
+
+// ====== Giao diện ======
+function updateUI(){
+  const hid=hidden();
+  $('cI').textContent=fmt(S.I)+' A';$('cR').textContent=fmt(Rb(),1)+' Ω';
+  $('rP').value=Math.round(S.p*100);$('vP').textContent=Math.round(S.p*100)+'%';
+  $('oR').textContent=fmt(Rb(),1)+' Ω';$('oI').textContent=fmt(S.I)+' A';
+  $('oTrend').textContent=S.trend>0?'đang tăng':S.trend<0?'đang giảm':'không đổi';
+  const dphi=S.phi-S.phiPrev,ph=Math.abs(S.ic)>0.02?(Math.abs(S.phi)>Math.abs(S.phiPrev)?'đang tăng':'đang giảm'):'không đổi';
+  $('cPhi').textContent=ph;$('oPhi').textContent=fmt(Math.abs(S.phi),3);
+  const icTxt=Math.abs(S.ic)<0.02?'không có':(Math.sign(S.ic)===c()?'cùng chiều I':'ngược chiều I');
+  $('cIc').textContent=icTxt;$('oIc').textContent=fmt(Math.abs(S.ic),2);
+  document.querySelectorAll('.ans').forEach(el=>el.style.visibility=hid?'hidden':'visible');
+  $('bK').textContent=S.K?'Mở khóa K':'Đóng khóa K';
+  $('bPause').textContent=S.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+  $('bOsc').classList.toggle('on',S.osc);
+  $('bQ').classList.toggle('on',S.qMode);
+  $('bQ').textContent=S.qMode?'Đang ẩn đáp án':'Ẩn đáp án';
+  explainLive(hid);
+}
+let lastExplain='';
+function explainLive(hid){
+  if(hid){const h='<div class="hid">Đáp án đang ẩn. Học sinh dự đoán rồi bấm “Hiện đáp án”.</div>';if(h!==lastExplain){$('explain').innerHTML=h;lastExplain=h}return}
+  const cc=c(),has=Math.abs(S.ic)>0.02,end=cc>0?'N':'S';
+  let s='<ol>';
+  if(!S.K&&S.I<0.02){s+='<li>Khóa K mở: I = 0, ống dây không sinh từ trường, Φ = 0.</li>'}
+  else{
+    s+=`<li>Biến trở dùng đoạn từ M đến con chạy: R<sub>b</sub> = ${fmt(Rb(),1)} Ω, I = ${fmt(S.I)} A${S.trend>0?' (<b>đang tăng</b>)':S.trend<0?' (<b>đang giảm</b>)':''}.</li>`;
+    s+=`<li>Quy tắc nắm tay phải: B trong lòng ống hướng sang ${cc>0?'phải':'trái'}, đầu ống gần khung là cực <b>${end}</b>. Tại khung, B hướng ${cc>0?'ra xa':'về phía'} ống dây.</li>`;
+  }
+  if(!has){s+='<li>Từ thông qua khung không đổi ⇒ <b>không có dòng điện cảm ứng</b>.</li>'}
+  else{
+    const inc=Math.abs(S.phi)>Math.abs(S.phiPrev);
+    const cause=S.trend!==0?(S.trend>0?'I tăng':'I giảm'):(inc?'khung lại gần ống dây':'khung ra xa ống dây');
+    s+=`<li>${cause} ⇒ từ thông qua khung <b>${inc?'tăng':'giảm'}</b>.</li>`;
+    s+=`<li>Định luật Lenz: Bc ${inc?'<b>ngược chiều</b>':'<b>cùng chiều</b>'} B ⇒ i<sub>c</sub> ${inc?'<b>ngược chiều</b>':'<b>cùng chiều</b>'} với I trong ống dây; nhìn từ phải sang: ${S.ic>0?'ngược':'cùng'} chiều kim đồng hồ.</li>`;
+    s+=`<li>Mặt khung đối diện ống dây là cực <b>${S.ic>0?'S':'N'}</b>, đầu ống là cực ${end} ⇒ khung bị <b>${inc?'đẩy ra xa':'hút lại gần'}</b>.</li>`;
+  }
+  s+='</ol>';
+  if(s!==lastExplain){$('explain').innerHTML=s;lastExplain=s}
+}
+
+// ====== Điều khiển ======
+function stopAuto(){S.osc=false}
+$('rP').addEventListener('input',e=>{stopAuto();S.p=S.pT=e.target.value/100});
+$('bM').onclick=()=>{stopAuto();S.pT=0.05};
+$('bN').onclick=()=>{stopAuto();S.pT=0.95};
+$('bOsc').onclick=()=>{S.osc=!S.osc;if(!S.osc)S.pT=S.p};
+$('bK').onclick=()=>{S.K=!S.K};
+$('bNear').onclick=()=>{S.dT=60};
+$('bFar').onclick=()=>{S.dT=300};
+$('rS').addEventListener('input',e=>{S.speed=e.target.value/10;$('vS').textContent=fmt(S.speed,1)+'×'});
+$('bPause').onclick=()=>{S.paused=!S.paused};
+$('bPol').onclick=()=>{S.pol*=-1;settle()};
+$('bWind').onclick=()=>{S.wind*=-1;settle()};
+$('bQ').onclick=()=>{S.qMode=!S.qMode;S.revealed=false};
+$('bShow').onclick=()=>{S.revealed=true};
+$('bReset').onclick=()=>{initState();$('rS').value=10;$('vS').textContent='1,0×';quizIdle();hint('Đã khôi phục ban đầu')};
+
+// Kéo trên hình
+let drag=null;
+function toLogic(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left-offX)/scale,(e.clientY-r.top-offY)/scale]}
+const onK=(x,y)=>x>600&&x<690&&y>RY_R-50&&y<RY_R+20;
+cv.addEventListener('pointerdown',e=>{const[x,y]=toLogic(e);
+  if(onK(x,y)){S.K=!S.K;hint(S.K?'Đã đóng khóa K':'Đã mở khóa K');return}
+  if(Math.abs(x-sx())<22&&y>415&&y<485)drag='p';
+  else if(Math.abs(x-loopX())<34&&y>CY-85&&y<CY+85)drag='d';
+  if(drag){cv.setPointerCapture(e.pointerId);stopAuto()}});
+cv.addEventListener('pointermove',e=>{const[x,y]=toLogic(e);
+  if(drag==='p'){S.p=S.pT=Math.max(0,Math.min(1,(x-RH0)/(RH1-RH0)))}
+  else if(drag==='d'){S.d=S.dT=Math.max(50,Math.min(330,x-X1))}
+  else{const over=(Math.abs(x-sx())<22&&y>415&&y<485)||(Math.abs(x-loopX())<34&&y>CY-85&&y<CY+85);cv.style.cursor=onK(x,y)?'pointer':over?'grab':'default'}});
+cv.addEventListener('pointerup',()=>drag=null);cv.addEventListener('pointercancel',()=>drag=null);
+
+let hintT;function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(()=>h.style.opacity=0,4500)}
+hint('Kéo con chạy, kéo khung dây, hoặc bấm vào khóa K để đóng/mở');
+
+// ====== Đố ======
+const ACT={
+  toM:{t:'Dịch chuyển con chạy của biến trở về phía M.',inc:1,cause:'R_b giảm nên I tăng'},
+  toN:{t:'Dịch chuyển con chạy của biến trở về phía N.',inc:-1,cause:'R_b tăng nên I giảm'},
+  closeK:{t:'Đóng khóa K (lúc đầu K mở).',inc:1,cause:'I tăng từ 0 lên giá trị ổn định'},
+  openK:{t:'Mở khóa K (lúc đầu K đóng).',inc:-1,cause:'I giảm nhanh về 0'},
+  near:{t:'Giữ nguyên con chạy, đưa khung dây lại gần ống dây.',inc:1,cause:'khung tới chỗ từ trường mạnh hơn'},
+  far:{t:'Giữ nguyên con chạy, đưa khung dây ra xa ống dây.',inc:-1,cause:'khung tới chỗ từ trường yếu hơn'},
+  none:{t:'Khóa K đóng, giữ cố định con chạy, khung dây đứng yên.',inc:0,cause:'I không đổi, khung đứng yên'}
+};
+const TYPES={
+  soVoiI:{q:'Dòng điện cảm ứng trong khung dây có chiều như thế nào so với chiều dòng điện I trong ống dây?',
+    o:['Cùng chiều với I','Ngược chiều với I','Không có dòng điện cảm ứng'],a:z=>z.inc>0?1:z.inc<0?0:2},
+  nhinPhai:{q:'Nhìn từ bên phải (đứng sau khung dây nhìn về phía ống dây), dòng điện cảm ứng trong khung có chiều nào?',
+    o:['Cùng chiều kim đồng hồ','Ngược chiều kim đồng hồ','Không có dòng điện cảm ứng'],a:z=>z.inc===0?2:(-z.inc*z.c>0?1:0),noNone:true},
+  nhinTrai:{q:'Nhìn từ phía ống dây sang khung dây (từ trái sang phải), dòng điện cảm ứng trong khung có chiều nào?',
+    o:['Cùng chiều kim đồng hồ','Ngược chiều kim đồng hồ','Không có dòng điện cảm ứng'],a:z=>z.inc===0?2:(-z.inc*z.c>0?0:1),noNone:true},
+  hutDay:{q:'Trong thời gian xảy ra thao tác, khung dây bị ống dây tác dụng lực như thế nào?',
+    o:['Bị hút lại gần ống dây','Bị đẩy ra xa ống dây','Không bị tác dụng lực từ'],a:z=>z.inc>0?1:z.inc<0?0:2},
+  matKhung:{q:'Mặt của khung dây đối diện với ống dây trở thành cực từ nào?',
+    o:['Cực Bắc (N)','Cực Nam (S)','Không thành cực từ nào'],a:z=>{if(!z.inc)return 2;const ic=-z.inc*z.c;return ic>0?1:0}},
+  Bc:{q:'Vectơ cảm ứng từ Bc do dòng điện cảm ứng sinh ra tại tâm khung dây có chiều nào?',
+    o:['Hướng sang phải (ra xa ống dây)','Hướng sang trái (về phía ống dây)','Bc = 0'],a:z=>{if(!z.inc)return 2;return -z.inc*z.c>0?0:1}},
+  coThong:{q:'Từ thông qua khung dây thay đổi như thế nào?',
+    o:['Tăng','Giảm','Không đổi'],a:z=>z.inc>0?0:z.inc<0?1:2},
+  coDong:{q:'Trong khung dây có xuất hiện dòng điện cảm ứng không?',
+    o:['Có','Không'],a:z=>z.inc?0:1},
+  cucOng:{q:'Đầu ống dây gần khung dây là cực từ nào?',
+    o:['Cực Bắc (N)','Cực Nam (S)'],a:z=>z.c>0?0:1,fixed:true}
+};
+const Q={cur:null,n:0,ok:0};
+function rnd(a){return a[Math.floor(Math.random()*a.length)]}
+function explainZ(z){
+  const end=z.c>0?'N':'S';
+  let s=`Quy tắc nắm tay phải: B trong lòng ống hướng sang ${z.c>0?'phải':'trái'}, đầu ống gần khung là cực ${end}.`;
+  if(z.act==='cucOng')return s;
+  if(!z.inc)return s+' Thao tác không làm thay đổi từ thông qua khung ⇒ không có dòng điện cảm ứng, không có lực từ tác dụng lên khung.';
+  const icp=-z.inc*z.c;
+  s+=` ${ACT[z.act].cause[0].toUpperCase()+ACT[z.act].cause.slice(1)} ⇒ từ thông qua khung ${z.inc>0?'tăng':'giảm'}. Theo Lenz, Bc ${z.inc>0?'ngược':'cùng'} chiều B (Bc hướng ${icp>0?'sang phải':'sang trái'}) ⇒ i_c ${z.inc>0?'ngược':'cùng'} chiều I; nhìn từ phải sang: ${icp>0?'ngược':'cùng'} chiều kim đồng hồ. Mặt khung đối diện ống dây là cực ${icp>0?'S':'N'} ⇒ khung bị ${z.inc>0?'đẩy':'hút'}.`;
+  return s;
+}
+function setup(act,z){
+  // trạng thái đầu
+  S.pol=z.pol;S.wind=z.wind;S.osc=false;S.paused=false;
+  S.K=act!=='closeK';S.p=S.pT=act==='toM'?0.85:act==='toN'?0.15:0.4;
+  S.d=S.dT=act==='near'?280:act==='far'?70:90;
+  settle();S.hist=[];
+  clearTimeout(Q.timer);
+  Q.timer=setTimeout(()=>{
+    if(act==='toM')S.pT=0.1;if(act==='toN')S.pT=0.92;if(act==='closeK')S.K=true;if(act==='openK')S.K=false;
+    if(act==='near')S.dT=70;if(act==='far')S.dT=280;
+  },900);
+}
+function newQuestion(){
+  const sel=$('selType').value;
+  let type=sel==='all'?rnd(Object.keys(TYPES)):sel;
+  const T=TYPES[type];
+  let acts=Object.keys(ACT);if(T.fixed)acts=['none'];
+  let act=rnd(acts);if(act==='none'&&!T.fixed&&Math.random()<0.6)act=rnd(acts.filter(a=>a!=='none'));
+  const z={pol:rnd([1,-1]),wind:rnd([1,-1]),act,type};z.c=z.pol*z.wind;z.inc=ACT[act].inc;
+  Q.cur=z;S.qMode=true;S.revealed=false;setup(act,z);
+  renderQ(`<span class="act">${ACT[act].t}</span>${T.q}`,T.o,i=>answer(i,T.a(z),()=>explainZ(T.fixed?{...z,act:'cucOng'}:z)));
+  hint('Quan sát chiều I và cách quấn dây, rồi chọn đáp án');
+}
+function renderQ(html,opts,onPick,extra=''){
+  const b=$('qbox');b.innerHTML=`<div class="qtext">${html}</div><div class="opts">${opts.map((o,i)=>`<button data-i="${i}">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}</div>${extra}<div class="row"><button class="wide" id="bReplay">↻ Diễn lại hiện tượng</button></div><div id="fb"></div>`;
+  b.querySelectorAll('.opts button').forEach(btn=>btn.onclick=()=>onPick(+btn.dataset.i));
+  $('bReplay').onclick=()=>{if(Q.cur)setup(Q.cur.act,Q.cur)};
+}
+function answer(i,correct,exp){
+  if(Q.cur.done)return;Q.cur.done=true;Q.n++;if(i===correct)Q.ok++;
+  const btns=$('qbox').querySelectorAll('.opts button');
+  btns[correct].classList.add('ok');if(i!==correct)btns[i].classList.add('no');
+  $('fb').innerHTML=`<div class="fb ${i===correct?'ok':'no'}"><b>${i===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${String.fromCharCode(65+correct)}. ${exp()}</div>`;
+  S.revealed=true;$('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;
+}
+function original(){
+  const z={pol:1,wind:1,act:'toN',type:'orig',c:1,inc:-1};Q.cur=z;S.qMode=true;S.revealed=false;
+  S.pol=1;S.wind=1;S.K=true;S.p=S.pT=0.5;S.d=S.dT=90;S.osc=false;S.paused=false;settle();S.hist=[];clearTimeout(Q.timer);
+  const opts=['Khi cố định con chạy thì dòng điện cảm ứng không đổi.','Khi dịch chuyển con chạy trên biến trở sang phía M hoặc N thì không có dòng điện cảm ứng trong khung dây.','Khi dịch chuyển con chạy sang N dòng điện cảm ứng cùng chiều với I trong cuộn dây.','Khi dịch chuyển con chạy sang M dòng điện cảm ứng cùng chiều với I trong cuộn dây.'];
+  const demo=`<div class="demo"><span class="score" style="width:100%">Minh họa từng phương án:</span><button data-a="none">A · cố định</button><button data-a="toM">B · sang M</button><button data-a="toN">C · sang N</button><button data-a="toM2">D · sang M</button></div>`;
+  renderQ('<span class="act">Câu 36 (đề gốc)</span>Mạch gồm nguồn E, biến trở con chạy R<sub>b</sub> mắc nối tiếp với ống dây L; khung dây kín hình tròn đặt gần ống dây. Nhận định nào đúng về dòng điện cảm ứng trong khung dây?',opts,
+    i=>answer(i,2,()=>'<br>A sai: cố định con chạy thì I không đổi, Φ không đổi ⇒ <i>không có</i> dòng cảm ứng.<br>B sai: dịch con chạy làm R<sub>b</sub> và I thay đổi ⇒ Φ thay đổi ⇒ có dòng cảm ứng.<br>C đúng: sang N thì R<sub>b</sub> tăng, I giảm, Φ giảm ⇒ Bc cùng chiều B ⇒ i<sub>c</sub> cùng chiều I.<br>D sai: sang M thì I tăng, Φ tăng ⇒ i<sub>c</sub> ngược chiều I.'),demo);
+  $('qbox').querySelectorAll('.demo button').forEach(b=>b.onclick=()=>{let a=b.dataset.a;if(a==='toM2')a='toM';setup(a,{pol:1,wind:1});S.revealed=true;hint('Đang minh họa: '+ACT[a].t)});
+  $('bReplay').onclick=()=>setup('toN',{pol:1,wind:1});
+  hint('Câu 36: chọn đáp án, rồi bấm các nút minh họa từng phương án');
+}
+function quizIdle(){$('qbox').innerHTML='<div class="note">Bấm <b>Câu hỏi mới</b>: mô phỏng tự đặt tình huống, ẩn đáp án và diễn lại hiện tượng. Học sinh quan sát chiều I, cách quấn dây rồi chọn đáp án.</div>';Q.cur=null}
+$('bNew').onclick=newQuestion;$('bOrig').onclick=original;
+
+// ====== Vòng lặp ======
+initState();resize();
+let last=performance.now();
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;step(dt);draw();drawGraph();updateUI();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
