@@ -5,6 +5,14 @@
 //   tags   : từ khóa để tìm kiếm
 window.MO_PHONG = [
   {
+    ten: "Ampe kế khung quay (lò xo xoắn) 3D",
+    mota: "Cấu tạo: nam châm móng ngựa, lõi sắt non (từ trường xuyên tâm), khung dây trên khung nhôm, hai lò xo xoắn, kim và thang đo, điện trở sơn. Ngẫu lực từ M = NBIS cân bằng mômen lò xo kθ ⇒ thang đo chia đều. So sánh khung nhôm/bìa (cản dịu Fu-cô), bỏ lõi sắt, lò xo mềm/cứng, mắc ngược cực, đổi thang đo.",
+    chuong: "Từ trường",
+    lop: 12,
+    file: "sims/ampe-ke-khung-quay-3d.html",
+    tags: ["ampe kế", "điện kế", "khung quay", "lò xo xoắn", "ngẫu lực từ", "điện trở sơn", "cản dịu", "3D"]
+  },
+  {
     ten: "Cân dòng điện – đo cảm ứng từ 3D",
     mota: "Nam châm chữ U đặt trên cân điện tử, khung dây đồng treo trong khe từ. Thay đổi I, L, góc α, đảo chiều dòng điện; lực từ F = BIL sin α làm số chỉ cân thay đổi (định luật III Newton). Ghi bảng số liệu, vẽ đồ thị F – I, đo B của nam châm bí ẩn.",
     chuong: "Từ trường",
