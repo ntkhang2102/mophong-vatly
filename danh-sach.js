@@ -75,5 +75,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/ung-dung-cam-ung.html#lo",
     tags: ["lò nung", "lò cao tần", "lò cảm ứng", "Foucault", "Fuco", "nóng chảy"]
+  },
+  {
+    ten: "Lò nung cao tần 3D – kéo thả kim loại",
+    mota: "Không gian 3D xoay, phóng to được. Kéo phôi thép, thỏi đồng, lon nhôm, khối thủy tinh thả vào nồi nung; quan sát dòng điện trong cuộn dây, đường sức từ, dòng Fu-cô và kim loại nóng chảy.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/lo-nung-cao-tan-3d.html",
+    tags: ["lò nung", "3D", "kéo thả", "lò cảm ứng", "Foucault", "Fuco", "nóng chảy"]
   }
 ];

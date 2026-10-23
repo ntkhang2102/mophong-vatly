@@ -8,6 +8,7 @@ Bộ mô phỏng Vật lí tương tác cho học sinh THPT, chạy trực tiế
 index.html      Trang mục lục (tìm kiếm, lọc theo lớp, gom theo chương)
 danh-sach.js    Danh sách mô phỏng hiển thị trên trang mục lục
 sims/           Mỗi mô phỏng là một file HTML độc lập
+sims/lib/       Thư viện Three.js r128 (MIT) cho các mô phỏng 3D, để chạy được khi không có mạng
 ```
 
 ## Thêm mô phỏng mới

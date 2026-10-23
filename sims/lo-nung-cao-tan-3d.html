@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lò nung cao tần 3D</title>
+<script src="lib/three.min.js"></script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 150px);z-index:2}
+.chip{background:rgba(255,255,255,.92);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#e2531f}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.85);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.82);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 4px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.items{display:flex;flex-direction:column;gap:5px}
+.item{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px}
+.item .t{font-weight:700;font-variant-numeric:tabular-nums}
+.item .where{font-size:11.5px;color:var(--muted)}
+.item button{padding:4px 8px;font-size:12px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+#graph{width:100%;height:150px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl">Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.<br>Hãy mở bằng Chrome, Edge hoặc Firefox bản mới.</div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="front">Chính diện</button>
+      <button data-view="top">Từ trên xuống</button>
+      <button data-view="close">Nhìn vào nồi</button>
+    </div>
+    <div class="hint" id="hint">Kéo vật liệu trên khay thả vào nồi nung · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Lò nung cao tần (lò cảm ứng) – không gian 3D</h1>
+      <div class="sub">Vật lí 12 · Cảm ứng điện từ · Dòng điện Fu-cô (Foucault)</div>
+    </div>
+
+    <div class="sec">
+      <h2>Máy phát (dòng điện trong cuộn dây)</h2>
+      <div class="row"><button class="wide" id="bOn"></button></div>
+      <div class="seg" id="segAC"><button data-v="1">∿ Xoay chiều cao tần</button><button data-v="0">⎓ Một chiều không đổi</button></div>
+      <div class="lbl">Tần số dòng xoay chiều</div>
+      <div class="seg" id="segF"><button data-v="1">1 kHz</button><button data-v="10">10 kHz</button><button data-v="100">100 kHz</button></div>
+      <label class="rng">Công suất máy phát<span class="v" id="vP"></span><input type="range" id="rP" min="20" max="100" step="5" value="80"></label>
+    </div>
+
+    <div class="sec">
+      <h2>Vật liệu (kéo thả trên hình)</h2>
+      <div class="items" id="items"></div>
+      <div class="row"><button class="wide" id="bAllOut">Đưa tất cả ra khay</button><button class="wide" id="bCool">Làm nguội, phục hồi</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kI" checked> Dòng điện cuộn dây</label>
+        <label><input type="checkbox" id="kB" checked> Đường sức từ</label>
+        <label><input type="checkbox" id="kE" checked> Dòng điện Fu-cô</label>
+        <label><input type="checkbox" id="kGlass" checked> Nồi nung trong suốt</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+        <label><input type="checkbox" id="kSpin"> Tự xoay chậm</label>
+      </div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự sắp xếp vật liệu và máy phát để minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li>Lò nung cao tần: cuộn dây (ống đồng rỗng, có nước làm mát) mang dòng điện <b>xoay chiều tần số cao</b>, quấn quanh nồi nung chịu nhiệt.</li>
+        <li>Từ trường biến thiên xuyên qua vật kim loại đặt trong nồi ⇒ xuất hiện <b>dòng điện Fu-cô</b> chạy vòng trong vật ⇒ vật tự nóng lên và nóng chảy.</li>
+        <li>Tần số càng cao ⇒ dòng Fu-cô càng mạnh, nung càng nhanh; dòng Fu-cô tập trung gần bề mặt vật (hiệu ứng bề mặt).</li>
+        <li>Dòng một chiều không đổi ⇒ từ thông không biến thiên ⇒ không có dòng Fu-cô (chỉ có xung lúc bật/tắt) ⇒ không nung được.</li>
+        <li>Vật không dẫn điện (thủy tinh, gốm, nồi nung) không có dòng Fu-cô nên không bị nung nóng trực tiếp.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=0)=>v.toFixed(n).replace('.',',');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,k)=>a+(b-a)*k;
+const TAU=Math.PI*2;
+if(!window.THREE){$('nogl').style.display='flex';$('nogl').textContent='Không tải được thư viện 3D (lib/three.min.js).';return}
+
+// ====== Thông số lò (đơn vị: 1 = 10 cm) ======
+const BASE_H=0.3,RC=1.15,RI=0.98,CUP_H=2.7,FLOOR=BASE_H+0.15;   // bệ, nồi nung
+const RK=1.48,TUBE=0.075,COIL_Y0=0.5,COIL_Y1=2.55,NTURN=7;       // cuộn dây
+const FREQ={1:{n:'1 kHz',k:0.6,vis:0.45,sk:0.55},10:{n:'10 kHz',k:0.82,vis:0.75,sk:0.75},100:{n:'100 kHz',k:1,vis:1.15,sk:0.92}};
+const MATS={
+  thep:{n:'Thép',f:1,melt:1500,col:[118,124,134],metal:.75,rough:.38},
+  dong:{n:'Đồng',f:0.6,melt:1085,col:[190,112,60],metal:.85,rough:.3},
+  nhom:{n:'Nhôm',f:0.45,melt:660,col:[200,206,214],metal:.8,rough:.35},
+  tt:{n:'Thủy tinh',f:0,melt:9999,col:[170,215,225],metal:0,rough:.08}
+};
+const st={on:true,ac:true,f:10,P:80,i:0,iPrev:0,e:0,t:0,ph:0,hist:[],ht:0};
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){$('nogl').style.display='flex';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe5e9f0);
+const camera=new THREE.PerspectiveCamera(40,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a94a6,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(6,10,8);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xbcd2ff,0.3);fill.position.set(-7,4,-5);scene.add(fill);
+const glowLight=new THREE.PointLight(0xff8a3c,0,9,1.6);glowLight.position.set(0,1.2,0);scene.add(glowLight);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V(0,1,0);
+
+// mặt bàn
+const table=new THREE.Mesh(new THREE.BoxGeometry(14,0.25,9),new THREE.MeshStandardMaterial({color:0xcfd6df,roughness:.9}));
+table.position.set(0.3,-0.125,0.6);scene.add(table);
+const grid=new THREE.GridHelper(14,14,0xa3acb9,0xbfc7d2);grid.position.set(0.3,0.002,0.6);scene.add(grid);
+
+// bệ lò
+const base=new THREE.Mesh(new THREE.CylinderGeometry(2.05,2.15,BASE_H,48),new THREE.MeshStandardMaterial({color:0x4b5563,roughness:.6,metalness:.3}));
+base.position.y=BASE_H/2;scene.add(base);
+
+// nồi nung: cốc rỗng chịu nhiệt (vật liệu không dẫn điện)
+const cupProfile=[V(0,0,0),V(RC,0,0),V(RC,CUP_H,0),V(RI,CUP_H,0),V(RI,0.15,0),V(0,0.15,0)].map(p=>new THREE.Vector2(p.x,p.y));
+const cupMat=new THREE.MeshStandardMaterial({color:0x8f7558,roughness:.85,transparent:true,opacity:.2,side:THREE.DoubleSide,depthWrite:false});
+const cup=new THREE.Mesh(new THREE.LatheGeometry(cupProfile,64),cupMat);cup.position.y=BASE_H;cup.renderOrder=2;scene.add(cup);
+const rim=new THREE.Mesh(new THREE.RingGeometry(RI,RC,64),new THREE.MeshStandardMaterial({color:0xb9a384,roughness:.9,side:THREE.DoubleSide}));
+rim.rotation.x=-Math.PI/2;rim.position.y=BASE_H+CUP_H+0.001;scene.add(rim);
+
+// cuộn dây: ống đồng xoắn ốc, đi lên ngược chiều kim đồng hồ khi nhìn từ trên
+const helixPts=[];const NH=NTURN*48;
+for(let k=0;k<=NH;k++){const a=k/48*TAU,y=lerp(COIL_Y0,COIL_Y1,k/NH);helixPts.push(V(RK*Math.cos(a),y,-RK*Math.sin(a)))}
+// hai đầu nối ra máy phát (về phía +x)
+const pBot=helixPts[0],pTop=helixPts[helixPts.length-1];
+const leadIn=[V(4.3,0.85,0.55),V(3.1,0.6,0.35),V(2.2,COIL_Y0,0.12),pBot];          // vào ở đầu dưới
+const leadOut=[pTop,V(2.2,COIL_Y1,-0.12),V(3.1,2.2,-0.35),V(4.3,1.85,-0.55)];   // ra ở đầu trên
+const coilCurve=new THREE.CatmullRomCurve3([...leadIn.slice(0,3),...helixPts.filter((_,k)=>k%3===0),...leadOut.slice(1)]);
+const cuMat=new THREE.MeshStandardMaterial({color:0xc46a2f,metalness:.7,roughness:.28,emissive:0x2a0e00,emissiveIntensity:.2});
+const coil=new THREE.Mesh(new THREE.TubeGeometry(coilCurve,900,TUBE,10,false),cuMat);scene.add(coil);
+
+// máy phát
+const gen=new THREE.Group();gen.position.set(5.2,0,0);scene.add(gen);
+const genBody=new THREE.Mesh(new THREE.BoxGeometry(1.9,2.5,1.9),new THREE.MeshStandardMaterial({color:0x1f2937,roughness:.5,metalness:.4}));genBody.position.y=1.25;gen.add(genBody);
+const scrC=document.createElement('canvas');scrC.width=256;scrC.height=160;const scrG=scrC.getContext('2d');
+const scrTex=new THREE.CanvasTexture(scrC);
+const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.94),new THREE.MeshBasicMaterial({map:scrTex}));scr.position.set(-0.951,1.55,0);scr.rotation.y=-Math.PI/2;gen.add(scr);
+const scr2=scr.clone();scr2.position.set(0,1.55,0.951);scr2.rotation.y=0;gen.add(scr2);
+function drawScreen(){
+  const g=scrG;g.fillStyle='#0b1324';g.fillRect(0,0,256,160);
+  g.fillStyle='#e5e7eb';g.font='bold 22px system-ui,sans-serif';g.textAlign='center';g.fillText(st.ac?'MÁY PHÁT CAO TẦN':'NGUỒN MỘT CHIỀU',128,28);
+  g.strokeStyle=st.on?'#22c55e':'#475569';g.lineWidth=4;g.beginPath();
+  if(st.ac&&st.on)for(let x=0;x<=200;x+=3){const y=88-26*Math.sin(x/200*TAU*2+st.t*TAU*FREQ[st.f].vis);x?g.lineTo(28+x,y):g.moveTo(28+x,y)}
+  else{g.moveTo(28,st.on?72:88);g.lineTo(228,st.on?72:88)}
+  g.stroke();g.fillStyle=st.on?'#86efac':'#94a3b8';g.font='bold 24px system-ui,sans-serif';
+  g.fillText(st.on?(st.ac?FREQ[st.f].n+' · '+st.P+' kW':st.P+' kW'):'TẮT',128,148);scrTex.needsUpdate=true;
+}
+// ống nước làm mát (xanh) cạnh máy phát
+const hoseM=new THREE.MeshStandardMaterial({color:0x0284c7,roughness:.5});
+[[V(4.3,0.85,0.55),V(4.9,0.4,1.4),V(5.6,0.15,2.2)],[V(4.3,1.85,-0.55),V(4.9,1.2,-1.4),V(5.6,0.15,-2.2)]].forEach(p=>scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p),30,0.05,8),hoseM)));
+
+// khay vật liệu
+const tray=new THREE.Mesh(new THREE.BoxGeometry(6.6,0.08,1.7),new THREE.MeshStandardMaterial({color:0x94a3b8,roughness:.7,metalness:.3}));tray.position.set(-3.1,0.04,3.1);scene.add(tray);
+
+// ====== Nhãn chữ (sprite) ======
+function makeLabel(text,color='#1f2937',size=0.42,bg='rgba(255,255,255,.88)'){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  if(bg){g.fillStyle=bg;g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill()}
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));s.scale.set(size*w/60,size*h/60,1);s.renderOrder=30;return s;
+}
+const labels=new THREE.Group();scene.add(labels);
+const L=(t,c,x,y,z,s)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);labels.add(l);return l};
+L('Cuộn dây cảm ứng\n(ống đồng rỗng, nước làm mát)','#7c2d12',-2.9,2.9,0,0.3);
+L('Nồi nung chịu nhiệt\n(không dẫn điện)','#57534e',-2.6,0.95,-1.1,0.28);
+L('Máy phát','#111827',5.2,2.95,0,0.34);
+L('Nước làm mát','#0369a1',5.9,0.55,2.3,0.3);
+L('Khay vật liệu: kéo thả vào nồi','#1e3a8a',-3.1,0.55,4.25,0.28);
+const lblField=L('Đường sức từ','#1d4ed8',2.6,3.75,0,0.32);
+
+// ====== Đường sức từ (6 mặt phẳng chứa trục) ======
+const fieldG=new THREE.Group();scene.add(fieldG);
+const fMat=new THREE.LineDashedMaterial({color:0x2563eb,dashSize:.2,gapSize:.13,transparent:true,opacity:.8});
+const fCone=new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.9});
+const fArrows=[];
+for(let k=0;k<6;k++){
+  const az=k*Math.PI/3,c=Math.cos(az),s=Math.sin(az);
+  for(const [rin,rout,ext] of[[0.42,2.35,0.75],[0.75,2.85,1.05]]){
+    const P2=[[rin,0.05],[rin,1.5],[rin,3.1],[(rin+rout)/2,3.1+ext],[rout,3.1],[rout,1.5],[rout,0.05],[(rin+rout)/2,0.05-ext*0.35]];
+    const pts=new THREE.CatmullRomCurve3(P2.map(([r,y])=>V(r*c,y,-r*s)),true).getPoints(120);
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),fMat);line.computeLineDistances();fieldG.add(line);
+    // mũi tên: bên trong cuộn dây đi lên (khi i > 0), bên ngoài đi xuống
+    for(const [r,y,dirIn] of[[rin,1.7,true],[rout,1.5,false]]){const m=new THREE.Mesh(new THREE.ConeGeometry(.075,.22,10),fCone);m.position.set(r*c,y,-r*s);m.userData.inside=dirIn;fieldG.add(m);fArrows.push(m)}
+  }
+}
+// trục giữa
+{const pts=[V(0,0.05,0),V(0,3.9,0)];const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),fMat);l.computeLineDistances();fieldG.add(l);
+ const m=new THREE.Mesh(new THREE.ConeGeometry(.075,.22,10),fCone);m.position.set(0,3.4,0);m.userData.inside=true;fieldG.add(m);fArrows.push(m)}
+
+// ====== Dòng điện trong cuộn dây: hạt sáng chạy dọc ống đồng ======
+const curG=new THREE.Group();scene.add(curG);
+const dotM=new THREE.MeshBasicMaterial({color:0xfde047});
+const curDots=[];for(let k=0;k<70;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(.06,10,8),dotM);d.userData.u=k/70;curG.add(d);curDots.push(d)}
+const arrM=new THREE.MeshBasicMaterial({color:0xfacc15});
+const curArr=[];for(let k=0;k<16;k++){const m=new THREE.Mesh(new THREE.ConeGeometry(.1,.26,12),arrM);m.userData.u=0.12+k*0.76/15;curG.add(m);curArr.push(m)}
+
+// ====== Vật liệu kéo thả ======
+const PIECES=[
+  {id:'b1',mat:'thep',name:'Phôi thép lớn',r:0.55,h:0.95,home:V(-5.4,0,3.1)},
+  {id:'b2',mat:'thep',name:'Phôi thép nhỏ',r:0.35,h:0.6,home:V(-4.1,0,3.1)},
+  {id:'cu',mat:'dong',name:'Thỏi đồng',r:0.38,h:0.75,home:V(-3.0,0,3.1)},
+  {id:'al',mat:'nhom',name:'Lon nhôm',r:0.33,h:0.85,home:V(-1.9,0,3.1)},
+  {id:'gl',mat:'tt',name:'Khối thủy tinh',r:0.4,h:0.6,home:V(-0.8,0,3.1)}
+];
+const eddyMat=new THREE.MeshBasicMaterial({color:0xff2d55});
+const eddyDotM=new THREE.MeshBasicMaterial({color:0xffffff});
+PIECES.forEach(p=>{
+  const m=MATS[p.mat];p.vol=Math.PI*p.r*p.r*p.h;p.T=25;p.melt=0;p.inside=false;p.y=0;p.vy=0;
+  p.material=new THREE.MeshStandardMaterial({color:new THREE.Color(...m.col.map(v=>v/255)),metalness:m.metal,roughness:m.rough,
+    transparent:p.mat==='tt',opacity:p.mat==='tt'?0.55:1,emissive:0x000000});
+  p.mesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,40),p.material);p.mesh.userData.piece=p;
+  p.group=new THREE.Group();p.group.add(p.mesh);scene.add(p.group);
+  p.label=makeLabel(p.name,'#111827',0.26);labels.add(p.label);
+  // dòng Fu-cô: các vòng trên mặt bên và một vòng trên mặt trên (bán kính đổi theo tần số)
+  p.eddy=new THREE.Group();p.group.add(p.eddy);p.rings=[];p.edots=[];
+  for(let k=0;k<4;k++){const ring=new THREE.Mesh(new THREE.TorusGeometry(1,0.035,8,48),eddyMat);ring.rotation.x=Math.PI/2;p.eddy.add(ring);p.rings.push(ring)}
+  for(let k=0;k<12;k++){const d=new THREE.Mesh(new THREE.ConeGeometry(.055,.16,8),eddyDotM);p.eddy.add(d);p.edots.push(d)}
+  p.pos=p.home.clone();
+});
+function geomOf(p){ // kích thước hiện tại (đang chảy thì loang rộng ra theo đáy nồi, thể tích không đổi)
+  const r=lerp(p.r,RI-0.03,p.melt),h=p.vol/(Math.PI*r*r);return{r,h};
+}
+
+// ====== Nhiệt và màu nóng sáng ======
+const STOPS=[[500,null],[650,[110,30,20]],[800,[170,35,15]],[950,[215,60,15]],[1100,[245,110,20]],[1300,[255,170,50]],[1500,[255,225,130]],[1700,[255,248,215]]];
+function hotRGB(T,base){
+  if(T<=500)return base;STOPS[0][1]=base;
+  for(let i=1;i<STOPS.length;i++)if(T<=STOPS[i][0]){const k=(T-STOPS[i-1][0])/(STOPS[i][0]-STOPS[i-1][0]);return STOPS[i-1][1].map((v,j)=>lerp(v,STOPS[i][1][j],k))}
+  return STOPS[STOPS.length-1][1];
+}
+function coupling(p){const g=geomOf(p),yc=p.y+g.h/2;if(!p.inside)return 0;return yc<COIL_Y0-0.2?0.6:yc>COIL_Y1+0.2?Math.max(0,1-(yc-COIL_Y1-0.2)/1.2):1}
+function stepHeat(dt){
+  const inside=PIECES.filter(p=>p.inside),Ptot=st.on&&st.ac?st.P*FREQ[st.f].k:0;
+  const w=inside.map(p=>p.vol*MATS[p.mat].f*coupling(p)),W=Math.max(0.9,w.reduce((a,b)=>a+b,0));
+  PIECES.forEach(p=>{
+    const m=MATS[p.mat],k=inside.indexOf(p),Pi=k<0?0:Ptot*w[k]/W;p.Pin=Pi;
+    const gain=Pi*2.4/Math.max(0.25,p.vol),loss=0.006*(p.T-25)*(1+p.T/1000)*(p.inside?1:2.2);
+    if(p.T<m.melt||p.melt>=1){p.T=clamp(p.T+(gain-loss)*dt,25,1750);if(p.melt<1)p.T=Math.min(p.T,m.melt)}
+    if(p.T>=m.melt-0.5&&p.melt<1&&p.inside){const net=gain-loss;p.melt=clamp(p.melt+net*dt/320,0,1);if(p.melt>=1)p.T=m.melt+1;if(net<0&&p.melt>0)p.T=m.melt}
+  });
+}
+
+// ====== Xếp chồng trong nồi và rơi tự do ======
+function stackTargets(){
+  const inside=PIECES.filter(p=>p.inside&&p!==drag?.p).sort((a,b)=>(b.melt>=0.5)-(a.melt>=0.5)||a.order-b.order);
+  let y=FLOOR;inside.forEach(p=>{p.target=y;y+=geomOf(p).h});
+}
+let orderCounter=0;
+
+// ====== Camera quỹ đạo ======
+const cam={az:0.55,el:0.42,r:15,tx:-0.5,ty:1.3,tz:0.8,taz:0.55,tel:0.42,tr:15,ttx:-0.5,tty:1.3,ttz:0.8};
+const VIEWS={iso:[0.55,0.42,15.5,-0.5,1.3,0.8],front:[0,0.12,15.5,-0.3,1.4,0.6],top:[0,1.45,14,0,0.6,0.6],close:[0.35,0.95,7.5,0,1.2,0]};
+function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;cam.taz=cam.az+d;[cam.tel,cam.tr,cam.ttx,cam.tty,cam.ttz]=v.slice(1);
+  const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.2)cam.tr*=1.2/a}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){
+  const k=0.14;for(const n of['az','el','r','tx','ty','tz'])cam[n]+=(cam['t'+n]-cam[n])*k;
+  const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz);
+}
+
+// ====== Kéo thả & xoay ======
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),plane=new THREE.Plane(UP,0),hitP=new THREE.Vector3();
+const ptrs=new Map();let pinch0=0,r0=15,drag=null,orbit=null;
+const el=renderer.domElement;
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+const LIFT=BASE_H+CUP_H+0.35;
+el.addEventListener('pointerdown',e=>{
+  el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();
+  if(ptrs.size===2){drag=null;orbit=null;const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=cam.tr;return}
+  setNdc(e);const hits=ray.intersectObjects(PIECES.map(p=>p.mesh));
+  if(hits.length){const p=hits[0].object.userData.piece;
+    if(p.melt>0.5){hint(`${p.name} đã nóng chảy thành kim loại lỏng – không gắp ra được. Bấm “Làm nguội, phục hồi”.`);orbit={x:e.clientX,y:e.clientY};return}
+    drag={p};p.pos.set(p.group.position.x,LIFT,p.group.position.z);p.inside=false;p.lifted=true;el.style.cursor='grabbing';
+    if(p.T>200)hint(`Cẩn thận: ${p.name} đang nóng ${Math.round(p.T)} °C!`);
+  } else orbit={x:e.clientX,y:e.clientY};
+});
+el.addEventListener('pointermove',e=>{
+  const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(PIECES.map(p=>p.mesh)).length?'grab':'default';return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)cam.tr=clamp(r0*pinch0/d,5,32);return}
+  if(drag){setNdc(e);plane.constant=-LIFT;if(ray.ray.intersectPlane(plane,hitP)){const p=drag.p;p.pos.set(clamp(hitP.x,-6.6,6.8),LIFT,clamp(hitP.z,-3.6,4.6))}}
+  else if(orbit){cam.taz-=(e.clientX-prev.x)*0.008;cam.tel=clamp(cam.tel+(e.clientY-prev.y)*0.006,-0.1,1.5)}
+});
+function endPtr(e){
+  ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;
+  if(drag&&ptrs.size===0){const p=drag.p,d=Math.hypot(p.pos.x,p.pos.z);
+    if(d<RI-0.15){p.pos.x=0;p.pos.z=0;p.inside=true;p.order=++orderCounter;p.y=LIFT;p.vy=0;
+      hint(MATS[p.mat].f>0?`Đã thả ${p.name.toLowerCase()} vào nồi nung`:`Đã thả ${p.name.toLowerCase()} vào nồi: không dẫn điện ⇒ không có dòng Fu-cô`)}
+    else{ // đặt xuống bàn; không cho đè lên lò hoặc máy phát
+      const g=geomOf(p);if(d<2.15+g.r){const k=(2.15+g.r)/Math.max(d,0.01);p.pos.x*=k;p.pos.z*=k}
+      if(p.pos.x>4.1&&Math.abs(p.pos.z)<1.2)p.pos.x=4.1;
+      p.y=LIFT;p.vy=0}
+    p.lifted=false;drag=null;el.style.cursor='default'}
+  if(ptrs.size===0)orbit=null;
+}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();cam.tr=clamp(cam.tr*(1+Math.sign(e.deltaY)*0.08),5,32)},{passive:false});
+let hintT;function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}
+function hideHint(){$('hint').style.opacity=0}
+hintT=setTimeout(hideHint,9000);
+
+// ====== Bảng điều khiển ======
+function syncUI(){
+  $('bOn').textContent=st.on?'Tắt máy phát':'Bật máy phát';$('bOn').classList.toggle('on',st.on);
+  $('segAC').querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v==='1')===st.ac));
+  $('segF').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.f));
+  $('vP').textContent=st.P+' kW';$('rP').value=st.P;
+}
+$('bOn').onclick=()=>{st.on=!st.on;syncUI()};
+$('segAC').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.ac=b.dataset.v==='1';syncUI();hint(st.ac?'Dòng xoay chiều: từ trường đổi chiều liên tục':'Dòng một chiều: từ trường không đổi ⇒ không có dòng Fu-cô')});
+$('segF').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.f=+b.dataset.v;syncUI()});
+$('rP').oninput=e=>{st.P=+e.target.value;syncUI()};
+function toTray(p){p.inside=false;p.melt=0;p.pos.copy(p.home);p.y=LIFT;p.vy=0}
+$('bAllOut').onclick=()=>{PIECES.forEach(p=>{if(p.melt<0.5)toTray(p)});hint('Đã đưa các vật rắn ra khay (kim loại lỏng vẫn ở trong nồi)')};
+$('bCool').onclick=()=>{PIECES.forEach(p=>{p.T=25;toTray(p)});hint('Đã làm nguội và đặt lại tất cả vật liệu lên khay')};
+function putIn(id){const p=PIECES.find(q=>q.id===id);if(p.melt>=0.5)return;p.inside=true;p.order=++orderCounter;p.pos.set(0,0,0);p.y=LIFT;p.vy=0}
+$('items').innerHTML=PIECES.map(p=>`<div class="item" data-id="${p.id}"><div><span class="sw" style="background:rgb(${MATS[p.mat].col})"></span>${p.name}<div class="where"></div></div><div class="t"></div><button>Cho vào</button></div>`).join('');
+$('items').querySelectorAll('.item').forEach(row=>{const p=PIECES.find(q=>q.id===row.dataset.id);row.querySelector('button').onclick=()=>{
+  if(p.inside){if(p.melt>=0.5)return hint('Kim loại đã nóng chảy, không lấy ra được');toTray(p)}else putIn(p.id)}});
+syncUI();
+
+// ====== Đồ thị i(t), dòng Fu-cô ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  g.strokeStyle='#1c2a47';g.lineWidth=1;for(let i=0;i<=8;i++){const x=8+i*(w-16)/8;g.beginPath();g.moveTo(x,4);g.lineTo(x,h-4);g.stroke()}
+  g.strokeStyle='#3a4b70';g.beginPath();g.moveTo(8,h/2);g.lineTo(w-8,h/2);g.stroke();
+  g.font='11px system-ui,sans-serif';g.textBaseline='middle';g.fillStyle='#60a5fa';g.fillText('Dòng trong cuộn dây',12,11);g.fillStyle='#fb7185';g.fillText('Dòng Fu-cô (∝ −di/dt)',140,11);
+  const N=st.hist.length,span=170,X=i=>8+(i-(N-span))*(w-16)/span,amp=h/2-18;
+  for(const[idx,col,dash]of[[0,'#60a5fa',false],[1,'#fb7185',true]]){g.strokeStyle=col;g.lineWidth=2;g.setLineDash(dash?[4,3]:[]);g.beginPath();
+    st.hist.forEach((q,i)=>{const y=h/2+6-clamp(q[idx],-1.1,1.1)*amp;i?g.lineTo(X(i),y):g.moveTo(X(i),y)});g.stroke()}
+  g.setLineDash([]);
+}
+
+// ====== Giải thích, chip, danh sách ======
+let lastExp='',lastChips='';
+function ui(){
+  const inside=PIECES.filter(p=>p.inside),cond=inside.filter(p=>MATS[p.mat].f>0),hot=PIECES.reduce((a,p)=>p.T>a.T?p:a,PIECES[0]);
+  const c=[['Nguồn',st.on?(st.ac?'xoay chiều '+FREQ[st.f].n:'một chiều'):'tắt'],['Dòng cuộn dây',!st.on?'0':st.ac?'đổi chiều liên tục':'không đổi'],['Trong nồi',inside.length?inside.map(p=>p.name.replace(' lớn','').replace(' nhỏ','')).join(', '):'trống','ind'],['Nóng nhất',hot.name+' '+Math.round(hot.T)+' °C','ind']]
+    .map(([k,v,cl])=>`<div class="chip ${cl||''}">${k}: <b>${v}</b></div>`).join('');
+  if(c!==lastChips){$('chips').innerHTML=c;lastChips=c}
+  $('items').querySelectorAll('.item').forEach(row=>{const p=PIECES.find(q=>q.id===row.dataset.id);
+    row.querySelector('.t').textContent=Math.round(p.T)+' °C';row.querySelector('.t').style.color=p.T>600?'#fb923c':'#e6ecf7';
+    row.querySelector('.where').textContent=p.inside?(p.melt>=1?'trong nồi · đã nóng chảy':p.melt>0?`trong nồi · đang chảy ${Math.round(p.melt*100)}%`:`trong nồi · nhận ${fmt(p.Pin||0)} kW`):'trên khay / bàn';
+    const b=row.querySelector('button');b.textContent=p.inside?'Lấy ra':'Cho vào';b.disabled=p.inside&&p.melt>=0.5});
+  let s='<ol>';
+  if(!st.on)s+='<li>Máy phát tắt: không có dòng điện trong cuộn dây ⇒ không có từ trường.</li>';
+  else if(!st.ac)s+='<li>Dòng <b>một chiều không đổi</b>: từ trường trong lòng cuộn dây <b>không đổi</b> (đường sức đứng yên).</li><li>Từ thông qua vật không biến thiên ⇒ <b>không có dòng Fu-cô</b> ⇒ vật không nóng lên (chỉ có xung chớp nhoáng lúc bật/tắt).</li>';
+  else{
+    s+=`<li>Dòng <b>xoay chiều ${FREQ[st.f].n}</b> chạy trong ống đồng (hạt vàng) ⇒ từ trường trong lòng cuộn dây <b>biến thiên và đổi chiều liên tục</b> (mũi tên đường sức lật chiều theo dòng điện).</li>`;
+    if(!inside.length)s+='<li>Nồi đang trống. <b>Kéo một vật trên khay thả vào miệng nồi</b> để nung.</li>';
+    else{
+      if(cond.length)s+=`<li>Từ thông qua ${cond.map(p=>p.name.toLowerCase()).join(', ')} biến thiên ⇒ xuất hiện <b>dòng điện Fu-cô</b> (vòng đỏ) chạy vòng quanh vật, gần bề mặt. Theo Lenz: dòng trong cuộn dây tăng thì dòng Fu-cô ngược chiều, giảm thì cùng chiều.</li>`;
+      inside.filter(p=>MATS[p.mat].f===0).forEach(p=>{s+=`<li>${p.name} <b>không dẫn điện</b> ⇒ không có dòng Fu-cô ⇒ không nóng lên.</li>`});
+      if(cond.length)s+=`<li>Dòng Fu-cô tỏa nhiệt (định luật Jun) ⇒ vật nóng lên, đổi màu đỏ → cam → vàng trắng. Nóng chảy: thép 1500 °C, đồng 1085 °C, nhôm 660 °C.</li><li>Tần số càng cao ⇒ từ thông biến thiên càng nhanh ⇒ dòng Fu-cô càng mạnh (vòng đỏ càng sát bề mặt) ⇒ nung càng nhanh.</li>`;
+    }
+  }
+  s+='</ol>';if(s!==lastExp){$('explain').innerHTML=s;lastExp=s}
+}
+
+// ====== Đố nhanh ======
+const QS=[
+  {q:'Lò nung cao tần làm nóng chảy kim loại chủ yếu nhờ:',o:['Dòng điện Fu-cô xuất hiện trong khối kim loại','Ngọn lửa khí đốt dưới nồi nung','Dây điện trở nóng đỏ quấn quanh nồi','Tia hồng ngoại phát ra từ cuộn dây'],e:'Từ trường biến thiên của cuộn dây sinh ra dòng Fu-cô trong kim loại; dòng này tỏa nhiệt làm kim loại nóng chảy.',d:()=>{st.on=true;st.ac=true;$('bCool').onclick();putIn('b1')}},
+  {q:'Nếu cho dòng điện một chiều không đổi chạy qua cuộn dây của lò thì phôi thép trong nồi:',o:['Không nóng lên vì từ thông qua nó không biến thiên','Nóng lên nhanh hơn','Nóng lên như với dòng xoay chiều','Bị đẩy văng ra khỏi nồi'],e:'Dòng không đổi ⇒ từ trường không đổi ⇒ không có dòng Fu-cô ⇒ không sinh nhiệt.',d:()=>{st.on=true;st.ac=false;$('bCool').onclick();putIn('b1')}},
+  {q:'Tăng tần số dòng điện trong cuộn dây (giữ nguyên các yếu tố khác) thì kim loại:',o:['Nóng lên nhanh hơn vì dòng Fu-cô mạnh hơn','Nóng lên chậm hơn','Không thay đổi tốc độ nóng lên','Nguội đi'],e:'Tần số cao ⇒ từ thông biến thiên nhanh ⇒ dòng Fu-cô lớn ⇒ tỏa nhiệt nhiều.',d:()=>{st.on=true;st.ac=true;st.f=100;$('bCool').onclick();putIn('b1')}},
+  {q:'Thả khối thủy tinh và phôi thép cùng vào lò đang hoạt động. Hiện tượng:',o:['Phôi thép nóng lên, khối thủy tinh hầu như không nóng','Cả hai cùng nóng lên như nhau','Khối thủy tinh nóng chảy trước','Cả hai đều không nóng'],e:'Chỉ vật dẫn điện mới có dòng Fu-cô. Thủy tinh không dẫn điện nên không bị nung bởi từ trường.',d:()=>{st.on=true;st.ac=true;$('bCool').onclick();putIn('gl');putIn('b2')}},
+  {q:'Cuộn dây của lò nung cao tần làm bằng ống đồng rỗng có nước chảy bên trong để:',o:['Làm mát cuộn dây vì dòng điện chạy qua rất lớn','Tăng từ trường trong lòng cuộn dây','Cung cấp nước cho kim loại nóng chảy','Giảm tần số dòng điện'],e:'Dòng điện rất lớn làm cuộn dây nóng; nước chảy trong ống mang nhiệt đi, bảo vệ cuộn dây.',d:()=>{st.on=true;st.ac=true}},
+  {q:'Trong các vật trên khay (phôi thép, thỏi đồng, lon nhôm, khối thủy tinh), vật nào KHÔNG bị lò nung cao tần làm nóng lên?',o:['Khối thủy tinh','Lon nhôm','Thỏi đồng','Phôi thép'],e:'Thép, đồng, nhôm đều dẫn điện nên có dòng Fu-cô và nóng lên; thủy tinh không dẫn điện nên không có dòng Fu-cô.',d:()=>{st.on=true;st.ac=true;$('bCool').onclick();putIn('gl');putIn('cu')}}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{
+  const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;q.d();syncUI();hint('Mô phỏng đã chuyển sang tình huống minh họa')});
+};
+
+// ====== Vòng lặp ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');cam.az=cam.taz;cam.el=cam.tel;cam.r=cam.tr;
+let last=performance.now(),uiT=0,scrT=0;const _c=new THREE.Color(),_t=V(0,0,0);
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;st.t+=dt;
+  // dòng điện trong cuộn dây
+  const om=TAU*FREQ[st.f].vis;st.iPrev=st.i;
+  if(st.ac)st.i=st.on?Math.sin(om*st.t):st.i*Math.exp(-dt/0.12);
+  else st.i+=((st.on?1:0)-st.i)*(1-Math.exp(-dt/0.35));
+  st.e=-(st.i-st.iPrev)/dt/(TAU*0.75);st.ph+=dt*clamp(Math.abs(st.e)*1.3,0,1.6);
+  st.ht+=dt;if(st.ht>0.03){st.ht=0;st.hist.push([st.i,clamp(st.e,-1.2,1.2)]);if(st.hist.length>170)st.hist.shift()}
+  stepHeat(dt);stackTargets();
+  if($('kSpin').checked&&!ptrs.size)cam.taz+=dt*0.15;
+
+  // vật liệu: vị trí, kích thước, màu
+  let maxHot=0;
+  PIECES.forEach(p=>{
+    const g=geomOf(p);p.mesh.scale.set(g.r,g.h,g.r);
+    if(p.lifted)p.y=p.pos.y;
+    else{const onTray=Math.abs(p.pos.x-tray.position.x)<3.3&&Math.abs(p.pos.z-tray.position.z)<0.85,tgt=p.inside?p.target:(onTray?0.08:0);p.vy-=22*dt;p.y+=p.vy*dt;if(p.y<=tgt){p.y=tgt;p.vy=0}}
+    p.group.position.set(p.inside&&!p.lifted?0:p.pos.x,p.y,p.inside&&!p.lifted?0:p.pos.z);p.mesh.position.y=g.h/2;
+    const m=MATS[p.mat],rgb=hotRGB(p.T,m.col),hot=clamp((p.T-520)/1100,0,1);
+    p.material.color.setRGB(rgb[0]/255,rgb[1]/255,rgb[2]/255);
+    p.material.emissive.setRGB(rgb[0]/255*hot,rgb[1]/255*hot*0.85,rgb[2]/255*hot*0.6);p.material.emissiveIntensity=0.6+1.2*hot;
+    p.material.metalness=m.metal*(1-hot*0.8);p.material.roughness=p.melt>0.5?0.15:m.rough;
+    if(p.inside)maxHot=Math.max(maxHot,hot);
+    p.label.visible=$('kL').checked&&!p.inside;p.label.position.set(p.group.position.x,p.y+g.h+0.32,p.group.position.z);
+    // dòng Fu-cô: chỉ khi vật dẫn điện, nằm trong cuộn dây và từ thông biến thiên
+    const E=st.e*coupling(p),show=$('kE').checked&&m.f>0&&p.inside&&!p.lifted&&Math.abs(E)>0.04;
+    p.eddy.visible=show;
+    if(show){const A=clamp(Math.abs(E),0,1),sk=FREQ[st.f].sk;
+      const ys=[0.2,0.5,0.8];p.rings.forEach((ring,k)=>{
+        if(k<3){ring.scale.set(g.r*1.02,g.r*1.02,1);ring.position.y=g.h*ys[k]}else{ring.scale.set(g.r*sk,g.r*sk,1);ring.position.y=g.h+0.012}
+        ring.material.opacity=1});
+      eddyMat.color.setRGB(1,0.18+0.1*(1-A),0.33);
+      p.edots.forEach((d,k)=>{const ring=k%4,y=ring<3?g.h*ys[ring]:g.h+0.012,rr=ring<3?g.r*1.02:g.r*sk;
+        // E > 0: dòng Fu-cô ngược chiều kim đồng hồ khi nhìn từ trên (cùng chiều quy ước dương của cuộn dây)
+        const a=(k/12+st.ph*(E>0?1:-1))*TAU;d.position.set(rr*Math.cos(a),y,-rr*Math.sin(a));
+        _t.set(-Math.sin(a),0,-Math.cos(a)).multiplyScalar(E>0?1:-1);d.quaternion.setFromUnitVectors(UP,_t);d.scale.setScalar(0.7+0.6*A)});
+    }
+  });
+  glowLight.intensity=maxHot*3.2;glowLight.color.setRGB(1,0.55+0.3*maxHot,0.25+0.3*maxHot);
+
+  // đường sức từ: độ đậm theo |i|, mũi tên lật chiều theo dấu của i
+  const lvl=clamp(Math.abs(st.i),0,1),sg=st.i>=0?1:-1;
+  fieldG.visible=$('kB').checked&&lvl>0.03;lblField.visible=fieldG.visible&&$('kL').checked;
+  fMat.opacity=0.2+0.75*lvl;fCone.opacity=0.25+0.75*lvl;fMat.dashSize=0.2;
+  fArrows.forEach(m=>{const upward=(m.userData.inside?1:-1)*sg>0;m.rotation.set(upward?0:Math.PI,0,0)});
+  // dòng điện cuộn dây: hạt chạy theo chiều dòng (i > 0: đi lên dọc ống xoắn, ngược kim đồng hồ khi nhìn từ trên)
+  curG.visible=$('kI').checked&&Math.abs(st.i)>0.03;
+  if(curG.visible){
+    curDots.forEach(d=>{d.userData.u=((d.userData.u+st.i*dt*0.05)%1+1)%1;d.position.copy(coilCurve.getPointAt(d.userData.u))});
+    curArr.forEach(m=>{m.position.copy(coilCurve.getPointAt(m.userData.u));_t.copy(coilCurve.getTangentAt(m.userData.u)).multiplyScalar(sg);m.quaternion.setFromUnitVectors(UP,_t);m.scale.setScalar(0.6+0.6*lvl)});
+  }
+  cupMat.opacity=$('kGlass').checked?0.2:0.97;cupMat.depthWrite=!$('kGlass').checked;
+  labels.children.forEach(l=>{if(!PIECES.some(p=>p.label===l)&&l!==lblField)l.visible=$('kL').checked});
+
+  uiT+=dt;scrT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}if(scrT>0.08){scrT=0;drawScreen()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__lo3d={PIECES,camera,renderer};   // dùng cho kiểm thử tự động
+ui();drawScreen();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
