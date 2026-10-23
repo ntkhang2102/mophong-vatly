@@ -107,5 +107,45 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/loa-dien-dong-3d.html",
     tags: ["loa", "loa điện động", "micro", "lực từ", "quy tắc bàn tay trái", "âm thanh", "3D"]
+  },
+  {
+    ten: "Từ thông và hiện tượng cảm ứng điện từ",
+    mota: "Kéo, quay nam châm thẳng gần cuộn dây nối bóng đèn và khóa K; quan sát đường sức, từ thông, dòng điện cảm ứng, từ trường cảm ứng và cực từ của cuộn dây theo định luật Lenz.",
+    chuong: "Cảm ứng điện từ",
+    lop: 12,
+    file: "sims/tu-thong-cam-ung-dien-tu.html",
+    tags: ["từ thông", "Lenz", "Faraday", "nam châm", "cuộn dây", "khóa K"]
+  },
+  {
+    ten: "Máy phát điện xoay chiều – khung dây quay trong từ trường",
+    mota: "Khung dây quay đều giữa hai cực nam châm (3D): Φ = NBScos ωt, e = ωNBS sin ωt. Vành khuyên, chổi quét, đèn; đồ thị Φ(t), e(t); chế độ ẩn đáp án.",
+    chuong: "Máy phát điện xoay chiều",
+    lop: 12,
+    file: "sims/may-phat-dien-xoay-chieu.html",
+    tags: ["máy phát điện", "xoay chiều", "khung dây", "từ thông", "3D", "Chart.js"]
+  },
+  {
+    ten: "Máy phát điện nhiều cặp cực",
+    mota: "Rôto 3 cặp cực (nam châm vĩnh cửu hoặc nam châm điện), stato 6 cuộn dây mắc nối tiếp quấn ngược chiều xen kẽ; f = p·n (3D).",
+    chuong: "Máy phát điện xoay chiều",
+    lop: 12,
+    file: "sims/may-phat-dien-nhieu-cap-cuc.html",
+    tags: ["máy phát điện", "cặp cực", "rôto", "stato", "f = pn", "3D"]
+  },
+  {
+    ten: "Máy phát điện xoay chiều ba pha",
+    mota: "Ba cuộn dây lệch nhau 120°, rôto nam châm quay; ba suất điện động lệch pha 2π/3, giản đồ vectơ quay, mạch hình sao và dây trung hòa (3D).",
+    chuong: "Máy phát điện xoay chiều",
+    lop: 12,
+    file: "sims/may-phat-dien-ba-pha.html",
+    tags: ["ba pha", "máy phát điện", "lệch pha", "hình sao", "dây trung hòa", "3D"]
+  },
+  {
+    ten: "Khí lí tưởng và áp suất thủy tĩnh – bọt khí",
+    mota: "Kéo bọt khí lên xuống trong nước sâu đến 30 m: p = p₀ + ρgh, pV = nRT; thể tích và bán kính bọt khí thay đổi theo độ sâu.",
+    chuong: "Khí lí tưởng",
+    lop: 12,
+    file: "sims/khi-li-tuong-bot-khi.html",
+    tags: ["khí lí tưởng", "pV = nRT", "áp suất thủy tĩnh", "bọt khí", "độ sâu"]
   }
 ];

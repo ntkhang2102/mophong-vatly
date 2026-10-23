@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Từ thông và hiện tượng cảm ứng điện từ – Mô phỏng</title>
+<style>
+:root{--bg:#070d1a;--panel:#0f172a;--line:#1e293b;--text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--bi:#fb923c;--cur:#4ade80}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+#app{display:flex;height:100vh;height:100dvh}
+#stage{position:relative;flex:1;min-width:0;overflow:hidden}
+canvas#cv{position:absolute;inset:0;display:block;touch-action:none;user-select:none;outline:none;cursor:default}
+#panel{width:380px;flex:none;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px))}
+@media (max-width:860px){
+  #app{flex-direction:column;height:auto;min-height:100vh}
+  #stage{height:min(64vh,86vw);min-height:260px;flex:none}
+  #panel{width:auto;border-left:0;border-top:1px solid var(--line)}
+}
+h1{font-size:17px;margin:0 0 2px;line-height:1.3}
+.sub{color:var(--muted);font-size:12px;margin-bottom:8px}
+section{border-top:1px solid var(--line);padding:10px 0 8px}
+h2{font-size:13.5px;color:#cbd5e1;margin:0 0 6px;font-weight:650}
+button{font:inherit;color:var(--text);background:#1e293b;border:1px solid #334155;border-radius:8px;padding:7px 10px;cursor:pointer;transition:background .15s}
+button:hover{background:#334155}
+button.primary{background:#0284c7;border-color:#0ea5e9;font-weight:600}
+button.primary:hover{background:#0ea5e9}
+button.on{background:#b45309;border-color:#f59e0b;color:#fff;font-weight:600}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0}
+.row>button{flex:1 1 auto}
+#btnK{width:100%;font-size:15px;font-weight:700;padding:9px}
+#btnK.closed{background:#166534;border-color:#22c55e}
+#btnK.open{background:#7f1d1d;border-color:#ef4444}
+.field{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:5px 0}
+input[type=range]{width:100%;accent-color:#0ea5e9;margin:3px 0}
+label.chk{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer}
+input[type=checkbox]{accent-color:#0ea5e9;width:17px;height:17px;margin:0;flex:none}
+.sw{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-left:auto}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.res div{background:#020617;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.res span{display:block;color:var(--muted);font-size:11.5px}
+.res b{font-size:15px;color:var(--accent)}
+#expl{margin-top:8px;padding:9px 10px;border-radius:8px;background:#020617;border:1px solid #1e3a8a;font-size:13px;line-height:1.55}
+#expl ul{margin:0;padding-left:18px}
+#expl li{margin:3px 0}
+#expl b{color:#fde68a}
+#graph{width:100%;height:130px;display:block;background:#020617;border:1px solid var(--line);border-radius:8px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:18px;border-top:3px solid;vertical-align:middle;margin-right:5px}
+.note{color:var(--muted);font-size:12px;margin:4px 0 0}
+ul.mem{margin:0;padding-left:18px;color:#cfd8ee;font-size:13px}
+ul.mem li{margin:4px 0}
+#chip{position:absolute;left:10px;top:10px;pointer-events:none;background:rgba(2,6,23,.82);border:1px solid #334155;border-radius:10px;padding:8px 14px;font-size:20px;line-height:1.45;backdrop-filter:blur(3px)}
+#chip .up{color:#4ade80;font-weight:700} #chip .down{color:#f87171;font-weight:700} #chip .flat{color:#cbd5e1;font-weight:700}
+@media (max-width:860px){#chip{font-size:13px;padding:5px 9px}}
+#hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom,0px));background:rgba(2,132,199,.92);color:#fff;font-size:12.5px;padding:5px 12px;border-radius:20px;pointer-events:none;transition:opacity .6s;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv" tabindex="0" aria-label="Mô phỏng nam châm thẳng và cuộn dây nối với bóng đèn, khóa K. Kéo nam châm để di chuyển, kéo nút tròn để quay."></canvas>
+    <div id="chip"></div>
+    <div id="hint">Kéo nam châm để di chuyển • Kéo nút ⟳ để quay • Chạm khóa K để đóng/mở</div>
+  </div>
+
+  <aside id="panel">
+    <a class="back" href="../index.html" style="color:#60a5fa;text-decoration:none;font-size:12.5px;display:inline-block;margin-bottom:4px">← Tất cả mô phỏng</a>
+<h1>Từ thông & Hiện tượng cảm ứng điện từ</h1>
+    <div class="sub">Vật lí 12 – Mô phỏng thí nghiệm nam châm và cuộn dây</div>
+
+    <section>
+      <h2>Khóa K</h2>
+      <button id="btnK" class="closed">Khóa K đang ĐÓNG (mạch kín) – bấm để mở</button>
+    </section>
+
+    <section>
+      <h2>Chuyển động của nam châm</h2>
+      <div class="row">
+        <button id="aIn">→ Đưa lại gần</button>
+        <button id="aOut">← Kéo ra xa</button>
+      </div>
+      <div class="row">
+        <button id="aOsc">⇄ Qua lại liên tục</button>
+        <button id="aSpin">⟳ Quay đều</button>
+        <button id="aStop">⏹ Dừng</button>
+      </div>
+      <div class="row">
+        <button id="aAx">↻ Quay quanh trục Bắc–Nam của nam châm</button>
+      </div>
+      <p class="note">“Quay đều”: nam châm quay trong mặt phẳng hình vẽ → từ thông biến thiên. “Quay quanh trục Bắc–Nam”: nam châm tự quay quanh trục dọc của nó → từ thông không đổi.</p>
+      <div class="field"><span>Tốc độ chuyển động: <b id="spdVal">3</b></span></div>
+      <input type="range" id="spdRange" min="1" max="6" step="1" value="3" aria-label="Tốc độ">
+      <div class="field"><span>Góc quay nam châm: <b id="angVal">0°</b></span></div>
+      <input type="range" id="angRange" min="-180" max="180" step="1" value="0" aria-label="Góc quay nam châm">
+      <div class="row">
+        <button id="btnFlip">Đổi cực (quay 180°)</button>
+        <button id="btnReset" class="primary">Khôi phục ban đầu</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="ckFree"> Kéo tự do (không chỉ dọc trục cuộn dây)</label>
+    </section>
+
+    <section>
+      <h2>Hiển thị</h2>
+      <label class="chk"><input type="checkbox" id="ckField" checked> Đường sức từ của nam châm <span class="sw" style="border-color:#cbd5e1"></span></label>
+      <label class="chk"><input type="checkbox" id="ckBi" checked> Đường sức từ cảm ứng B<sub>cư</sub> <span class="sw" style="border-color:var(--bi)"></span></label>
+      <label class="chk"><input type="checkbox" id="ckCur" checked> Dòng điện cảm ứng I<sub>cư</sub> <span class="sw" style="border-color:var(--cur)"></span></label>
+      <label class="chk"><input type="checkbox" id="ckPoles" checked> Cực từ của cuộn dây (N, S)</label>
+      <label class="chk"><input type="checkbox" id="ckExpl" checked> Giải thích theo định luật Lenz</label>
+      <div class="row">
+        <button id="btnQuiz">🎓 Chế độ hỏi học sinh (ẩn đáp án)</button>
+        <button id="btnShow">Hiện đáp án</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Kết quả</h2>
+      <div class="res">
+        <div><span>Từ thông Φ (tương đối)</span><b id="rPhi">0</b></div>
+        <div><span>Từ thông đang</span><b id="rTrend">không đổi</b></div>
+        <div><span>Suất điện động cảm ứng</span><b id="rE">0</b></div>
+        <div><span>Dòng điện cảm ứng</span><b id="rI">0</b></div>
+      </div>
+      <div id="expl"></div>
+    </section>
+
+    <section>
+      <h2>Đồ thị theo thời gian (8 s gần nhất)</h2>
+      <canvas id="graph"></canvas>
+      <div class="legend"><span><i style="border-color:#38bdf8"></i>Từ thông Φ</span><span><i style="border-color:#fb923c"></i>Suất điện động e<sub>c</sub></span></div>
+      <p class="note">e<sub>c</sub> chỉ khác 0 khi Φ đang thay đổi; Φ thay đổi càng nhanh thì e<sub>c</sub> càng lớn, đèn càng sáng.</p>
+    </section>
+
+    <section>
+      <h2>Ghi nhớ</h2>
+      <ul class="mem">
+        <li>Từ thông qua mặt phẳng diện tích S: <b>Φ = B·S·cos α</b> (α là góc giữa <b>B</b> và pháp tuyến <b>n</b>). Cuộn dây N vòng: Φ = N·B·S·cos α. Đơn vị: vêbe (Wb).</li>
+        <li>Khi từ thông qua mạch kín <b>biến thiên</b> thì trong mạch xuất hiện dòng điện cảm ứng (hiện tượng cảm ứng điện từ).</li>
+        <li><b>Định luật Lenz:</b> dòng điện cảm ứng có chiều sao cho từ trường cảm ứng do nó sinh ra <b>chống lại sự biến thiên</b> của từ thông qua mạch: Φ tăng thì B<sub>cư</sub> ngược chiều B; Φ giảm thì B<sub>cư</sub> cùng chiều B.</li>
+        <li><b>Định luật Faraday:</b> e<sub>c</sub> = −ΔΦ/Δt.</li>
+        <li>Mạch hở: vẫn có suất điện động cảm ứng nhưng không có dòng điện, đèn không sáng.</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2, DEG = Math.PI / 180;
+const fmt = (x, d) => x.toFixed(d).replace('.', ',').replace(/^-0,0+$/, '0,' + '0'.repeat(d));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+/* ===== Hình học (đơn vị "thế giới") ===== */
+const WW = 1000, WH = 560;
+const C = { x0: 560, x1: 800, cy: 300, ry: 78, rx: 15, n: 9, top: 118 };
+C.pitch = (C.x1 - C.x0) / C.n;
+const LAMP = { x: 722, y: C.top, r: 22 };
+const SW = { a: 608, b: 656, y: C.top };
+const M = { L: 220, h: 54 };
+const IN_X = C.x0 - 20, OUT_X = 200;
+const DEF = { x: 300, y: C.cy, ang: 0 };
+
+const st = {
+  x: DEF.x, y: DEF.y, ang: 0, K: true, free: false,
+  field: true, bi: true, cur: true, poles: true, expl: true,
+  auto: null, spin: false, speed: 3, oscT: 0,
+  axSpin: false, axPhase: 0
+};
+
+/* ===== Mô hình từ trường: hai "từ khối" tại hai đầu nam châm ===== */
+const P = { n: [0, 0], s: [0, 0] };
+function updPoles() {
+  const c = Math.cos(st.ang), s = Math.sin(st.ang), d = M.L * 0.38;
+  P.n[0] = st.x + c * d; P.n[1] = st.y + s * d;
+  P.s[0] = st.x - c * d; P.s[1] = st.y - s * d;
+}
+function B2(x, y) { // trong mặt phẳng hình vẽ (dùng để vẽ đường sức)
+  let dx = x - P.n[0], dy = y - P.n[1], r2 = dx * dx + dy * dy + 4, f = 1 / (r2 * Math.sqrt(r2));
+  let bx = dx * f, by = dy * f;
+  dx = x - P.s[0]; dy = y - P.s[1]; r2 = dx * dx + dy * dy + 4; f = 1 / (r2 * Math.sqrt(r2));
+  return [bx - dx * f, by - dy * f];
+}
+function Bx3(x, y, z) { // thành phần dọc trục cuộn dây, trong không gian 3D
+  let dx = x - P.n[0], dy = y - P.n[1], r2 = dx * dx + dy * dy + z * z + 120;
+  let b = dx / (r2 * Math.sqrt(r2));
+  dx = x - P.s[0]; dy = y - P.s[1]; r2 = dx * dx + dy * dy + z * z + 120;
+  return b - dx / (r2 * Math.sqrt(r2));
+}
+// Lưới điểm trên tiết diện vòng dây để tính từ thông
+const RING = [];
+(() => {
+  const R = C.ry * 0.92, NR = 5, NA = 8, dr = R / NR;
+  for (let j = 0; j < NR; j++) {
+    const r = (j + 0.5) * dr, dA = TAU * r * dr / NA;
+    for (let a = 0; a < NA; a++) { const f = TAU * (a + 0.5) / NA; RING.push([r * Math.cos(f), r * Math.sin(f), dA]); }
+  }
+})();
+function flux() { // Φ, chiều dương: pháp tuyến hướng sang phải (+x)
+  let phi = 0;
+  for (let k = 0; k < C.n; k++) {
+    const xk = C.x0 + (k + 0.5) * C.pitch;
+    for (const q of RING) phi += Bx3(xk, C.cy + q[0], q[1]) * q[2];
+  }
+  return phi;
+}
+// Giá trị tham chiếu để chuẩn hóa
+let PHI_REF, PHI_MAX;
+(() => {
+  st.x = C.x0 - 12 - M.L / 2; st.ang = 0; updPoles(); PHI_REF = flux();
+  st.x = (C.x0 + C.x1) / 2; updPoles(); PHI_MAX = Math.abs(flux());
+  st.x = DEF.x; updPoles();
+})();
+const EMF_REF = PHI_REF / 0.5;
+const TH = 0.03;
+
+/* ===== Canvas ===== */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1, k = 1, ox = 0, oy = 0;
+function resize() {
+  const b = cv.parentElement.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = b.width; H = b.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  k = Math.min(W / WW, H / WH);
+  ox = (W - WW * k) / 2; oy = (H - WH * k) / 2;
+  linesKey = '';
+  resizeGraph();
+}
+const LW = (w, minPx) => Math.max(w, (minPx || 1) / k);
+const FONT = (px, minPx, wt) => `${wt || 600} ${Math.max(px, (minPx || 11) / k)}px "Segoe UI",Roboto,Arial,sans-serif`;
+function viewBounds() { return { l: -ox / k - 30, r: (W - ox) / k + 30, t: -oy / k - 30, b: (H - oy) / k + 30 }; }
+function toWorld(e) { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left - ox) / k, (e.clientY - b.top - oy) / k]; }
+
+function inMag(x, y, pad) {
+  pad = pad || 0;
+  const c = Math.cos(st.ang), s = Math.sin(st.ang), dx = x - st.x, dy = y - st.y;
+  const lx = dx * c + dy * s, ly = -dx * s + dy * c;
+  return Math.abs(lx) < M.L / 2 + pad && Math.abs(ly) < M.h / 2 + pad;
+}
+function handlePos() {
+  const R = M.h / 2 + 36;
+  return [st.x + R * Math.sin(st.ang), st.y - R * Math.cos(st.ang)];
+}
+
+/* ===== Đường sức từ ===== */
+let lines = [], linesKey = '';
+function traceLines() {
+  const bd = viewBounds(), out = [], NL = 24, ds = 5;
+  for (let i = 0; i < NL; i++) {
+    const a = st.ang + (i + 0.5) * TAU / NL;
+    let x = P.n[0] + 8 * Math.cos(a), y = P.n[1] + 8 * Math.sin(a);
+    const pts = [x, y];
+    for (let s = 0; s < 700; s++) {
+      let b = B2(x, y), m = Math.hypot(b[0], b[1]); if (!m) break;
+      const mx = x + b[0] / m * ds * 0.5, my = y + b[1] / m * ds * 0.5;
+      b = B2(mx, my); m = Math.hypot(b[0], b[1]); if (!m) break;
+      x += b[0] / m * ds; y += b[1] / m * ds;
+      pts.push(x, y);
+      if (Math.hypot(x - P.s[0], y - P.s[1]) < 7) break;
+      if (x < bd.l || x > bd.r || y < bd.t || y > bd.b) break;
+    }
+    out.push(pts);
+  }
+  lines = out;
+}
+function arrowHead(x, y, ang, size, col) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(-size * 0.75, size * 0.62); ctx.lineTo(-size * 0.4, 0); ctx.lineTo(-size * 0.75, -size * 0.62);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function drawFieldLines() {
+  const key = `${st.x.toFixed(1)},${st.y.toFixed(1)},${st.ang.toFixed(4)},${W},${H}`;
+  if (key !== linesKey) { traceLines(); linesKey = key; }
+  ctx.save();
+  ctx.strokeStyle = 'rgba(203,213,225,.55)'; ctx.lineWidth = LW(1.5, 1); ctx.lineJoin = 'round';
+  for (const p of lines) {
+    if (p.length < 8) continue;
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+    ctx.stroke();
+    const idx = [];
+    for (let i = 0; i < p.length - 2; i += 2) if (!inMag(p[i], p[i + 1], 4)) idx.push(i);
+    if (idx.length > 10) {
+      const i = idx[Math.floor(idx.length / 2)];
+      arrowHead(p[i], p[i + 1], Math.atan2(p[i + 3] - p[i + 1], p[i + 2] - p[i]), LW(8, 6), 'rgba(226,232,240,.85)');
+    }
+  }
+  ctx.restore();
+}
+
+/* ===== Mạch điện: cuộn dây + dây nối ===== */
+const PATH = [], CUM = [], HELIX = { front: [], back: [] };
+let TOTAL = 0; const ARROWS = [];
+(() => {
+  const add = (x, y, b) => PATH.push([x, y, b ? 1 : 0]);
+  for (let y = C.top; y < C.cy - C.ry; y += 8) add(C.x0, y, 0);
+  for (let t = 0; t < C.n; t++) {
+    const xc = C.x0 + t * C.pitch, fr = [], bk = [];
+    for (let i = 0; i <= 32; i++) {
+      const th = -Math.PI / 2 + i / 32 * TAU;
+      const x = xc + C.rx * Math.cos(th) + C.pitch * (th + Math.PI / 2) / TAU;
+      const y = C.cy + C.ry * Math.sin(th);
+      const back = i > 16;
+      add(x, y, back);
+      if (i <= 16) fr.push(x, y);
+      if (i >= 16) bk.push(x, y);
+    }
+    HELIX.front.push(fr); HELIX.back.push(bk);
+  }
+  for (let y = C.cy - C.ry; y > C.top; y -= 8) add(C.x1, y, 0);
+  for (let x = C.x1; x > C.x0; x -= 8) add(x, C.top, 0);
+  add(C.x0, C.top, 0);
+  CUM.push(0);
+  for (let i = 1; i < PATH.length; i++) CUM.push(CUM[i - 1] + Math.hypot(PATH[i][0] - PATH[i - 1][0], PATH[i][1] - PATH[i - 1][1]));
+  TOTAL = CUM[CUM.length - 1];
+  const near = (tx, ty, frontOnly) => {
+    let bi = 0, bd = 1e9;
+    PATH.forEach((p, i) => { if (frontOnly && p[2]) return; const d = Math.hypot(p[0] - tx, p[1] - ty); if (d < bd && i < PATH.length - 1) { bd = d; bi = i; } });
+    return bi;
+  };
+  [1, 4, 7].forEach(t => ARROWS.push(near(C.x0 + t * C.pitch + C.rx + C.pitch / 4, C.cy, true)));
+  ARROWS.push(near((SW.b + LAMP.x - LAMP.r) / 2, C.top));
+  ARROWS.push(near(C.x1, (C.top + C.cy - C.ry) / 2));
+  ARROWS.push(near(C.x0, (C.top + C.cy - C.ry) / 2));
+})();
+function posAt(s) {
+  s = ((s % TOTAL) + TOTAL) % TOTAL;
+  let lo = 0, hi = CUM.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (CUM[m] <= s) lo = m; else hi = m; }
+  const a = PATH[lo], b = PATH[hi], seg = CUM[hi] - CUM[lo] || 1, f = (s - CUM[lo]) / seg;
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2]];
+}
+function polyline(p) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); ctx.stroke(); }
+
+function drawCoilBack() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(217,119,6,0.07)';
+  ctx.fillRect(C.x0, C.cy - C.ry, C.x1 - C.x0, C.ry * 2);
+  ctx.strokeStyle = 'rgba(217,119,6,0.45)'; ctx.lineWidth = LW(2.5, 1.2); ctx.setLineDash([6, 5]);
+  HELIX.back.forEach(polyline);
+  ctx.restore();
+}
+function drawCoilFront() {
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = LW(6, 2.5); HELIX.front.forEach(polyline);
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = LW(3.5, 1.6); HELIX.front.forEach(polyline);
+  ctx.fillStyle = '#fcd34d'; ctx.font = FONT(14, 10);
+  ctx.textAlign = 'center';
+  ctx.fillText('Cuộn dây', (C.x0 + C.x1) / 2, C.cy + C.ry + (st.poles && st.bi ? 64 : 30));
+  ctx.restore();
+}
+function drawCircuit(bright) {
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = LW(3, 1.5);
+  const seg = (a, b) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); };
+  seg([C.x0, C.cy - C.ry], [C.x0, C.top]); seg([C.x1, C.cy - C.ry], [C.x1, C.top]);
+  seg([C.x0, C.top], [SW.a, C.top]); seg([SW.b, C.top], [LAMP.x - LAMP.r, C.top]); seg([LAMP.x + LAMP.r, C.top], [C.x1, C.top]);
+  // Khóa K
+  ctx.fillStyle = '#e2e8f0';
+  [SW.a, SW.b].forEach(x => { ctx.beginPath(); ctx.arc(x, SW.y, LW(5, 2.5), 0, TAU); ctx.fill(); });
+  const la = st.K ? 0 : -0.62, len = SW.b - SW.a;
+  ctx.strokeStyle = st.K ? '#4ade80' : '#f87171'; ctx.lineWidth = LW(4.5, 2);
+  seg([SW.a, SW.y], [SW.a + len * Math.cos(la), SW.y + len * Math.sin(la)]);
+  ctx.fillStyle = '#f8fafc'; ctx.font = FONT(17, 11, 700); ctx.textAlign = 'center';
+  ctx.fillText('K', (SW.a + SW.b) / 2, SW.y - 34);
+  ctx.font = FONT(11, 9, 500); ctx.fillStyle = st.K ? '#86efac' : '#fca5a5';
+  ctx.fillText(st.K ? 'đóng' : 'mở', (SW.a + SW.b) / 2, SW.y + 26);
+  // Bóng đèn
+  if (bright > 0.01) {
+    const R = LAMP.r + 110 * bright;
+    const g = ctx.createRadialGradient(LAMP.x, LAMP.y, LAMP.r * 0.3, LAMP.x, LAMP.y, R);
+    g.addColorStop(0, `rgba(253,224,71,${0.85 * bright})`); g.addColorStop(1, 'rgba(253,224,71,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(LAMP.x, LAMP.y, R, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = bright > 0.01 ? `rgba(254,240,138,${0.35 + 0.65 * bright})` : 'rgba(148,163,184,0.18)';
+  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = LW(2, 1);
+  ctx.beginPath(); ctx.arc(LAMP.x, LAMP.y, LAMP.r, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = bright > 0.01 ? '#fff7cc' : '#64748b'; ctx.lineWidth = LW(2, 1);
+  ctx.beginPath(); ctx.moveTo(LAMP.x - LAMP.r, LAMP.y);
+  for (let i = 0; i <= 8; i++) ctx.lineTo(LAMP.x - 12 + i * 3, LAMP.y + (i % 2 ? -7 : 7));
+  ctx.lineTo(LAMP.x + LAMP.r, LAMP.y); ctx.stroke();
+  ctx.fillStyle = '#f8fafc'; ctx.font = FONT(14, 10); ctx.textAlign = 'center';
+  ctx.fillText('Đèn', LAMP.x, LAMP.y - LAMP.r - 12);
+  ctx.restore();
+}
+
+/* ===== Nam châm ===== */
+function drawMagnet() {
+  ctx.save(); ctx.translate(st.x, st.y); ctx.rotate(st.ang);
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12;
+  const gS = ctx.createLinearGradient(0, -M.h / 2, 0, M.h / 2);
+  gS.addColorStop(0, '#60a5fa'); gS.addColorStop(0.5, '#2563eb'); gS.addColorStop(1, '#1e3a8a');
+  const gN = ctx.createLinearGradient(0, -M.h / 2, 0, M.h / 2);
+  gN.addColorStop(0, '#f87171'); gN.addColorStop(0.5, '#dc2626'); gN.addColorStop(1, '#7f1d1d');
+  ctx.fillStyle = gS; ctx.fillRect(-M.L / 2, -M.h / 2, M.L / 2, M.h);
+  ctx.fillStyle = gN; ctx.fillRect(0, -M.h / 2, M.L / 2, M.h);
+  ctx.shadowBlur = 0;
+  // Các vạch dọc trên thân (thấy được khi nam châm tự quay quanh trục Bắc–Nam)
+  for (let j = 0; j < 4; j++) {
+    const ph = st.axPhase + j * TAU / 4, cz = Math.cos(ph);
+    if (cz <= 0) continue; // vạch ở mặt sau bị che
+    const yy = (M.h / 2) * Math.sin(ph) * 0.92;
+    ctx.strokeStyle = `rgba(255,255,255,${0.15 + 0.45 * cz})`;
+    ctx.lineWidth = LW(2.2, 1) * (0.5 + 0.5 * cz);
+    ctx.beginPath(); ctx.moveTo(-M.L / 2 + 6, yy); ctx.lineTo(-M.L * 0.14, yy);
+    ctx.moveTo(M.L * 0.14, yy); ctx.lineTo(M.L / 2 - 6, yy); ctx.stroke();
+  }
+  // Bóng đổ dạng trụ
+  const gc = ctx.createLinearGradient(0, -M.h / 2, 0, M.h / 2);
+  gc.addColorStop(0, 'rgba(255,255,255,.18)'); gc.addColorStop(0.35, 'rgba(255,255,255,0)'); gc.addColorStop(1, 'rgba(0,0,0,.25)');
+  ctx.fillStyle = gc; ctx.fillRect(-M.L / 2, -M.h / 2, M.L, M.h);
+  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = LW(2, 1); ctx.strokeRect(-M.L / 2, -M.h / 2, M.L, M.h);
+  // Mũi tên vòng quanh trục khi đang tự quay
+  if (st.axSpin) {
+    const ex = -M.L / 2 - 16, ry = M.h / 2 + 12, rx = 10;
+    ctx.strokeStyle = '#fde047'; ctx.lineWidth = LW(2.5, 1.5);
+    ctx.setLineDash([]); ctx.beginPath(); ctx.ellipse(ex, 0, rx, ry, 0, -Math.PI * 0.4, Math.PI * 1.25); ctx.stroke();
+    const ta = Math.PI * 1.25;
+    arrowHead(ex + rx * Math.cos(ta), ry * Math.sin(ta), ta + Math.PI / 2, LW(9, 6), '#fde047');
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(253,224,71,.7)'; ctx.lineWidth = LW(1.5, 1);
+    ctx.beginPath(); ctx.moveTo(-M.L / 2 - 40, 0); ctx.lineTo(M.L / 2 + 40, 0); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+  if (st.axSpin) {
+    const c0 = Math.cos(st.ang), s0 = Math.sin(st.ang), bx = st.x - c0 * (M.L / 2 + 16), by = st.y - s0 * (M.L / 2 + 16);
+    ctx.save(); ctx.fillStyle = '#fde047'; ctx.font = FONT(13, 10, 700); ctx.textAlign = 'center';
+    ctx.fillText('trục quay', bx, by + M.h / 2 + 34); ctx.restore();
+  }
+  const c = Math.cos(st.ang), s = Math.sin(st.ang);
+  ctx.save(); ctx.fillStyle = '#fff'; ctx.font = FONT(28, 13, 800); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', st.x + c * M.L * 0.3, st.y + s * M.L * 0.3);
+  ctx.fillText('S', st.x - c * M.L * 0.3, st.y - s * M.L * 0.3);
+  // tay quay
+  const hp = handlePos(), R = LW(16, 13);
+  ctx.strokeStyle = 'rgba(148,163,184,.7)'; ctx.lineWidth = LW(2, 1); ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(st.x + (M.h / 2) * Math.sin(st.ang), st.y - (M.h / 2) * Math.cos(st.ang)); ctx.lineTo(hp[0], hp[1]); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#334155'; ctx.strokeStyle = '#e2e8f0';
+  ctx.beginPath(); ctx.arc(hp[0], hp[1], R, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f8fafc'; ctx.font = FONT(18, 14, 700); ctx.fillText('⟳', hp[0], hp[1] + 1);
+  ctx.restore();
+}
+
+/* ===== Từ trường cảm ứng ===== */
+function drawBi(d, alpha) {
+  const col = '#fb923c';
+  ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = LW(3, 1.6); ctx.lineCap = 'round';
+  const aDir = d > 0 ? 0 : Math.PI, mid = (C.x0 + C.x1) / 2, as = LW(11, 7);
+  [-0.55, 0, 0.55].forEach(f => {
+    const y = C.cy + f * C.ry;
+    ctx.beginPath(); ctx.moveTo(C.x0 + 4, y); ctx.lineTo(C.x1 - 4, y); ctx.stroke();
+    arrowHead(mid - 50, y, aDir, as, col); arrowHead(mid + 50, y, aDir, as, col);
+  });
+  [-1, 1].forEach(sg => {
+    const yi = C.cy + sg * 0.55 * C.ry, yo = C.cy + sg * (C.ry + 60);
+    ctx.beginPath(); ctx.moveTo(C.x1, yi);
+    ctx.bezierCurveTo(C.x1 + 110, yi, C.x1 + 90, yo, mid, yo);
+    ctx.bezierCurveTo(C.x0 - 90, yo, C.x0 - 110, yi, C.x0, yi);
+    ctx.stroke();
+    arrowHead(mid, yo, aDir + Math.PI, as, col);
+  });
+  ctx.fillStyle = col; ctx.font = FONT(18, 12, 800); ctx.textAlign = 'left';
+  const lx = C.x1 + 92, ly = C.cy - C.ry - 18;
+  ctx.fillText('B', lx, ly);
+  ctx.font = FONT(12, 9, 700); ctx.fillText('cư', lx + Math.max(13, 9 / k), ly + Math.max(5, 4 / k));
+  ctx.restore();
+}
+function drawPoles(d, alpha) {
+  const y = C.cy + C.ry + 30, R = LW(15, 11);
+  const draw = (x, isN) => {
+    ctx.fillStyle = isN ? '#dc2626' : '#2563eb'; ctx.strokeStyle = '#fff'; ctx.lineWidth = LW(2, 1);
+    ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = FONT(16, 11, 800); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(isN ? 'N' : 'S', x, y + 1);
+  };
+  ctx.save(); ctx.globalAlpha = alpha;
+  draw(C.x0, d < 0); draw(C.x1, d > 0);
+  ctx.restore();
+}
+
+/* ===== Dòng điện cảm ứng ===== */
+let dotOff = 0;
+function drawCurrent(I) {
+  const a = clamp(0.35 + Math.abs(I), 0, 1), gap = 22, n = Math.floor(TOTAL / gap);
+  ctx.save();
+  for (let j = 0; j < n; j++) {
+    const p = posAt(dotOff + j * gap);
+    ctx.globalAlpha = p[2] ? a * 0.3 : a;
+    ctx.fillStyle = '#67e8f9';
+    ctx.beginPath(); ctx.arc(p[0], p[1], LW(3.2, 2), 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = a;
+  const sg = I > 0 ? 0 : Math.PI;
+  ARROWS.forEach(i => {
+    const p = PATH[i], q = PATH[i + 1];
+    arrowHead(p[0], p[1], Math.atan2(q[1] - p[1], q[0] - p[0]) + sg, LW(12, 8), '#4ade80');
+  });
+  ctx.fillStyle = '#4ade80'; ctx.font = FONT(16, 11, 800); ctx.textAlign = 'center';
+  ctx.fillText('I', (SW.b + LAMP.x - LAMP.r) / 2, C.top - 18);
+  ctx.font = FONT(11, 8, 700); ctx.fillText('cư', (SW.b + LAMP.x - LAMP.r) / 2 + Math.max(11, 8 / k), C.top - 13);
+  ctx.restore();
+}
+
+/* ===== Trạng thái vật lí ===== */
+let phiPrev = null, rate = 0, phiN = 0, eN = 0, last = 0, hist = [], clock = 0;
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#070d1a'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * ox, dpr * oy);
+
+  const changing = Math.abs(eN) > TH;
+  const I = st.K && changing ? eN : 0;
+  const bright = st.K && changing ? Math.pow(clamp(Math.abs(eN), 0, 1), 0.8) : 0;
+  const d = rate < 0 ? 1 : -1; // chiều B cư dọc trục (+1: sang phải)
+  const biA = clamp(0.35 + Math.abs(eN) * 0.65, 0, 1);
+
+  if (st.field) drawFieldLines();
+  drawCoilBack();
+  if (st.bi && I) drawBi(d, biA);
+  drawMagnet();
+  drawCoilFront();
+  drawCircuit(bright);
+  if (st.cur && I) drawCurrent(I);
+  if (st.poles && I) drawPoles(d, biA);
+}
+
+function updateReadouts() {
+  const changing = Math.abs(eN) > TH;
+  const absRate = Math.sign(phiN) * rate;
+  let trend, cls;
+  if (!changing) { trend = 'không đổi'; cls = 'flat'; }
+  else if (Math.abs(phiN) < 0.02) { trend = 'đổi chiều'; cls = 'up'; }
+  else if (absRate > 0) { trend = 'tăng ↑'; cls = 'up'; }
+  else { trend = 'giảm ↓'; cls = 'down'; }
+  const I = st.K && changing ? eN : 0;
+  $('rPhi').textContent = fmt(phiN, 2);
+  $('rTrend').textContent = trend;
+  $('rE').textContent = changing ? fmt(Math.abs(eN), 2) : '0';
+  $('rI').textContent = st.K ? (changing ? fmt(Math.abs(I), 2) : '0') : '0 (mạch hở)';
+  $('chip').innerHTML = `Φ: <span class="${cls}">${trend}</span><br>Đèn: <b style="color:${I ? '#fde047' : '#94a3b8'}">${I ? 'SÁNG' : 'TẮT'}</b>` +
+    (st.K ? '' : ' <span style="color:#fca5a5;font-size:.8em">(K mở)</span>') +
+    (st.axSpin ? '<br><span style="color:#fde047;font-size:.75em">↻ Quay quanh trục Bắc–Nam</span>' : '');
+
+  const ex = $('expl');
+  if (!st.expl) { ex.innerHTML = '<span style="color:#94a3b8">Phần giải thích đang được ẩn. Hãy để học sinh tự lập luận theo định luật Lenz.</span>'; return; }
+  if (!changing) {
+    const axNote = st.axSpin
+      ? '<br>Nam châm đang <b>quay quanh trục Bắc–Nam</b> của nó. Từ trường của nam châm đối xứng quanh trục này nên hình ảnh đường sức từ không đổi, số đường sức xuyên qua cuộn dây không đổi → <b>Φ không đổi</b>.'
+      : '';
+    ex.innerHTML = 'Từ thông qua cuộn dây <b>không biến thiên</b> → không xuất hiện dòng điện cảm ứng, đèn không sáng.' + axNote +
+      (Math.abs(phiN) > 0.02 ? '<br><span style="color:#94a3b8">Lưu ý: từ thông khác 0 nhưng không thay đổi thì vẫn không có dòng điện cảm ứng.</span>' : '');
+    return;
+  }
+  const dirT = v => v > 0 ? 'sang phải' : 'sang trái';
+  const bm = Math.sign(phiN), incr = absRate > 0, d = rate < 0 ? 1 : -1;
+  const li = [];
+  li.push(Math.abs(phiN) >= 0.02
+    ? `Trong lòng cuộn dây, từ trường của nam châm hướng <b>${dirT(bm)}</b>.`
+    : 'Từ thông qua cuộn dây đang đi qua giá trị 0 và đổi chiều.');
+  const pre = st.K ? '' : '(Nếu đóng K) ';
+  if (Math.abs(phiN) >= 0.02)
+    li.push(`${pre}Từ thông đang <b>${incr ? 'tăng' : 'giảm'}</b> → từ trường cảm ứng B<sub>cư</sub> <b>${incr ? 'ngược chiều' : 'cùng chiều'}</b> với từ trường nam châm, tức hướng <b>${dirT(d)}</b>.`);
+  else li.push(`${pre}B<sub>cư</sub> hướng <b>${dirT(d)}</b> để chống lại sự biến thiên của từ thông.`);
+  if (st.K) li.push(`Mặt trái cuộn dây trở thành cực <b>${d > 0 ? 'Nam (S)' : 'Bắc (N)'}</b>, mặt phải là cực <b>${d > 0 ? 'Bắc (N)' : 'Nam (S)'}</b>.`);
+  li.push(st.K
+    ? 'Mạch kín → có <b>dòng điện cảm ứng</b> chạy qua đèn → <b>đèn sáng</b>.'
+    : 'Mạch hở → chỉ có suất điện động cảm ứng, <b>không có dòng điện</b> → <b>đèn không sáng</b>.');
+  ex.innerHTML = '<ul>' + li.map(s => `<li>${s}</li>`).join('') + '</ul>';
+}
+
+/* ===== Đồ thị ===== */
+const gcv = $('graph'), gctx = gcv.getContext('2d');
+let GW = 0, GH = 0;
+function resizeGraph() {
+  const b = gcv.getBoundingClientRect();
+  GW = b.width; GH = b.height;
+  gcv.width = Math.round(GW * dpr); gcv.height = Math.round(GH * dpr);
+}
+function drawGraph() {
+  if (!GW) return;
+  const g = gctx; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, GW, GH);
+  const my = GH / 2, sy = (GH / 2 - 8) / 1.2, span = 8;
+  g.strokeStyle = '#1e293b'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0, my); g.lineTo(GW, my); g.stroke();
+  for (let s = 1; s < span; s++) { const x = GW * s / span; g.beginPath(); g.moveTo(x, 4); g.lineTo(x, GH - 4); g.stroke(); }
+  const plot = (key, col) => {
+    g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+    hist.forEach((h, i) => {
+      const x = GW - (clock - h.t) / span * GW, y = my - clamp(h[key], -1.2, 1.2) * sy;
+      if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    });
+    g.stroke();
+  };
+  plot('p', '#38bdf8'); plot('e', '#fb923c');
+  g.fillStyle = '#64748b'; g.font = '11px "Segoe UI",sans-serif'; g.fillText('0', 3, my - 3); g.fillText('t', GW - 10, my - 4);
+}
+
+/* ===== Vòng lặp ===== */
+function frame(ts) {
+  const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016; last = ts; clock += dt;
+  const v = 60 + st.speed * 80;
+  if (st.auto === 'in' || st.auto === 'out') {
+    const tx = st.auto === 'in' ? IN_X : OUT_X;
+    const dx = tx - st.x, step = v * dt;
+    if (Math.abs(dx) <= step) { st.x = tx; st.auto = null; markAuto(); } else st.x += Math.sign(dx) * step;
+    st.y += (C.cy - st.y) * Math.min(1, dt * 6);
+  } else if (st.auto === 'osc') {
+    st.oscT += dt * (0.6 + st.speed * 0.35);
+    const mid = (IN_X + OUT_X) / 2, A = (IN_X - OUT_X) / 2;
+    st.x = mid - A * Math.cos(st.oscT);
+    st.y += (C.cy - st.y) * Math.min(1, dt * 6);
+  }
+  if (st.spin) { st.ang += dt * (0.5 + st.speed * 0.45); syncAng(); }
+  if (st.axSpin) st.axPhase = (st.axPhase + dt * (1.2 + st.speed * 0.9)) % TAU; // không làm thay đổi từ thông (đối xứng trục)
+  updPoles();
+  const phi = flux();
+  if (phiPrev !== null) { const r = (phi - phiPrev) / dt; rate += (r - rate) * Math.min(1, dt * 10); }
+  phiPrev = phi;
+  phiN = phi / PHI_MAX;
+  eN = -rate / EMF_REF;
+  if (st.K && Math.abs(eN) > TH) dotOff += eN * 260 * dt;
+  hist.push({ t: clock, p: phiN, e: clamp(eN, -1.2, 1.2) });
+  while (hist.length && clock - hist[0].t > 8.2) hist.shift();
+  draw(); updateReadouts(); drawGraph();
+  requestAnimationFrame(frame);
+}
+
+/* ===== Tương tác trên hình ===== */
+let drag = null;
+const hint = $('hint');
+function clampPos() {
+  const bd = viewBounds();
+  st.x = clamp(st.x, bd.l + 60, bd.r - 60);
+  st.y = st.free ? clamp(st.y, Math.max(bd.t + 60, 40), Math.min(bd.b - 60, WH - 30)) : C.cy;
+}
+cv.addEventListener('pointerdown', e => {
+  const [x, y] = toWorld(e), hp = handlePos();
+  hint.style.opacity = '0';
+  if (Math.hypot(x - hp[0], y - hp[1]) < Math.max(26, 22 / k)) {
+    drag = { type: 'rot' }; st.spin = false; markAuto();
+  } else if (Math.hypot(x - (SW.a + SW.b) / 2, y - SW.y) < Math.max(36, 24 / k)) {
+    setK(!st.K); return;
+  } else if (inMag(x, y, Math.max(10, 10 / k))) {
+    drag = { type: 'move', dx: x - st.x, dy: y - st.y }; st.auto = null; markAuto();
+  } else return;
+  cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing';
+});
+cv.addEventListener('pointermove', e => {
+  const [x, y] = toWorld(e);
+  if (!drag) {
+    const hp = handlePos();
+    cv.style.cursor = (Math.hypot(x - hp[0], y - hp[1]) < 26 || inMag(x, y, 8)) ? 'grab'
+      : (Math.hypot(x - (SW.a + SW.b) / 2, y - SW.y) < 36 ? 'pointer' : 'default');
+    return;
+  }
+  if (drag.type === 'move') { st.x = x - drag.dx; if (st.free) st.y = y - drag.dy; clampPos(); }
+  else { st.ang = Math.atan2(y - st.y, x - st.x) + Math.PI / 2; syncAng(); }
+});
+const endDrag = () => { drag = null; cv.style.cursor = 'default'; };
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') { st.x -= 12; st.auto = null; markAuto(); clampPos(); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { st.x += 12; st.auto = null; markAuto(); clampPos(); e.preventDefault(); }
+  if (e.key === 'ArrowUp') { st.ang -= 5 * DEG; syncAng(); e.preventDefault(); }
+  if (e.key === 'ArrowDown') { st.ang += 5 * DEG; syncAng(); e.preventDefault(); }
+});
+setTimeout(() => { hint.style.opacity = '0'; }, 7000);
+
+/* ===== Bảng điều khiển ===== */
+function normAng() { while (st.ang > Math.PI) st.ang -= TAU; while (st.ang <= -Math.PI) st.ang += TAU; }
+function syncAng() {
+  normAng();
+  const d = Math.round(st.ang / DEG);
+  $('angRange').value = d; $('angVal').textContent = d + '°';
+}
+function setK(v) {
+  st.K = v; const b = $('btnK');
+  b.className = v ? 'closed' : 'open';
+  b.textContent = v ? 'Khóa K đang ĐÓNG (mạch kín) – bấm để mở' : 'Khóa K đang MỞ (mạch hở) – bấm để đóng';
+}
+function markAuto() {
+  $('aIn').classList.toggle('on', st.auto === 'in');
+  $('aOut').classList.toggle('on', st.auto === 'out');
+  $('aOsc').classList.toggle('on', st.auto === 'osc');
+  $('aSpin').classList.toggle('on', st.spin);
+  $('aAx').classList.toggle('on', st.axSpin);
+}
+$('btnK').onclick = () => setK(!st.K);
+$('aIn').onclick = () => { st.auto = 'in'; markAuto(); };
+$('aOut').onclick = () => { st.auto = 'out'; markAuto(); };
+$('aOsc').onclick = () => {
+  if (st.auto === 'osc') { st.auto = null; markAuto(); return; }
+  const mid = (IN_X + OUT_X) / 2, A = (IN_X - OUT_X) / 2;
+  st.oscT = Math.acos(clamp((mid - st.x) / A, -1, 1)); st.auto = 'osc'; markAuto();
+};
+$('aSpin').onclick = () => { st.spin = !st.spin; markAuto(); };
+$('aAx').onclick = () => { st.axSpin = !st.axSpin; markAuto(); };
+$('aStop').onclick = () => { st.auto = null; st.spin = false; st.axSpin = false; markAuto(); };
+$('spdRange').oninput = e => { st.speed = +e.target.value; $('spdVal').textContent = st.speed; };
+$('angRange').oninput = e => { st.ang = +e.target.value * DEG; st.spin = false; markAuto(); syncAng(); };
+$('btnFlip').onclick = () => { st.ang += Math.PI; syncAng(); };
+$('ckFree').onchange = e => { st.free = e.target.checked; clampPos(); };
+const checks = [['ckField', 'field'], ['ckBi', 'bi'], ['ckCur', 'cur'], ['ckPoles', 'poles'], ['ckExpl', 'expl']];
+checks.forEach(([id, key]) => $(id).onchange = e => { st[key] = e.target.checked; });
+function setAnswers(v) { ['bi', 'cur', 'poles', 'expl'].forEach(kk => st[kk] = v); checks.forEach(([id, key]) => $(id).checked = st[key]); }
+$('btnQuiz').onclick = () => setAnswers(false);
+$('btnShow').onclick = () => setAnswers(true);
+$('btnReset').onclick = () => {
+  Object.assign(st, { x: DEF.x, y: DEF.y, ang: 0, auto: null, spin: false, axSpin: false, axPhase: 0, speed: 3, free: false });
+  $('spdRange').value = 3; $('spdVal').textContent = '3'; $('ckFree').checked = false;
+  setK(true); setAnswers(true); st.field = true; $('ckField').checked = true;
+  syncAng(); markAuto(); hist = []; rate = 0; phiPrev = null;
+};
+
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) { new ResizeObserver(resize).observe(cv.parentElement); new ResizeObserver(resizeGraph).observe(gcv); }
+resize(); syncAng(); setK(true); markAuto();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

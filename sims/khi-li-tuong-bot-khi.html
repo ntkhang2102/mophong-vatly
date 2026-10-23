@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Khí lý tưởng & Áp suất thủy tĩnh – Bọt khí (Mở rộng 30m)</title>
+<style>
+:root{--bg:#070d1a;--panel:#0f172a;--line:#1e293b;--text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--bubble:#7dd3fc}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+#app{display:flex;height:100vh;height:100dvh}
+#stage{position:relative;flex:1;min-width:0;overflow:hidden}
+canvas{position:absolute;inset:0;display:block;touch-action:none;user-select:none;cursor:grab;outline:none}
+canvas:active{cursor:grabbing}
+#panel{width:380px;flex:none;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px))}
+@media (max-width:860px){
+  #app{flex-direction:column;height:auto;min-height:100vh}
+  #stage{height:50vh;min-height:280px;flex:none}
+  #panel{width:auto;border-left:0;border-top:1px solid var(--line)}
+}
+h1{font-size:16px;margin:0 0 2px;line-height:1.3}
+.sub{color:var(--muted);font-size:12px;margin-bottom:8px}
+section{border-top:1px solid var(--line);padding:10px 0 6px}
+h2{font-size:13px;color:#cbd5e1;margin:0 0 6px;font-weight:650}
+button{font:inherit;color:var(--text);background:#1e293b;border:1px solid #334155;border-radius:8px;padding:6px 10px;cursor:pointer;transition:background .15s}
+button:hover{background:#334155}
+button.primary{background:#0284c7;border-color:#0ea5e9;font-weight:600}
+button.primary:hover{background:#0ea5e9}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.row>button{flex:1 1 auto}
+.field{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:5px 0}
+input[type=range]{width:100%;accent-color:#0ea5e9;margin:3px 0}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.res div{background:#020617;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.res span{display:block;color:var(--muted);font-size:11.5px}
+.res b{font-size:14.5px;color:var(--accent)}
+.formula{margin-top:8px;padding:8px;border-radius:8px;background:#020617;border:1px solid #1e3a8a;font-size:12.5px;text-align:center}
+.formula i{font-family:"Times New Roman",Times,serif}
+#hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;background:rgba(2,132,199,0.9);color:#fff;font-size:12px;padding:4px 12px;border-radius:20px;pointer-events:none;transition:opacity .5s;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv" tabindex="0" aria-label="Mô phỏng áp suất thủy tĩnh bọt khí đến 30m"></canvas>
+    <div id="hint">Kéo tự do bọt khí theo mọi hướng qua vùng nước và không khí</div>
+  </div>
+
+  <aside id="panel">
+    <a class="back" href="../index.html" style="color:#60a5fa;text-decoration:none;font-size:12.5px;display:inline-block;margin-bottom:4px">← Tất cả mô phỏng</a>
+<h1>Khí lý tưởng & Thủy tĩnh học</h1>
+    <div class="sub">Vật lí 12 – Độ sâu tùy chỉnh đến 30 mét</div>
+
+    <section>
+      <h2>1. Thông số bọt khí (Khí lý tưởng)</h2>
+      <div class="field"><span>Số mol (n): <b id="nVal">0.001</b> mol</span></div>
+      <input type="range" id="nRange" min="0.0002" max="0.003" step="0.0001" value="0.001">
+
+      <div class="field"><span>Nhiệt độ (T): <b id="tVal">300</b> K</span></div>
+      <input type="range" id="tRange" min="200" max="400" step="1" value="300">
+    </section>
+
+    <section>
+      <h2>2. Thông số môi trường</h2>
+      <div class="field"><span>Áp suất khí quyển (p<sub>0</sub>): <b id="p0Val">1.0</b> atm</span></div>
+      <input type="range" id="p0Range" min="0.5" max="2.0" step="0.1" value="1.0">
+
+      <div class="field"><span>KL riêng nước (ρ): <b id="rhoVal">1000</b> kg/m³</span></div>
+      <input type="range" id="rhoRange" min="800" max="1500" step="50" value="1000">
+
+      <div class="field"><span>Trọng lực (g): <b id="gVal">9.81</b> m/s²</span></div>
+      <input type="range" id="gRange" min="1.0" max="20.0" step="0.1" value="9.81">
+    </section>
+
+    <section>
+      <h2>Kết quả trực quan</h2>
+      <div class="res">
+        <div><span>Áp suất (p)</span><b id="pCurVal">1.00 atm</b></div>
+        <div><span>Thể tích (V)</span><b id="vVal">0.00 cm³</b></div>
+        <div><span>Bán kính (R)</span><b id="rVal">0.0 mm</b></div>
+        <div><span>Độ sâu (h)</span><b id="hVal">0.0 m</b></div>
+      </div>
+      <div class="formula">
+        <i>p = p<sub>0</sub> + ρgh</i> &nbsp;|&nbsp; <i>pV = nRT</i>
+      </div>
+    </section>
+
+    <section>
+      <h2>Thao tác nhanh</h2>
+      <div class="row">
+        <button class="primary" id="btnReset">Khôi phục mặc định</button>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+
+const R_GAS = 8.314; // J/(mol.K)
+
+// Biến trạng thái bọt khí và cài đặt
+let bubblePos = { x: 0, y: 0 };
+let currentDepthMeters = 5.0; // Mặc định 5m
+
+let userN = 0.001;    // mol
+let userT = 300;      // K
+let userP0Atm = 1.0;  // atm
+let userRho = 1000;   // kg/m3
+let userG = 9.81;     // m/s2
+
+const AIR_HEIGHT_PX = 110; 
+const MAX_DEPTH_METERS = 30.0; // Đã mở rộng tối đa 30 mét
+
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+
+function resize() {
+  const b = cv.parentElement.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = b.width; H = b.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  
+  if (bubblePos.x === 0) {
+    bubblePos.x = W / 2;
+    bubblePos.y = depthToY(currentDepthMeters);
+  }
+}
+
+function depthToY(depth) {
+  const waterTopY = AIR_HEIGHT_PX;
+  const waterHeight = H - AIR_HEIGHT_PX - 45;
+  const ratio = (depth + 3) / (MAX_DEPTH_METERS + 3);
+  return waterTopY + ratio * waterHeight;
+}
+
+function yToDepth(y) {
+  const waterTopY = AIR_HEIGHT_PX;
+  const waterHeight = H - AIR_HEIGHT_PX - 45;
+  const ratio = (y - waterTopY) / waterHeight;
+  let depth = ratio * (MAX_DEPTH_METERS + 3) - 3;
+  if (depth < -2.8) depth = -2.8;
+  if (depth > MAX_DEPTH_METERS) depth = MAX_DEPTH_METERS;
+  return depth;
+}
+
+function calculatePhysics() {
+  const p0Pa = userP0Atm * 101325;
+  let pPa = currentDepthMeters <= 0 ? p0Pa : p0Pa + userRho * userG * currentDepthMeters;
+  const pAtm = pPa / 101325;
+  
+  const volumeM3 = (userN * R_GAS * userT) / pPa;
+  const volumeCm3 = volumeM3 * 1e6;
+  const radiusM = Math.cbrt((3 * volumeM3) / (4 * Math.PI));
+  const radiusMm = radiusM * 1000;
+
+  return { pAtm, pPa, volumeCm3, radiusMm };
+}
+
+function updateUIValues() {
+  $('nVal').textContent = userN.toFixed(4);$('tVal').textContent = userT;
+  $('p0Val').textContent = userP0Atm.toFixed(1);$('rhoVal').textContent = userRho;
+  $('gVal').textContent = userG.toFixed(2);
+
+  const phys = calculatePhysics();
+  $('pCurVal').textContent = phys.pAtm.toFixed(2) + ' atm';$('vVal').textContent = phys.volumeCm3.toFixed(2) + ' cm³';
+  $('rVal').textContent = phys.radiusMm.toFixed(1) + ' mm';$('hVal').textContent = Math.max(0, currentDepthMeters).toFixed(1) + ' m';
+}
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const waterTopY = AIR_HEIGHT_PX;
+
+  // 1. Không khí
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, W, waterTopY);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px "Segoe UI",sans-serif';
+  ctx.fillText('Môi trường 2: Không khí (p₀ tùy chỉnh)', 14, 25);
+
+  // 2. Nước
+  ctx.fillStyle = '#082f49';
+  ctx.fillRect(0, waterTopY, W, H - waterTopY);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText(`Môi trường 1: Nước (ρ = ${userRho} kg/m³, g = ${userG} m/s²)`, 14, waterTopY + 22);
+
+  // Mặt nước
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, waterTopY); ctx.lineTo(W, waterTopY); ctx.stroke();
+
+  // Thước độ sâu đến 30m (chia mốc mỗi 5m)
+  for (let m = 0; m <= MAX_DEPTH_METERS; m += 5) {
+    let y = depthToY(m);
+    if (y >= waterTopY && y <= H - 30) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(24, y); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '10.5px sans-serif';
+      ctx.fillText(m + 'm', 28, y + 4);
+    }
+  }
+
+  // 3. Vẽ bọt khí
+  const phys = calculatePhysics();
+  const displayRadius = Math.max(6, phys.radiusMm * 3.0);
+
+  bubblePos.x = Math.max(displayRadius + 15, Math.min(W - displayRadius - 15, bubblePos.x));
+  bubblePos.y = depthToY(currentDepthMeters);
+
+  const grad = ctx.createRadialGradient(
+    bubblePos.x - displayRadius * 0.3, bubblePos.y - displayRadius * 0.3, displayRadius * 0.1,
+    bubblePos.x, bubblePos.y, displayRadius
+  );
+  grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+  grad.addColorStop(0.5, 'rgba(125, 211, 252, 0.45)');
+  grad.addColorStop(1, 'rgba(2, 132, 199, 0.85)');
+
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = '#bae6fd';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(bubblePos.x, bubblePos.y, displayRadius, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.beginPath();
+  ctx.arc(bubblePos.x - displayRadius * 0.35, bubblePos.y - displayRadius * 0.35, displayRadius * 0.2, 0, 2 * Math.PI);
+  ctx.fill();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 11.5px sans-serif';
+  ctx.textAlign = 'left';
+  let locText = currentDepthMeters <= 0 ? "Không khí" : `h: ${currentDepthMeters.toFixed(1)}m`;
+  ctx.fillText(`${locText} | R = ${phys.radiusMm.toFixed(1)}mm`, bubblePos.x + displayRadius + 8, bubblePos.y + 4);
+}
+
+// Xương sống kéo thả 2 chiều
+let isDragging = false;
+cv.addEventListener('pointerdown', e => {
+  const b = cv.getBoundingClientRect();
+  const x = e.clientX - b.left, y = e.clientY - b.top;
+  if (Math.hypot(x - bubblePos.x, y - bubblePos.y) < 50) {
+    isDragging = true;
+    cv.setPointerCapture(e.pointerId);
+    $('hint').style.opacity = '0';
+  }
+});
+
+cv.addEventListener('pointermove', e => {
+  if (!isDragging) return;
+  const b = cv.getBoundingClientRect();
+  bubblePos.x = e.clientX - b.left;
+  currentDepthMeters = yToDepth(e.clientY - b.top);
+  updateUIValues();
+  draw();
+});
+
+const stopDrag = () => { isDragging = false; };
+cv.addEventListener('pointerup', stopDrag);
+cv.addEventListener('pointercancel', stopDrag);
+
+// Sự kiện ràng buộc các thanh trượt tùy chỉnh
+$('nRange').addEventListener('input', e => { userN = +e.target.value; updateUIValues(); draw(); });
+$('tRange').addEventListener('input', e => { userT = +e.target.value; updateUIValues(); draw(); });$('p0Range').addEventListener('input', e => { userP0Atm = +e.target.value; updateUIValues(); draw(); });
+$('rhoRange').addEventListener('input', e => { userRho = +e.target.value; updateUIValues(); draw(); });$('gRange').addEventListener('input', e => { userG = +e.target.value; updateUIValues(); draw(); });
+
+$('btnReset').addEventListener('click', () => {
+  userN = 0.001; userT = 300; userP0Atm = 1.0; userRho = 1000; userG = 9.81;
+  currentDepthMeters = 5.0;
+  $('nRange').value = userN; $('tRange').value = userT; $('p0Range').value = userP0Atm;
+  $('rhoRange').value = userRho; $('gRange').value = userG;
+  bubblePos.x = W / 2;
+  updateUIValues(); draw();
+});
+
+window.addEventListener('resize', () => { resize(); draw(); });
+if (window.ResizeObserver) new ResizeObserver(() => { resize(); draw(); }).observe(cv.parentElement);
+
+resize(); updateUIValues(); draw();
+setTimeout(() => { $('hint').style.opacity = '0'; }, 6000);
+})();
+</script>
+</body>
+</html>
