@@ -67,5 +67,13 @@ window.MO_PHONG = [
     lop: 12,
     file: "sims/ung-dung-cam-ung.html#phanh",
     tags: ["phanh từ", "phanh điện từ", "Foucault", "Fuco", "tàu điện"]
+  },
+  {
+    ten: "Lò nung cao tần (lò cảm ứng)",
+    mota: "Phối cảnh 3D: cuộn dây ống đồng quanh nồi nung, đường sức từ đổi chiều, dòng Fu-cô trong kim loại làm thép nóng đỏ rồi nóng chảy. So sánh xoay chiều/một chiều, tần số, thép/đồng/thủy tinh.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/ung-dung-cam-ung.html#lo",
+    tags: ["lò nung", "lò cao tần", "lò cảm ứng", "Foucault", "Fuco", "nóng chảy"]
   }
 ];
