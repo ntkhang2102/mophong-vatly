@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Truyền tải điện năng 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 160px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec[hidden]{display:none}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 3px;font-size:12.5px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+button:disabled{opacity:.45;cursor:default}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#graph{width:100%;height:160px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+table.dt{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+table.dt th,table.dt td{border:1px solid var(--line);padding:3px 5px;text-align:right}
+table.dt th{color:var(--muted);font-weight:600;background:#0b1427}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Toàn cảnh</button>
+      <button data-view="plant">Nhà máy – tăng áp</button>
+      <button data-view="line">Đường dây 500 kV</button>
+      <button data-view="sub">Các trạm hạ áp</button>
+      <button data-view="home">Nơi tiêu thụ 220 V</button>
+    </div>
+    <div class="hint" id="hint">Bấm vào máy biến áp / trạm để xem thông số · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Truyền tải điện năng đi xa – lưới điện Việt Nam (3D)</h1>
+      <div class="sub">Vật lí 12 · Máy biến áp · Hao phí trên đường dây ΔP = P²R/(U²cos²φ) · 25 kV → 500 kV → 220 V</div>
+    </div>
+
+    <div class="sec">
+      <h2>Thông số truyền tải</h2>
+      <div class="lbl">Điện áp trên đường dây truyền tải chính</div>
+      <div class="seg" id="segU"><button data-v="25">25 kV<br><small>không tăng áp</small></button><button data-v="110">110 kV</button><button data-v="220">220 kV</button><button data-v="500">500 kV</button></div>
+      <label class="rng">Công suất nhà máy truyền đi P<span class="v" id="vP"></span><input type="range" id="rP" min="100" max="2000" step="50" value="1000"></label>
+      <label class="rng">Chiều dài đường dây ℓ<span class="v" id="vL"></span><input type="range" id="rL" min="50" max="1500" step="50" value="500"></label>
+      <label class="rng">Điện trở mỗi pha trên 1 km (dây phân pha nhôm lõi thép)<span class="v" id="vR"></span><input type="range" id="rR" min="0.01" max="0.1" step="0.005" value="0.03"></label>
+      <label class="rng">Hệ số công suất cos φ<span class="v" id="vC"></span><input type="range" id="rC" min="0.7" max="1" step="0.01" value="0.9"></label>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kE" checked> Dòng năng lượng</label>
+        <label><input type="checkbox" id="kH" checked> Dây nóng lên (hao phí)</label>
+        <label><input type="checkbox" id="kV" checked> Nhãn điện áp</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+      <div id="chain"></div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec" id="secInfo" hidden>
+      <h2>Thông tin trạm biến áp</h2>
+      <div id="info" class="note"></div>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li><b>Công suất hao phí</b> trên đường dây (do tỏa nhiệt): ΔP = I²R = <b>P²R/(U²cos²φ)</b>. Với P và R cho trước, ΔP tỉ lệ nghịch với U²: tăng điện áp lên n lần ⇒ hao phí giảm n² lần.</li>
+        <li>Giảm R (dây to, dẫn điện tốt) thì tốn kim loại, cột phải chịu lực lớn ⇒ không kinh tế. Biện pháp hiệu quả nhất là <b>tăng điện áp</b> trước khi truyền tải bằng máy biến áp tăng áp, rồi <b>hạ áp</b> dần ở nơi tiêu thụ.</li>
+        <li><b>Máy biến áp:</b> U₁/U₂ = N₁/N₂; bỏ qua hao phí thì U₁I₁ = U₂I₂ ⇒ tăng áp bao nhiêu lần thì dòng điện giảm bấy nhiêu lần.</li>
+        <li>Độ giảm điện áp trên đường dây ΔU = I·R; hiệu suất truyền tải H = (P − ΔP)/P.</li>
+        <li><b>Lưới điện Việt Nam:</b> máy phát ở nhà máy cho điện áp cỡ chục kV ⇒ tăng lên 500 kV (đường dây 500 kV Bắc – Nam, mạch 1 vận hành năm 1994, dài gần 1500 km) ⇒ trạm 500/220 kV ⇒ 220/110 kV ⇒ 110/22 kV ⇒ máy biến áp phân phối 22/0,4 kV ⇒ hộ gia đình dùng điện 220 V (điện áp pha của lưới hạ áp 380/220 V).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const fmtN=v=>Math.round(v).toLocaleString('vi-VN');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2,S3=Math.sqrt(3);
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Mô hình vật lí (ba pha): P = √3·U·I·cosφ; ΔP = 3I²R = P²R/(U²cos²φ) ======
+const UG=25;                                           // điện áp máy phát (kV)
+const st={U:500,P:1000,L:500,r:0.03,cos:0.9,t:0,sel:null};
+function calc(){const P=st.P*1e6,U=st.U*1e3,R=st.r*st.L,I=P/(S3*U*st.cos),dP=3*I*I*R,dU=S3*I*R;
+  return{P,U,R,I,dP,dU,H:1-dP/P,ok:dP<P,IG:P/(S3*UG*1e3*st.cos)}}
+// sau trạm 500/220 kV điện được chia ra nhiều nhánh; hình vẽ chỉ một nhánh ở mỗi cấp, công suất điển hình:
+const BR={220:250e6,110:60e6,22:6e6,0.4:0.3e6};
+const brP=(U,c)=>c.ok?Math.min(BR[U],c.P-c.dP):0;
+const lossFor=U=>{const I=st.P*1e6/(S3*U*1e3*st.cos);return 3*I*I*st.r*st.L/(st.P*1e6)};
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xdbeafe);scene.fog=new THREE.Fog(0xdbeafe,160,320);
+const camera=new THREE.PerspectiveCamera(40,1,0.5,600);
+scene.add(new THREE.HemisphereLight(0xffffff,0x6b8f5e,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(30,60,40);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xc7d7ff,0.3);fill.position.set(-40,20,-30);scene.add(fill);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V3(0,1,0);
+const M=(color,o={})=>new THREE.MeshStandardMaterial({color,roughness:.6,...o});
+const box=(w,h,d,mat,x,y,z,par=scene)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);par.add(m);return m};
+const cyl=(r,h,mat,x,y,z,par=scene,seg=12,r2)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r2??r,r,h,seg),mat);m.position.set(x,y,z);par.add(m);return m};
+const tubeAB=(a,b,r,mat,par=scene)=>{const d=b.clone().sub(a),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),6),mat);m.position.copy(a).add(b).multiplyScalar(0.5);m.quaternion.setFromUnitVectors(UP,d.normalize());par.add(m);return m};
+const mats={grass:M(0x9ccc8a,{roughness:.95}),concrete:M(0xb6bcc6),steel:M(0x94a3b8,{metalness:.5,roughness:.4}),tower:M(0x6b7280,{metalness:.4,roughness:.5}),
+  water:M(0x3b82f6,{roughness:.2,metalness:.1}),tf:M(0x6b7c5a,{roughness:.6}),ins:M(0xd6d3d1,{roughness:.4}),gravel:M(0xd1d5db,{roughness:1}),
+  roof:M(0xb45309),wall:M(0xfef3c7),pole:M(0xa8a29e),wood:M(0x8b5e34)};
+// mặt đất
+{const g=new THREE.Mesh(new THREE.PlaneGeometry(420,200),mats.grass);g.rotation.x=-Math.PI/2;scene.add(g)}
+// đồi núi phía sau (hồ chứa của nhà máy thủy điện)
+[[-95,-40,30,26],[-70,-60,26,20],[-40,-75,30,16],[10,-85,34,14],[60,-80,28,12]].forEach(([x,z,r,h])=>{const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,7),M(0x6f9a5b,{roughness:1,flatShading:true}));m.position.set(x,h/2-0.5,z);scene.add(m)});
+const labels=[],vLabels=[];
+function makeLabel(text,color='#0f172a',size=0.3,bg='rgba(255,255,255,.92)'){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle=bg;g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+const L=(t,c,x,y,z,s=2.2,arr=labels)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);arr.push(l);return l};
+function setText(s,t,c,size,bg){if(s.userData.text===t)return;s.userData.text=t;const n=makeLabel(t,c,size,bg);s.material.map.dispose();s.material.map=n.material.map;s.scale.copy(n.scale)}
+
+// ---- Nhà máy thủy điện: đập, hồ chứa, nhà máy với 2 tổ máy phát ----
+const XPL=-78;
+box(6,16,40,mats.concrete,XPL-6,8,-6);
+{const w=new THREE.Mesh(new THREE.PlaneGeometry(40,46),mats.water);w.rotation.x=-Math.PI/2;w.position.set(XPL-27,13,-8);scene.add(w)}
+box(12,8,14,M(0xe2e8f0),XPL+3,4,-2);box(12.4,0.6,14.4,M(0x64748b),XPL+3,8.3,-2);
+const genG=new THREE.Group();scene.add(genG);
+for(const z of[-6,2])for(const dz of[0]){const g=cyl(2.2,2.4,M(0xdc2626,{metalness:.3}),XPL+3,9.8,z+dz,genG,24);cyl(0.6,1.2,M(0x334155),XPL+3,11.6,z,genG,12)}
+const genRot=[];genG.children.forEach(c=>genRot.push(c));
+const stPlant={name:'Nhà máy điện – máy phát',kind:'gen'};
+// ---- Trạm biến áp ----
+const stations=[];
+function substation(x,name,u1,u2,size){const g=new THREE.Group();g.position.set(x,0,0);scene.add(g);
+  box(size*3.4,0.2,size*3.2,mats.gravel,0,0.1,0,g);
+  // hàng rào
+  const fM=M(0x9ca3af,{metalness:.4});[[0,-size*1.6,size*3.4,0],[0,size*1.6,size*3.4,0]].forEach(([fx,fz,w])=>box(w,1.2,0.1,fM,fx,0.6,fz,g));
+  // 3 máy biến áp một pha (mỗi pha một máy) với tản nhiệt và sứ xuyên
+  const units=[];
+  for(const z of[-size,0,size]){const u=new THREE.Group();u.position.set(0,0,z);g.add(u);
+    box(size*1.2,size*1.1,size*0.8,mats.tf,0,size*0.55+0.2,0,u);
+    for(let k=-2;k<=2;k++)box(0.12,size*0.8,size*0.6,M(0x55654a),size*0.62+0.06,size*0.5+0.2,k*size*0.13,u);
+    cyl(size*0.08,size*0.7,mats.ins,-size*0.3,size*1.45,0,u,8,size*0.05);cyl(size*0.06,size*0.45,mats.ins,size*0.3,size*1.32,0,u,8,size*0.04);units.push(u)}
+  // cổng (giá đỡ dây vào / ra)
+  for(const sx of[-1,1]){const px=sx*size*1.5;[-size*1.4,size*1.4].forEach(z=>cyl(0.18*size/2,size*2.4,mats.steel,px,size*1.2,z,g,6));box(0.3*size/2,0.3*size/2,size*2.9,mats.steel,px,size*2.4,0,g)}
+  const info={name,u1,u2,x,size,g};stations.push(info);g.userData.info=info;return info}
+// ---- Cột điện ----
+function tower(x,h,arm,kind){const g=new THREE.Group();g.position.set(x,0,0);scene.add(g);const m=mats.tower;
+  if(kind==='lattice'){const b=h*0.11,t=h*0.03;
+    const legs=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([sx,sz])=>[V3(sx*b,0,sz*b),V3(sx*t,h,sz*t)]);
+    legs.forEach(([a,c])=>tubeAB(a,c,h*0.008,m,g));
+    // thanh giằng chéo
+    for(let k=0;k<5;k++){const y0=h*k/5,y1=h*(k+1)/5,w0=b+(t-b)*k/5,w1=b+(t-b)*(k+1)/5;
+      [[V3(-w0,y0,-w0),V3(w1,y1,-w1)],[V3(w0,y0,-w0),V3(-w1,y1,-w1)],[V3(-w0,y0,w0),V3(w1,y1,w1)],[V3(w0,y0,w0),V3(-w1,y1,w1)],
+       [V3(-w0,y0,-w0),V3(-w1,y1,w1)],[V3(w0,y0,-w0),V3(w1,y1,w1)]].forEach(([a,c])=>tubeAB(a,c,h*0.004,m,g))}
+    box(h*0.04,h*0.025,arm*2.3,m,0,h*0.86,0,g);box(h*0.03,h*0.02,arm*1.0,m,0,h*0.99,0,g);
+    // dây chống sét trên đỉnh: không vẽ để hình gọn
+  }else{cyl(h*0.025,h,mats.pole,0,h/2,0,g,10,h*0.017);box(h*0.04,h*0.03,arm*2.3,mats.pole,0,h*0.86,0,g)}
+  // chuỗi sứ cách điện treo dây
+  const att=[];for(const z of[-arm,0,arm]){const len=kind==='lattice'?h*0.09:h*0.05;cyl(h*0.012,len,mats.ins,0,h*0.86-len/2,z,g,8);att.push(V3(x,h*0.86-len,z))}
+  return att}
+// ---- Nhà dân ----
+const houses=[];
+function house(x,z,s){const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);box(4*s,3*s,3.4*s,mats.wall,0,1.5*s,0,g);
+  const r=new THREE.Mesh(new THREE.ConeGeometry(3.2*s,1.8*s,4),mats.roof);r.position.y=3.9*s;r.rotation.y=Math.PI/4;g.add(r);
+  const wM=new THREE.MeshStandardMaterial({color:0x334155,emissive:0xfde047,emissiveIntensity:0});
+  [-1,1].forEach(k=>{const w=new THREE.Mesh(new THREE.PlaneGeometry(0.9*s,0.9*s),wM);w.position.set(k*1.1*s,1.8*s,1.71*s);g.add(w)});
+  const bulb=new THREE.PointLight(0xfde68a,0,12);bulb.position.set(0,1.6*s,2.5*s);g.add(bulb);houses.push({wM,bulb})}
+
+// ====== Bố trí dọc trục x: nhà máy → tăng áp → 500 kV → 500/220 → 220 kV → 220/110 → 110 kV → 110/22 → 22 kV → 22/0,4 → 0,4 kV → nhà dân ======
+const S0=substation(-62,'Trạm tăng áp (nhà máy)',UG,500,3.2);
+S0.g.traverse(o=>{if(o.isMesh)o.material=o.material.clone()});   // vật liệu riêng để làm mờ khi không dùng máy tăng áp
+const T500=[-50,-36,-22,-8,6].map(x=>tower(x,26,4.5,'lattice'));
+const S1=substation(18,'Trạm 500/220 kV',500,220,2.8);
+const T220=[28,36].map(x=>tower(x,18,3.2,'lattice'));
+const S2=substation(46,'Trạm 220/110 kV',220,110,2.2);
+const T110=[54,61].map(x=>tower(x,13,2.4,'lattice'));
+const S3s=substation(69,'Trạm 110/22 kV',110,22,1.7);
+const T22=[76,82].map(x=>tower(x,8,1.4,'pole'));
+// máy biến áp phân phối 22/0,4 kV treo trên cột
+const XD=88;const TD=tower(XD,8,1.4,'pole'),lvStart=tower(XD+2.4,8,1.4,'pole');
+const dT=new THREE.Group();dT.position.set(XD+1.2,4.6,0);scene.add(dT);box(2.6,0.15,1.2,mats.wood,0,-0.6,0,dT);box(1.6,1.5,1.2,mats.tf,0,0.25,0,dT);[-0.5,0,0.5].forEach(z=>cyl(0.09,0.6,mats.ins,-0.3,1.3,z,dT,8,0.06));
+const S4={name:'Máy biến áp phân phối 22/0,4 kV',u1:22,u2:0.4,x:XD+1.2,size:1,g:dT};stations.push(S4);dT.userData.info=S4;
+const TLV=[95,101].map(x=>tower(x,6,0.6,'pole'));
+house(104,-7,1);house(108,3,1);house(113,-5,1);house(117,6,1);house(121,-2,1);
+// điểm nối dây tại các trạm (cổng ra/vào)
+const gate=(S,side,h)=>[-1,0,1].map(k=>V3(S.x+side*S.size*1.5,h,k*S.size*1.4*0.7));
+// ====== Dây dẫn: 3 pha, võng giữa hai cột ======
+function sagPath(pts,sag){const out=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],n=16;for(let k=(i?1:0);k<=n;k++){const t=k/n,p=a.clone().lerp(b,t);p.y-=sag*(a.distanceTo(b)/14)*4*t*(1-t);out.push(p)}}return out}
+const segs=[];   // {name,U,color,phases:[{curve,mesh}],heatable}
+function line(name,U,color,attachLists,sag,r,heat){const ph=[0,1,2].map(p=>{const pts=sagPath(attachLists.map(a=>a[p]),sag),c=new THREE.CatmullRomCurve3(pts);
+  const mat=new THREE.MeshStandardMaterial({color:0x374151,metalness:.5,roughness:.4,emissive:0xff2200,emissiveIntensity:0});const m=new THREE.Mesh(new THREE.TubeGeometry(c,pts.length*2,r,6),mat);scene.add(m);return{curve:c,mesh:m,len:c.getLength()}});
+  const s={name,U,color,ph,heat};segs.push(s);return s}
+// máy phát → máy biến áp tăng áp (thanh cái 25 kV)
+const genBus=[0,1,2].map(k=>V3(XPL+9,6,(k-1)*2.2));
+const sG=line('Máy phát → MBA tăng áp',UG,0xef4444,[genBus,gate(S0,-1,S0.size*2.3)],0.3,0.16,false);
+const sMain=line('Đường dây truyền tải',500,0xdc2626,[gate(S0,1,S0.size*2.3),...T500,gate(S1,-1,S1.size*2.3)],1.4,0.22,true);
+line('Đường dây 220 kV',220,0xf97316,[gate(S1,1,S1.size*2.3),...T220,gate(S2,-1,S2.size*2.3)],1.0,0.17,false);
+line('Đường dây 110 kV',110,0xeab308,[gate(S2,1,S2.size*2.3),...T110,gate(S3s,-1,S3s.size*2.3)],0.7,0.13,false);
+line('Đường dây trung áp 22 kV',22,0x22c55e,[gate(S3s,1,S3s.size*2.3),...T22,TD],0.4,0.09,false);
+line('Lưới hạ áp 0,4 kV (380/220 V)',0.4,0x3b82f6,[lvStart,...TLV,[-1,0,1].map(k=>V3(104,3.4,k*0.8))],0.25,0.07,false);
+// dây vào từng nhà (không vẽ năng lượng)
+[[104,-7],[108,3],[113,-5],[117,6],[121,-2]].forEach(([x,z])=>tubeAB(V3(101,5.1,0),V3(x,3.3,z+(z>0?-1.7:1.7)),0.04,M(0x111827)));
+window.__segs=segs;
+// hạt năng lượng chạy trên dây (mật độ, kích thước tùy theo dòng điện của đoạn)
+const flows=[];segs.forEach(s=>s.ph.forEach(p=>{const n=Math.max(6,Math.round(p.len/2.5));const mat=new THREE.MeshBasicMaterial({color:s.color});
+  for(let k=0;k<n;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),mat);d.userData={u:k/n,p,s};scene.add(d);flows.push(d)}}));
+
+// ====== Nhãn ======
+L('Nhà máy thủy điện\n(máy phát 25 kV)','#1e3a8a',XPL+2,17,6,2.2);
+L('MBA tăng áp\n25 kV → 500 kV','#7c2d12',S0.x,13.5,7,2.0);
+L('Trạm 500/220 kV','#7c2d12',S1.x,11,6,1.8);L('Trạm 220/110 kV','#7c2d12',S2.x,9,5.5,1.7);L('Trạm 110/22 kV','#7c2d12',S3s.x,7.5,5,1.6);
+L('MBA phân phối\n22 kV → 0,4 kV','#7c2d12',XD+1.2,10.5,3,1.5);L('Hộ tiêu thụ 220 V\n(mỗi hộ ≈ 2 kW, I ≈ 9 A)','#1e3a8a',112,10,2,1.5);
+const lbMain=L('Đường dây 500 kV Bắc – Nam','#b91c1c',-22,31,0,2.2);
+// nhãn điện áp – dòng điện trên từng đoạn
+const vlb=[[sG,XPL+12,8.5],[sMain,-29,22.5],[segs[2],32,16],[segs[3],57.5,12],[segs[4],79,8.6],[segs[5],98,6.8]].map(([s,x,y])=>{const l=makeLabel(' ','#fff',1.5);l.position.set(x,y,4.2);l.userData.seg=s;scene.add(l);vLabels.push(l);return l});
+const lbLoss=makeLabel(' ','#b91c1c',2.2);lbLoss.position.set(-22,36,0);scene.add(lbLoss);
+
+// ====== Camera, chọn trạm ======
+const cam={az:0.35,el:0.42,r:150,tx:20,ty:6,tz:0};const tc={...cam};
+const VIEWS={iso:[0.35,0.42,150,20,6,0],plant:[0.55,0.32,48,-68,6,0],line:[0.25,0.2,70,-22,12,0],sub:[0.4,0.35,60,50,5,0],home:[0.5,0.3,34,104,3,0]};
+function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.3){if(k==='iso'){tc.az=cam.az+(((1.22-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI);tc.el=0.55;tc.r=175;tc.tx=22}else tc.r*=Math.pow(1.3/a,0.6)}}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.12;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=150,moved=0,downAt=null;
+const pickables=[];stations.forEach(s=>s.g.traverse(o=>{if(o.isMesh){o.userData.st=s;pickables.push(o)}}));genG.traverse(o=>{if(o.isMesh){o.userData.st=stPlant;pickables.push(o)}});
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();moved=0;downAt={x:e.clientX,y:e.clientY};
+  if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r}});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(pickables).length?'pointer':'default';return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved+=Math.abs(e.clientX-prev.x)+Math.abs(e.clientY-prev.y);
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,12,260);return}
+  tc.az-=(e.clientX-prev.x)*0.007;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.005,0.03,1.5)});
+el.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;
+  if(moved<6&&downAt){setNdc(e);const h=ray.intersectObjects(pickables)[0];if(h){st.sel=h.object.userData.st;showInfo();hint('Đã chọn: '+st.sel.name+' – xem thông số trong bảng bên')}}});
+el.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId)});
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),12,260)},{passive:false});
+let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Bảng điều khiển ======
+// điện áp từng chặng (kV) – khi chọn truyền tải ở U khác 500 kV, đoạn chính mang điện áp U
+function chain(){const c=calc(),Pin=st.P*1e6;
+  const rows=[['Máy phát',UG,Pin],['Đường dây truyền tải',st.U,Pin],['Một nhánh 220 kV',220,brP(220,c)],['Một nhánh 110 kV',110,brP(110,c)],['Một tuyến 22 kV',22,brP(22,c)],['Một trạm hạ áp 0,4 kV',0.4,brP(0.4,c)]];
+  return rows.map(([n,U,P])=>({n,U,P,I:P/(S3*U*1e3*st.cos)}))}
+function syncUI(){
+  $('segU').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.U));
+  $('vP').textContent=fmtN(st.P)+' MW';$('rP').value=st.P;$('vL').textContent=fmtN(st.L)+' km';$('rL').value=st.L;
+  $('vR').textContent=fmt(st.r,3)+' Ω/km';$('rR').value=st.r;$('vC').textContent=fmt(st.cos,2);$('rC').value=st.cos;
+  segs[1].U=st.U;S0.u2=st.U;S1.u1=st.U;showInfo();
+}
+$('segU').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.U=+b.dataset.v;syncUI();const c=calc();
+  hint(st.U===25?'Không tăng áp: truyền thẳng 25 kV – dòng điện rất lớn, dây nóng đỏ!':'Truyền tải ở '+st.U+' kV: hao phí '+fmt((1-c.H)*100,1)+'%')});
+$('rP').oninput=e=>{st.P=+e.target.value;syncUI()};$('rL').oninput=e=>{st.L=+e.target.value;syncUI()};$('rR').oninput=e=>{st.r=+e.target.value;syncUI()};$('rC').oninput=e=>{st.cos=+e.target.value;syncUI()};
+function showInfo(){const s=st.sel;$('secInfo').hidden=!s;if(!s)return;const c=calc();let h;
+  if(s.kind==='gen')h=`<b>${s.name}</b><br>Máy phát điện xoay chiều ba pha (tua bin nước quay rô-to nam châm điện trong stato) tạo ra điện áp <b>${UG} kV</b>, tần số 50 Hz.<br>Công suất phát P = ${fmtN(st.P)} MW ⇒ dòng điện ở đầu cực máy phát I = P/(√3·U·cosφ) ≈ <b>${fmtN(c.IG)} A</b> – rất lớn, không thể truyền đi xa.`;
+  else{const up=s.u2>s.u1,k=s.u1/s.u2;
+    h=`<b>${s.name}</b><br>Máy biến áp ${up?'<b>tăng áp</b>':'<b>hạ áp</b>'}: U₁ = ${fmt(s.u1,s.u1<1?1:0)} kV → U₂ = ${fmt(s.u2,s.u2<1?1:0)} kV.<br>Tỉ số vòng dây N₁/N₂ = U₁/U₂ = ${k>=1?fmt(k,k<10?2:1):'1/'+fmt(1/k,1)}.<br>Bỏ qua hao phí trong máy: U₁I₁ = U₂I₂ ⇒ dòng điện ${up?'giảm':'tăng'} ${fmt(up?1/k:k,1)} lần.`+
+      (s===S0&&st.U===UG?'<br><b>Đang chọn truyền tải 25 kV: không dùng máy tăng áp.</b>':'')+(s===S4?'<br>Lưới hạ áp 0,4 kV = 380 V giữa hai dây pha; giữa dây pha và dây trung tính là <b>220 V</b> – điện áp dùng trong gia đình.':'')}
+  $('info').innerHTML=h}
+syncUI();
+
+// ====== Đồ thị: hiệu suất truyền tải ở 4 cấp điện áp ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  const Us=[25,110,220,500],x0=46,y0=h-26,H=y0-26,bw=(w-x0-12)/Us.length;g.font='11px system-ui,sans-serif';
+  g.fillStyle='#cbd5e1';g.textAlign='left';g.fillText('Phần trăm công suất bị hao phí trên dây (ΔP/P)',8,14);
+  g.textAlign='right';g.fillStyle='#93a3c0';[0,50,100].forEach(p=>{const y=y0-p/100*H;g.strokeStyle='#1c2a47';g.beginPath();g.moveTo(x0,y);g.lineTo(w-6,y);g.stroke();g.fillText(p+'%',x0-4,y+4)});
+  Us.forEach((U,i)=>{const l=lossFor(U),p=Math.min(1,l),x=x0+i*bw+bw*0.18,bwi=bw*0.64;
+    g.fillStyle=U===st.U?(l>=1?'#ef4444':'#f97316'):'#475569';g.fillRect(x,y0-p*H,bwi,p*H);
+    g.fillStyle='#e2e8f0';g.textAlign='center';g.fillText(U+' kV',x+bwi/2,y0+14);g.fillStyle=l>=1?'#fca5a5':'#fde68a';g.fillText(l>=1?'> 100%':fmt(l*100,l<0.1?2:1)+'%',x+bwi/2,y0-p*H-5)});
+}
+
+// ====== Kết quả, chip, giải thích ======
+let lastE='',lastC='',lastR='',lastCh='';
+function ui(){
+  const c=calc(),loss=1-c.H;
+  const ch=[['U truyền tải',st.U+' kV'],['I trên dây',fmtN(c.I)+' A'],['Hao phí',c.ok?fmt(loss*100,loss<0.1?2:1)+'%':'> 100%','ind']].map(([a,b,cl])=>`<div class="chip ${cl||''}">${a}: <b>${b}</b></div>`).join('');if(ch!==lastC){$('chips').innerHTML=ch;lastC=ch}
+  const r=[['Điện trở mỗi pha R = r·ℓ',fmt(c.R,1)+' Ω'],['Dòng điện trên dây I',fmtN(c.I)+' A'],['Công suất hao phí ΔP',c.ok?fmt(c.dP/1e6,1)+' MW':fmt(c.dP/1e6,0)+' MW (vượt P!)'],
+    ['Hiệu suất truyền tải H',c.ok?fmt(c.H*100,1)+'%':'không truyền được'],['Độ giảm điện áp ΔU = √3·I·R',c.ok?fmt(c.dU/1e3,1)+' kV ('+fmt(c.dU/c.U*100,1)+'%)':'quá lớn'],['Công suất đến trạm cuối',c.ok?fmtN((c.P-c.dP)/1e6)+' MW':'0']]
+    .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val" style="font-size:14px">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
+  const rows=chain();
+  const t='<table class="dt" style="margin-top:4px"><tr><th style="text-align:left">Chặng</th><th>U (kV)</th><th>P</th><th>I (A)</th></tr>'+rows.map(q=>`<tr><td style="text-align:left">${q.n}</td><td>${q.U<1?'0,4':q.U}</td><td>${q.P>=1e6?fmtN(q.P/1e6)+' MW':fmtN(q.P/1e3)+' kW'}</td><td>${q.P>0?fmtN(q.I):'—'}</td></tr>`).join('')+'</table><div class="note" style="font-size:12px;margin-top:4px">Sau trạm 500/220 kV điện được chia cho nhiều nhánh; bảng và hình chỉ thể hiện <b>một nhánh</b> ở mỗi cấp. Một hộ gia đình dùng khoảng 2 kW ⇒ dòng điện vào nhà ≈ 2000/220 ≈ 9 A.</div>';
+  if(t!==lastCh){$('chain').innerHTML=t;lastCh=t}
+  let s='<ol>';
+  s+=`<li>Máy phát ở nhà máy tạo điện áp ${UG} kV. Truyền công suất P = ${fmtN(st.P)} MW ở ${UG} kV thì dòng điện là ${fmtN(c.IG)} A.</li>`;
+  s+=st.U===UG?`<li><b>Không dùng máy tăng áp</b>: dòng ${fmtN(c.I)} A chạy trên dây dài ${fmtN(st.L)} km (R = ${fmt(c.R,1)} Ω mỗi pha) ⇒ ΔP = 3I²R = ${fmtN(c.dP/1e6)} MW ${c.ok?'':'<b>lớn hơn cả công suất phát</b>'} ⇒ dây nóng đỏ, ${c.ok?'phần lớn điện năng biến thành nhiệt':'không thể truyền tải'}; nhà dân ở cuối đường dây ${c.ok&&c.H>0.5?'nhận được ít điện':'không có điện'}.</li>`
+    :`<li>Máy biến áp tăng áp nâng điện áp lên <b>${st.U} kV</b> (N₁/N₂ = 1/${fmt(st.U/UG,1)}) ⇒ dòng điện giảm ${fmt(st.U/UG,1)} lần, còn ${fmtN(c.I)} A.</li><li>Hao phí ΔP = P²R/(U²cos²φ) = ${fmt(c.dP/1e6,1)} MW, chỉ bằng ${fmt(loss*100,loss<0.1?2:1)}% công suất truyền đi (so với truyền thẳng ${UG} kV: hao phí giảm (${st.U}/${UG})² = ${fmtN((st.U/UG)**2)} lần).</li>`;
+  s+='<li>Đến gần nơi tiêu thụ, điện áp được hạ dần qua các trạm 500/220 kV → 220/110 kV → 110/22 kV → máy biến áp phân phối 22/0,4 kV; đồng thời điện được <b>chia nhỏ</b> cho nhiều nhánh – mỗi nhánh cấp thấp chỉ tải một phần công suất trên quãng đường ngắn nên dòng điện vừa phải, hao phí nhỏ.</li>';
+  s+='<li>Lưới hạ áp 0,4 kV (380 V giữa hai dây pha) đưa điện vào nhà dân: điện áp giữa dây pha và dây trung tính là <b>220 V</b>, tần số 50 Hz.</li>';
+  s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const base=o=>{Object.assign(st,{U:500,P:1000,L:500,r:0.03,cos:0.9},o||{});syncUI()};
+const QS=[
+  {q:'Biện pháp chủ yếu để giảm hao phí điện năng khi truyền tải đi xa là:',o:['Tăng điện áp trước khi truyền tải','Giảm điện áp trước khi truyền tải','Dùng dây dẫn rất dài','Giảm tiết diện dây dẫn'],e:'ΔP = P²R/(U²cos²φ) tỉ lệ nghịch với U².',d:()=>base()},
+  {q:'Giữ nguyên công suất truyền đi, tăng điện áp truyền tải từ 220 kV lên 440 kV thì công suất hao phí trên đường dây:',o:['Giảm 4 lần','Giảm 2 lần','Tăng 4 lần','Không đổi'],e:'U tăng 2 lần ⇒ ΔP giảm 2² = 4 lần.',d:()=>base({U:220})},
+  {q:'Máy biến áp tăng áp ở nhà máy nâng điện áp từ 25 kV lên 500 kV. Tỉ số số vòng dây N₁/N₂ là:',o:['1/20','20','1/500','1/25'],e:'N₁/N₂ = U₁/U₂ = 25/500 = 1/20.',d:()=>{base();st.sel=S0;showInfo();setView('plant')}},
+  {q:'Qua máy biến áp tăng áp (bỏ qua hao phí), khi điện áp tăng 20 lần thì cường độ dòng điện:',o:['Giảm 20 lần','Tăng 20 lần','Giảm 400 lần','Không đổi'],e:'U₁I₁ = U₂I₂ ⇒ I giảm đúng bằng số lần U tăng.',d:()=>{base();st.sel=S0;showInfo()}},
+  {q:'Điện áp sử dụng trong các hộ gia đình ở Việt Nam là:',o:['220 V – 50 Hz','110 V – 60 Hz','380 V – 50 Hz','22 kV – 50 Hz'],e:'Lưới hạ áp 380/220 V; giữa dây pha và dây trung tính là 220 V, tần số 50 Hz.',d:()=>{base();setView('home')}},
+  {q:'Nếu truyền tải trực tiếp ở điện áp máy phát 25 kV đi xa vài trăm km thì:',o:['Hao phí rất lớn, dây nóng mạnh, hầu như không truyền được điện','Hao phí nhỏ hơn truyền ở 500 kV','Không có hao phí','Điện áp ở nơi tiêu thụ tăng lên'],e:'Dòng điện lớn gấp 20 lần ⇒ hao phí lớn gấp 400 lần so với 500 kV.',d:()=>base({U:25})},
+  {q:'Hệ số công suất cos φ của mạch tăng (giữ P, U, R) thì hao phí trên đường dây:',o:['Giảm','Tăng','Không đổi','Bằng 0'],e:'ΔP = P²R/(U²cos²φ) ⇒ cos φ tăng thì ΔP giảm.',d:()=>base({cos:1})},
+  {q:'Trạm biến áp 110/22 kV đặt gần khu dân cư là máy:',o:['Hạ áp, N₁ > N₂','Tăng áp, N₁ < N₂','Hạ áp, N₁ < N₂','Tăng áp, N₁ > N₂'],e:'Điện áp ra nhỏ hơn điện áp vào ⇒ hạ áp, số vòng cuộn sơ cấp lớn hơn.',d:()=>{base();st.sel=S3s;showInfo();setView('sub')}}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;q.d();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+const uLbl=U=>U<1?'0,4 kV (380/220 V)':U+' kV';
+let last=performance.now(),uiT=0;
+function loop(now){
+  const dt=clamp((now-last)/1000,0,0.05);last=now;st.t+=dt;
+  const c=calc(),loss=Math.min(1,1-c.H),deliver=c.ok?c.H:0,showL=$('kL').checked,showV=$('kV').checked;
+  // máy phát quay
+  genRot.forEach((g,i)=>{if(i%2===0)g.rotation.y+=dt*3});
+  // nhiệt trên dây chính: tỉ lệ với hao phí
+  sMain.ph.forEach(p=>{p.mesh.material.emissiveIntensity=$('kH').checked?clamp(loss*2.2,0,1.6)*(0.85+0.15*Math.sin(st.t*6)):0;p.mesh.material.color.setHex(loss>0.3&&$('kH').checked?0x7f1d1d:0x374151)});
+  sG.ph.forEach(p=>{p.mesh.material.emissiveIntensity=$('kH').checked&&st.U===UG?0.4:0});
+  // máy tăng áp mờ đi khi không dùng (truyền thẳng 25 kV)
+  S0.g.traverse(o=>{if(o.isMesh){o.material.transparent=true;o.material.opacity=st.U===UG?0.35:1}});
+  // dòng năng lượng: kích thước hạt ∝ √I (đoạn chính), đoạn sau trạm nhận phần công suất còn lại
+  const showE=$('kE').checked;
+  flows.forEach(d=>{const u=d.userData,s=u.s;d.visible=showE&&(s===sG||s===sMain||deliver>0.02);if(!d.visible)return;
+    const I=s===sG?c.IG:s===sMain?c.I:brP(s.U,c)/(S3*s.U*1e3*st.cos);
+    const sz=s===sMain?clamp(0.18+0.0001*I,0.2,1.3):s===sG?clamp(0.0000245*I+0.2,0.25,1.0):s.U<1?0.14:0.2+0.06*(s.U/220);
+    u.u=(u.u+dt*(s===sMain?0.06*(600/u.p.len)*0.6:0.12*(60/u.p.len))*(s===sMain?1:1))%1;d.position.copy(u.p.curve.getPointAt(u.u));d.scale.setScalar(sz*(s===sMain&&!c.ok?1:1));
+    // trên dây chính, hạt mờ dần dọc đường (năng lượng mất dần do tỏa nhiệt)
+    if(s===sMain){d.material.color.setHex(0xdc2626);d.scale.multiplyScalar(c.ok?1-loss*u.u*0.8:Math.max(0.15,1-u.u))}});
+  // nhà dân sáng theo công suất nhận được
+  houses.forEach(h=>{const k=c.ok?clamp((c.H-0.3)/0.6,0,1):0;h.wM.emissiveIntensity=1.6*k;h.bulb.intensity=1.2*k});
+  // nhãn điện áp
+  vLabels.forEach(l=>{const s=l.userData.seg,I=s===sG?c.IG:s===sMain?c.I:(c.ok?brP(s.U,c)/(S3*s.U*1e3*st.cos):0);l.visible=showV;
+    if(showV)setText(l,uLbl(s===sMain?st.U:s.U)+(s===sMain||s===sG?'':' (1 nhánh)')+'\nI ≈ '+(I>0?fmtN(I)+' A':'0'),'#fff',1.5,s===sMain&&loss>0.3?'rgba(185,28,28,.92)':'rgba(15,23,42,.85)')});
+  setText(lbLoss,c.ok?'Hao phí trên dây: '+fmt(c.dP/1e6,1)+' MW ('+fmt(loss*100,loss<0.1?2:1)+'%)':'Hao phí > công suất phát: KHÔNG TRUYỀN ĐƯỢC!','#b91c1c',2.2);lbLoss.visible=showL;
+  setText(lbMain,'Đường dây '+st.U+' kV'+(st.U===500?' Bắc – Nam':''),'#b91c1c',2.2);
+  labels.forEach(l=>l.visible=showL);
+  uiT+=dt;if(uiT>0.15){uiT=0;ui();drawGraph()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__tt={st,calc,lossFor,syncUI,camera,cam,tc,setView,stations,S0};   // dùng cho kiểm thử tự động
+ui();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

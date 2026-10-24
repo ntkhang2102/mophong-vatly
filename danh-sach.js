@@ -157,6 +157,14 @@ window.MO_PHONG = [
     tags: ["từ thông", "Lenz", "Faraday", "nam châm", "cuộn dây", "khóa K"]
   },
   {
+    ten: "Truyền tải điện năng đi xa – lưới điện Việt Nam 3D",
+    mota: "Nhà máy thủy điện (máy phát 25 kV) → máy biến áp tăng áp 25/500 kV → đường dây 500 kV Bắc – Nam → trạm 500/220, 220/110, 110/22 kV → máy biến áp phân phối 22/0,4 kV → nhà dân 220 V. So sánh truyền tải ở 25/110/220/500 kV: dòng điện, hao phí ΔP = P²R/(U²cos²φ), dây nóng đỏ, hiệu suất; bấm từng trạm xem tỉ số vòng dây.",
+    chuong: "Máy biến áp – truyền tải điện năng",
+    lop: 12,
+    file: "sims/truyen-tai-dien-nang-3d.html",
+    tags: ["truyền tải điện năng", "hao phí", "máy biến áp", "500 kV", "lưới điện", "Việt Nam", "220 V", "3D"]
+  },
+  {
     ten: "Máy phát điện xoay chiều – khung dây quay trong từ trường",
     mota: "Khung dây quay đều giữa hai cực nam châm (3D): Φ = NBScos ωt, e = ωNBS sin ωt. Vành khuyên, chổi quét, đèn; đồ thị Φ(t), e(t); chế độ ẩn đáp án.",
     chuong: "Máy phát điện xoay chiều",
