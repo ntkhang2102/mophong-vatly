@@ -21,6 +21,22 @@ window.MO_PHONG = [
     tags: ["điện kế", "số 0 ở giữa", "galvanometer", "chiều dòng điện", "khung quay", "lò xo xoắn", "xoay chiều", "3D"]
   },
   {
+    ten: "Súng điện từ 3D – lực từ đẩy thanh trên hai thanh ray",
+    mota: "Hai thanh ray nối nguồn không đổi qua khóa K, từ trường B hướng lên. Đóng K: lực từ F = BIL đẩy thanh trượt, hình trụ lăn, hoặc thanh đẩy viên đạn bay ra trúng bia. Mũi tên B, F, v, dòng điện; mô hình bàn tay trái; đảo cực nguồn/đảo chiều B, ma sát, suất điện động cảm ứng; đồ thị v(t).",
+    chuong: "Từ trường",
+    lop: 12,
+    file: "sims/sung-dien-tu-3d.html",
+    tags: ["súng điện từ", "railgun", "lực từ", "F = BIL", "thanh ray", "quy tắc bàn tay trái", "3D"]
+  },
+  {
+    ten: "Đo lực từ bằng lực kế lò xo – nam châm chữ U 3D",
+    mota: "Hai lực kế lò xo treo thanh đồng nằm trong khe nam châm chữ U rộng. Ba tình huống: chưa treo thanh, treo thanh không có dòng, có dòng điện (một chiều/xoay chiều, đảo cực nguồn, đảo cực nam châm). Hiển thị P, F từ, lực đàn hồi, độ dãn trên thước; kéo thanh hoặc móc lò xo bằng chuột.",
+    chuong: "Từ trường",
+    lop: 12,
+    file: "sims/luc-ke-luc-tu-3d.html",
+    tags: ["lực từ", "lực kế", "lò xo", "độ dãn", "lực đàn hồi", "trọng lực", "nam châm chữ U", "3D"]
+  },
+  {
     ten: "Cân dòng điện – đo cảm ứng từ 3D",
     mota: "Nam châm chữ U đặt trên cân điện tử, khung dây đồng treo trong khe từ. Thay đổi I, L, góc α, đảo chiều dòng điện; lực từ F = BIL sin α làm số chỉ cân thay đổi (định luật III Newton). Ghi bảng số liệu, vẽ đồ thị F – I, đo B của nam châm bí ẩn.",
     chuong: "Từ trường",

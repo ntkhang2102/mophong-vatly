@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Đo lực từ bằng lực kế 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 160px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec[hidden]{display:none}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 3px;font-size:12.5px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+button:disabled{opacity:.45;cursor:default}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#graph{width:100%;height:160px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="front">Chính diện</button>
+      <button data-view="gap">Lại gần khe từ</button>
+      <button data-view="spring">Lại gần lò xo</button>
+    </div>
+    <div class="hint" id="hint">Kéo thanh đồng (hoặc móc lò xo) lên/xuống rồi thả · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Đo lực từ bằng lực kế lò xo – nam châm chữ U (3D)</h1>
+      <div class="sub">Vật lí 12 · Lực từ tác dụng lên đoạn dây dẫn mang dòng điện · F = B·I·L · Cân bằng lực</div>
+    </div>
+
+    <div class="sec">
+      <h2>Tình huống</h2>
+      <div class="seg" id="segSc" style="flex-direction:column;gap:4px"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Nguồn điện và nam châm</h2>
+      <div class="seg" id="segSrc"><button data-v="dc">⎓ Một chiều</button><button data-v="ac">∿ Xoay chiều</button></div>
+      <div id="boxAC" hidden><div class="lbl">Tần số</div><div class="seg" id="segFq"><button data-v="0.5">0,5 Hz (chiếu chậm)</button><button data-v="50">50 Hz (thực tế)</button></div></div>
+      <label class="rng">Cường độ dòng điện I<span class="v" id="vI"></span><input type="range" id="rI" min="0" max="10" step="0.5" value="5"></label>
+      <label class="rng">Cảm ứng từ B giữa hai cực<span class="v" id="vB"></span><input type="range" id="rB" min="0.1" max="0.5" step="0.05" value="0.2"></label>
+      <label class="rng">Khối lượng thanh đồng m<span class="v" id="vM"></span><input type="range" id="rM" min="20" max="100" step="5" value="50"></label>
+      <div class="row"><button class="wide" id="bPol">⇄ Đảo cực nguồn</button><button class="wide" id="bMag">⇄ Đảo cực nam châm</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kP" checked> Trọng lực P</label>
+        <label><input type="checkbox" id="kF" checked> Lực từ F</label>
+        <label><input type="checkbox" id="kE" checked> Lực đàn hồi F<sub>đh</sub></label>
+        <label><input type="checkbox" id="kB" checked> Đường sức từ B</label>
+        <label><input type="checkbox" id="kI" checked> Dòng điện I</label>
+        <label><input type="checkbox" id="kX" checked> Nhìn xuyên nam châm</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+      </div>
+      <div class="row"><button class="wide" id="bPause">⏸ Dừng hình</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li><b>Chưa treo thanh:</b> lò xo có chiều dài tự nhiên ℓ₀, độ dãn Δℓ = 0, lực kế chỉ 0.</li>
+        <li><b>Treo thanh, chưa có dòng điện:</b> thanh cân bằng dưới tác dụng của trọng lực P = mg và hai lực đàn hồi: 2F<sub>đh</sub> = P ⇒ mỗi lực kế chỉ F₁ = mg/2, mỗi lò xo dãn Δℓ₁ = mg/(2k).</li>
+        <li><b>Có dòng điện:</b> đoạn thanh nằm trong từ trường (dài L) chịu thêm lực từ F = B·I·L, phương thẳng đứng (dây ⟂ B), chiều theo quy tắc bàn tay trái. Lực từ hướng xuống ⇒ 2F<sub>đh</sub> = P + F (lò xo dãn thêm); lực từ hướng lên ⇒ 2F<sub>đh</sub> = P − F (lò xo co bớt).</li>
+        <li><b>Đo lực từ:</b> F = 2·|F₂ − F₁| = 2k·|Δℓ₂ − Δℓ₁| (F₁, F₂: số chỉ mỗi lực kế khi chưa và khi có dòng điện). Từ đó tính B = F/(I·L).</li>
+        <li>Đảo cực nguồn <b>hoặc</b> đảo cực nam châm ⇒ lực từ đổi chiều. Dòng xoay chiều ⇒ lực từ đổi chiều liên tục ⇒ thanh dao động lên xuống quanh vị trí cân bằng (với 50 Hz chỉ rung nhẹ, số chỉ trung bình bằng mg/2).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2,G=9.8;
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Thông số (1 đơn vị hình = 1 cm). Thanh dọc trục x, B nằm ngang theo trục z ======
+const K=10,L0=8,LMAG=0.10;                            // độ cứng mỗi lò xo (N/m), chiều dài tự nhiên lò xo (cm), bề rộng vùng từ trường = chiều dài L (m)
+const YT=36,XS=9,HOOK=1.5,EMAX=14,EROD=7.2;   // EROD: độ dãn lớn nhất khi treo thanh (thanh chạm đế nam châm)                    // độ cao điểm treo, vị trí hai lực kế, chiều dài móc, độ dãn lớn nhất
+const YMC=22.5;                                       // tâm vùng từ trường (độ cao)
+const st={sc:3,src:'dc',fq:0.5,I:5,B:0.2,m:0.05,pol:1,mag:1,e:0,v:0,eH:0,t:0,drag:null,paused:false,hist:[],ht:0,avg:[]};
+// dòng điện tức thời (A), chiều dương: thanh từ trái (x < 0) sang phải
+const Inow=()=>st.sc<3?0:st.src==='ac'?st.pol*st.I*Math.SQRT2*Math.sin(TAU*st.fq*st.t):st.pol*st.I;
+// lực từ thẳng đứng (N, dương = hướng XUỐNG): F = I·L(+x) × B; mag = +1: B theo +z ⇒ x × z = −y (xuống)
+const Fdown=()=>Inow()*LMAG*st.B*st.mag;
+const hung=()=>st.sc>=2;
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe5e9f0);
+const camera=new THREE.PerspectiveCamera(40,1,0.1,400);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a94a6,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(20,50,40);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xc7d7ff,0.35);fill.position.set(-30,20,-25);scene.add(fill);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V3(0,1,0);
+const M=(color,o={})=>new THREE.MeshStandardMaterial({color,roughness:.5,...o});
+const box=(w,h,d,mat,x,y,z,par=scene)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);par.add(m);return m};
+const cyl=(r,h,mat,x,y,z,par=scene,seg=16)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),mat);m.position.set(x,y,z);par.add(m);return m};
+const mats={wood:M(0xc8a273,{roughness:.8}),steel:M(0x9ca3af,{metalness:.6,roughness:.3}),dark:M(0x334155),cu:M(0xd9844a,{metalness:.35,roughness:.35}),
+  spring:M(0xcbd5e1,{metalness:.5,roughness:.3}),ruler:M(0xfffbeb,{roughness:.7}),psu:M(0x1e3a5f,{roughness:.6}),red:M(0xdc2626),blk:M(0x111827)};
+// bàn và giá treo
+box(56,1.2,26,mats.wood,0,-0.6,0);
+for(const x of[-16,16])cyl(0.6,YT+2,mats.steel,x,(YT+2)/2,-3);
+cyl(0.6,33,mats.steel,0,YT+1.5,-3).rotation.z=Math.PI/2;
+for(const x of[-16,16])box(4,0.8,6,mats.dark,x,0.4,-3);
+// ---- nam châm chữ U: đế trên bục gỗ, hai nhánh hai bên khe (z = ±), vùng giữa rộng ----
+const GAPH=4.2,ARMT=3,MW=10;                          // nửa khe, bề dày nhánh, bề rộng nam châm theo x (= L)
+box(MW+2,YMC-8,16,mats.wood,0,(YMC-8)/2,0);
+const magG=new THREE.Group();scene.add(magG);
+const magMats={N:new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.45,transparent:true}),S:new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.45,transparent:true}),
+  base:new THREE.MeshStandardMaterial({color:0x52525b,roughness:.5,metalness:.3,transparent:true})};
+box(MW,4,2*(GAPH+ARMT),magMats.base,0,YMC-6,0,magG);
+const armB=box(MW,11,ARMT,magMats.N,0,YMC+0.5-1.5,-(GAPH+ARMT/2),magG),armF=box(MW,11,ARMT,magMats.S,0,YMC+0.5-1.5,GAPH+ARMT/2,magG);
+function letter(t){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle='#fff';g.font='bold 100px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,72);
+  const tex=new THREE.CanvasTexture(c);return{m:new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false})),c,tex}}
+const ltF=letter('S'),ltB=letter('N');ltF.m.position.set(0,YMC+2.5,GAPH+ARMT+0.02);magG.add(ltF.m);ltB.m.position.set(0,YMC+2.5,-(GAPH+ARMT)-0.02);ltB.m.rotation.y=Math.PI;magG.add(ltB.m);
+function setLetter(L,t){const g=L.c.getContext('2d');g.clearRect(0,0,128,128);g.fillStyle='#fff';g.font='bold 100px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,72);L.tex.needsUpdate=true}
+// đường sức từ trong khe
+const fieldG=new THREE.Group();scene.add(fieldG);const gMat=new THREE.MeshBasicMaterial({color:0x16a34a}),gCone=new THREE.MeshBasicMaterial({color:0x15803d});
+for(const x of[-3.5,-1.2,1.2,3.5])for(const y of[YMC-3,YMC,YMC+3]){const t=cyl(0.09,2*GAPH-0.2,gMat,x,y,0,fieldG,6);t.rotation.x=Math.PI/2;
+  const c=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.9,10),gCone);c.position.set(x,y,GAPH*0.55);c.rotation.x=Math.PI/2;c.userData.cone=1;fieldG.add(c)}
+// ---- hai lực kế lò xo: móc trên, lò xo xoắn, móc dưới, thước chia độ dãn ----
+const springs=[-XS,XS].map((x,i)=>{
+  const g=new THREE.Group();g.position.set(x,0,0);scene.add(g);
+  cyl(0.5,1.2,mats.steel,0,YT+0.4,0,g,12);
+  // lò xo xoắn: dựng lại hình theo chiều dài thật mỗi khi dãn (giữ nguyên tiết diện dây)
+  const sp=new THREE.Mesh(new THREE.BufferGeometry(),mats.spring);sp.position.y=YT-0.2;sp.userData.len=-1;g.add(sp);
+  const hookG=new THREE.Group();g.add(hookG);
+  cyl(0.15,HOOK-0.4,mats.steel,0,-(HOOK-0.4)/2,0,hookG,8);
+  const hk=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.15,8,20,Math.PI*1.4),mats.steel);hk.position.y=-HOOK+0.25;hk.rotation.z=Math.PI*0.8;hookG.add(hk);
+  // thước: vạch 0 ngang với đầu dưới lò xo khi chưa dãn
+  const rC=document.createElement('canvas');rC.width=96;rC.height=1024;const rg=rC.getContext('2d');rg.fillStyle='#fffbeb';rg.fillRect(0,0,96,1024);rg.fillStyle='#0f172a';rg.strokeStyle='#0f172a';rg.textAlign='left';rg.textBaseline='middle';
+  const RL=16;for(let c=0;c<=RL*2;c++){const y=12+c*(1000/(RL*2)),big=c%2===0;rg.lineWidth=big?3:1.5;rg.beginPath();rg.moveTo(0,y);rg.lineTo(big?40:24,y);rg.stroke();if(big&&c%4===0){rg.font='bold 34px system-ui,sans-serif';rg.fillText(String(c/2),46,y)}}
+  const ruler=new THREE.Mesh(new THREE.PlaneGeometry(2.4,RL*1024/1000),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(rC)}));
+  // căn: vạch 0 (y canvas = 12) ở độ cao YT − 0,2 − L0
+  const top=YT-0.2-L0+12*RL/1000;ruler.position.set(i?2.6:-2.6,top-RL*1024/1000/2,0.2);g.add(ruler);
+  // đoạn tô màu thể hiện độ dãn Δℓ
+  const dl=box(0.5,1,0.3,new THREE.MeshBasicMaterial({color:0xf97316}),i?1.25:-1.25,0,0.25,g);
+  return{g,sp,hookG,ruler,dl,e:0}});
+function buildSpring(sp,len){if(Math.abs(sp.userData.len-len)<0.01)return;sp.userData.len=len;const NT=8,pts=[];
+  pts.push(V3(0,0,0));for(let k=0;k<=NT*24;k++){const a=k/24*TAU;pts.push(V3(0.9*Math.cos(a),-0.3-(len-0.6)*k/(NT*24),0.9*Math.sin(a)))}pts.push(V3(0,-len,0));
+  sp.geometry.dispose();sp.geometry=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),NT*40,0.1,6,false)}
+// ---- thanh đồng ----
+const rodG=new THREE.Group();scene.add(rodG);
+const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,26,20),mats.cu);rod.rotation.z=Math.PI/2;rodG.add(rod);
+[-XS,XS].forEach(x=>{const r=new THREE.Mesh(new THREE.TorusGeometry(0.75,0.15,8,20),mats.steel);r.position.set(x,0.2,0);r.rotation.y=Math.PI/2;rodG.add(r)});
+[-13,13].forEach(x=>cyl(0.55,0.8,mats.blk,x,0,0,rodG,12).rotation.z=Math.PI/2);
+// ---- nguồn điện và dây nối mềm ----
+const PX=22,PZ=6;box(8,6,6,mats.psu,PX,3,PZ);
+const psuC=document.createElement('canvas');psuC.width=384;psuC.height=128;const psuT=new THREE.CanvasTexture(psuC);
+{const m=new THREE.Mesh(new THREE.PlaneGeometry(5,1.6),new THREE.MeshBasicMaterial({map:psuT}));m.position.set(PX,4.2,PZ+3.01);scene.add(m)}
+const tP=V3(PX-2.2,1.6,PZ+3.3),tN=V3(PX+2.2,1.6,PZ+3.3);[[tP,mats.red],[tN,mats.blk]].forEach(([p,m])=>{const c=cyl(0.45,0.8,m,p.x,p.y,p.z-0.2,scene,12);c.rotation.x=Math.PI/2});
+let lastPsu='';function drawPsu(){const I=Inow();const t=st.sc<3?'– – –':(st.src==='ac'?'~ ':'')+fmt(st.src==='ac'?st.I:Math.abs(I),1)+' A';if(t+st.pol===lastPsu)return;lastPsu=t+st.pol;
+  const g=psuC.getContext('2d');g.fillStyle='#111827';g.fillRect(0,0,384,128);g.fillStyle='#f87171';g.font='bold 70px "Courier New",monospace';g.textAlign='center';g.textBaseline='middle';g.fillText(t,192,68);psuT.needsUpdate=true}
+const wireM=M(0x7c2d12,{metalness:.3});const wires=[null,null];
+function wirePts(k,yr){const end=V3(k?13.4:-13.4,yr,0),term=k?tN:tP;return k?[end,V3(17,yr-2,2),V3(19,6,PZ+4),term.clone().add(V3(0,0,0.4))]:[end,V3(-17,yr-3,4),V3(-6,4,12),V3(12,2,PZ+6),term.clone().add(V3(0,0,0.4))]}
+let wireY=null;function buildWires(yr){if(wireY!==null&&Math.abs(wireY-yr)<0.05)return;wireY=yr;wires.forEach((w,k)=>{if(w){scene.remove(w);w.geometry.dispose()}const c=new THREE.CatmullRomCurve3(wirePts(k,yr));wires[k]=new THREE.Mesh(new THREE.TubeGeometry(c,50,0.18,6),wireM);wires[k].userData.curve=c;scene.add(wires[k])})}
+// ---- mũi tên lực ----
+function mkArrow(color,r=0.22){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.35});
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,12),m);g.add(sh);const hd=new THREE.Mesh(new THREE.ConeGeometry(r*2.6,r*5,14),m);g.add(hd);g.userData={sh,hd,r};scene.add(g);return g}
+function setArrow(g,p,dirY,len){const{sh,hd,r}=g.userData;const hl=r*5;len=Math.max(len,hl+0.1);sh.scale.y=Math.max(.01,len-hl);sh.position.y=(len-hl)/2;hd.position.y=len-hl/2;g.position.copy(p);g.rotation.set(dirY>0?0:Math.PI,0,0)}
+const aP=mkArrow(0xdc2626),aF=mkArrow(0x7c3aed),aE=[mkArrow(0x2563eb,0.18),mkArrow(0x2563eb,0.18)];
+const NPC=12;                                           // độ dài mũi tên (đơn vị hình) ứng với 1 N
+// dòng điện: hạt vàng
+const dotM=new THREE.MeshBasicMaterial({color:0xfde047});const dots=[];for(let k=0;k<44;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(0.25,8,6),dotM);d.userData.u=k/44;scene.add(d);dots.push(d)}
+
+// ====== Nhãn ======
+function makeLabel(text,color='#0f172a',size=0.3){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle='rgba(255,255,255,.9)';g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+// nhãn có nội dung thay đổi: vẽ lại khi chữ đổi
+function dynLabel(color,size){const s=makeLabel(' ',color,size);s.userData={color,size,text:''};scene.add(s);return s}
+function setText(s,t){if(s.userData.text===t)return;s.userData.text=t;const n=makeLabel(t,s.userData.color,s.userData.size);s.material.map.dispose();s.material.map=n.material.map;s.scale.copy(n.scale)}
+const labels=[];const L=(t,c,x,y,z,s=1.3)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);labels.push(l);return l};
+L('Lực kế 1','#1e3a8a',-XS-5,YT+1.5,0);L('Lực kế 2','#1e3a8a',XS+5,YT+1.5,0);const lbMag=L('Nam châm chữ U','#374151',-10,YMC-6,8);
+L('Nguồn điện','#1e3a8a',PX,8,PZ);const lbRod=L('Thanh đồng (dòng điện thẳng)','#9a3412',0,0,0,1.1);
+const lbP=dynLabel('#b91c1c',1.2),lbF=dynLabel('#6d28d9',1.2),lbE=[dynLabel('#1d4ed8',1.1),dynLabel('#1d4ed8',1.1)],lbDl=[dynLabel('#c2410c',1.0),dynLabel('#c2410c',1.0)],lbB=L('B','#15803d',4.5,YMC+5,GAPH+0.8,1.3);
+const lbRead=[dynLabel('#0f172a',1.6),dynLabel('#0f172a',1.6)];
+
+// ====== Camera và kéo ======
+const cam={az:0.5,el:0.3,r:78,tx:2,ty:20,tz:0};const tc={...cam};
+const VIEWS={iso:[0.5,0.3,78,2,20,0],front:[0.0001,0.08,74,2,20,0],gap:[0.45,0.45,28,0,YMC+1,0],spring:[0.25,0.12,30,XS,YT-8,0]};
+function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.1&&(k==='iso'||k==='front'))tc.r*=Math.pow(1.1/a,0.85)}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hit=new THREE.Vector3();let dPlane=null,dY0=0,dE0=0;
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=78,orbit=false;
+const grabMeshes=()=>{const a=[];if(hung())rodG.traverse(o=>{if(o.isMesh)a.push(o)});springs.forEach(s=>{s.hookG.traverse(o=>{if(o.isMesh)a.push(o)});a.push(s.sp)});return a};
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();
+  if(ptrs.size===2){st.drag=null;orbit=false;const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r;return}
+  setNdc(e);const h=ray.intersectObjects(grabMeshes())[0];
+  if(h){const n=V3(camera.position.x-h.point.x,0,camera.position.z-h.point.z).normalize();dPlane=new THREE.Plane().setFromNormalAndCoplanarPoint(n,h.point);dY0=h.point.y;
+    st.drag={which:hung()?'rod':(h.point.x<0?0:1)};dE0=hung()?st.e:springs[st.drag.which].e;el.style.cursor='grabbing'}
+  else orbit=true});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(grabMeshes()).length?'grab':'default';return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,10,150);return}
+  if(st.drag){setNdc(e);if(ray.ray.intersectPlane(dPlane,hit)){const e2=clamp(dE0+(dY0-hit.y),0,st.drag.which==='rod'?EROD:EMAX);if(st.drag.which==='rod'){st.e=e2;st.v=0}else springs[st.drag.which].e=e2}}
+  else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.2,1.5)}});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;if(st.drag&&!ptrs.size){st.drag=null;el.style.cursor='default';hint('Thả tay: lực đàn hồi kéo vật về vị trí cân bằng')}if(!ptrs.size)orbit=false}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),10,150)},{passive:false});
+let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Bảng điều khiển ======
+const SC=[[1,'① Chưa treo thanh – lò xo chưa dãn'],[2,'② Treo thanh, chưa có dòng điện'],[3,'③ Treo thanh, có dòng điện chạy qua']];
+$('segSc').innerHTML=SC.map(([v,t])=>`<button data-v="${v}" style="border-radius:8px;text-align:left">${t}</button>`).join('');
+const eq=()=>hung()?(st.m*G+Fdown())/(2*K)*100:0;      // độ dãn cân bằng mỗi lò xo (cm)
+function syncUI(){
+  $('segSc').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.sc));
+  $('segSrc').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.src));
+  $('segFq').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.fq));$('boxAC').hidden=st.src!=='ac';
+  $('vI').textContent=fmt(st.I,1)+' A'+(st.src==='ac'?' (hiệu dụng)':'');$('rI').value=st.I;$('vB').textContent=fmt(st.B,2)+' T';$('rB').value=st.B;$('vM').textContent=Math.round(st.m*1000)+' g';$('rM').value=Math.round(st.m*1000);
+  $('bPause').textContent=st.paused?'▶ Tiếp tục':'⏸ Dừng hình';
+  setLetter(ltB,st.mag>0?'N':'S');setLetter(ltF,st.mag>0?'S':'N');armB.material=st.mag>0?magMats.N:magMats.S;armF.material=st.mag>0?magMats.S:magMats.N;
+}
+function setScene(v){const was=st.sc;st.sc=v;if(v>=2&&was<2){st.e=0;st.v=0}if(v===1){springs.forEach(s=>s.e=s.e)}st.hist=[];syncUI();
+  hint({1:'Chưa treo thanh: lò xo ở chiều dài tự nhiên, lực kế chỉ 0',2:'Treo thanh: lò xo dãn ra do trọng lực của thanh',3:'Có dòng điện: lực từ làm lò xo dãn thêm (hoặc co bớt)'}[v])}
+$('segSc').querySelectorAll('button').forEach(b=>b.onclick=()=>setScene(+b.dataset.v));
+$('segSrc').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.src=b.dataset.v;st.hist=[];syncUI()});
+$('segFq').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.fq=+b.dataset.v;syncUI()});
+$('rI').oninput=e=>{st.I=+e.target.value;syncUI()};$('rB').oninput=e=>{st.B=+e.target.value;syncUI()};$('rM').oninput=e=>{st.m=+e.target.value/1000;syncUI()};
+$('bPol').onclick=()=>{st.pol*=-1;syncUI();hint('Đảo cực nguồn ⇒ dòng điện đổi chiều ⇒ lực từ đổi chiều')};
+$('bMag').onclick=()=>{st.mag*=-1;syncUI();hint('Đảo cực nam châm ⇒ B đổi chiều ⇒ lực từ đổi chiều')};
+$('bPause').onclick=()=>{st.paused=!st.paused;syncUI()};
+syncUI();
+
+// ====== Đồ thị: số chỉ mỗi lực kế theo thời gian ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  const x0=40,y0=h-18,H=y0-22,fm=Math.max(0.6,...st.hist.map(q=>q[0]))*1.15,Y=f=>y0-f/fm*H;g.font='10.5px system-ui,sans-serif';
+  g.textAlign='right';g.fillStyle='#93a3c0';for(let f=0;f<=fm;f+=fm>1.2?0.5:0.2){g.strokeStyle='#1c2a47';g.beginPath();g.moveTo(x0,Y(f));g.lineTo(w-6,Y(f));g.stroke();g.fillText(fmt(f,1),x0-3,Y(f)+3)}
+  const p2=st.m*G/2;if(hung()){g.setLineDash([4,4]);g.strokeStyle='#94a3b8';g.beginPath();g.moveTo(x0,Y(p2));g.lineTo(w-6,Y(p2));g.stroke();g.setLineDash([])}
+  const N=st.hist.length,span=240,X=i=>x0+(i-(N-span))*(w-x0-6)/span;g.strokeStyle='#60a5fa';g.lineWidth=2;g.beginPath();st.hist.forEach((q,i)=>i?g.lineTo(X(i),Y(q[0])):g.moveTo(X(i),Y(q[0])));g.stroke();
+  g.textAlign='left';g.fillStyle='#60a5fa';g.fillText('━ số chỉ mỗi lực kế F_đh (N)',x0+4,12);g.fillStyle='#94a3b8';g.fillText('- - mg/2',x0+190,12);
+}
+
+// ====== Kết quả, chip, giải thích ======
+let lastE='',lastC='',lastR='';
+const Fel=i=>K*(hung()?st.e:springs[i].e)/100;
+function ui(){
+  const P=st.m*G,F=Fdown(),fe=[Fel(0),Fel(1)],dl=(hung()?st.e:springs[0].e),dir=Math.abs(F)<1e-6?'—':F>0?'thẳng đứng xuống ↓':'thẳng đứng lên ↑';
+  const fA=st.avg.length?st.avg.reduce((a,b)=>a+b,0)/st.avg.length:fe[0];
+  const c=[['Lực kế 1',fmt(fe[0],2)+' N'],['Lực kế 2',fmt(fe[1],2)+' N'],['F từ',st.sc<3?'0':fmt(Math.abs(F),3)+' N '+(F>0?'↓':F<0?'↑':''),'ind']].map(([a,b,cl])=>`<div class="chip ${cl||''}">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const r=[['Trọng lực P = mg',hung()?fmt(P,3)+' N':'— (chưa treo)'],['Lực từ F = B·I·L',st.sc<3?'0 (không có dòng)':fmt(Math.abs(F),3)+' N, '+dir],
+    ['Độ dãn mỗi lò xo Δℓ',fmt(dl,2)+' cm'],['Lực đàn hồi mỗi lò xo F_đh = kΔℓ',fmt(fe[0],3)+' N'],
+    ['Kiểm tra: 2F_đh',hung()?fmt(2*fe[0],3)+' N ≈ P '+(st.sc===3?(F>=0?'+':'−')+' F':''):'0'],['Số chỉ trung bình (2 s)',fmt(fA,3)+' N']]
+    .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val" style="font-size:14px">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
+  let s='<ol>';
+  if(st.sc===1)s+='<li>Chưa treo thanh đồng: lò xo có chiều dài tự nhiên ℓ₀ = 8 cm, độ dãn Δℓ = 0 ⇒ lực kế chỉ 0.</li><li>Có thể kéo móc lò xo bằng chuột: lò xo dãn càng nhiều, lực đàn hồi F<sub>đh</sub> = k·Δℓ (k = 10 N/m) càng lớn – lực kế đo chính lực này.</li>';
+  else{
+    s+=`<li>Thanh đồng khối lượng m = ${Math.round(st.m*1000)} g treo trên hai lực kế: trọng lực P = mg = ${fmt(P,3)} N (mũi tên đỏ) được cân bằng bởi hai lực đàn hồi (mũi tên xanh dương).</li>`;
+    if(st.sc===2)s+=`<li>Chưa có dòng điện ⇒ không có lực từ ⇒ 2F<sub>đh</sub> = P ⇒ mỗi lực kế chỉ P/2 = ${fmt(P/2,3)} N, mỗi lò xo dãn Δℓ₁ = mg/(2k) = ${fmt(P/2/K*100,2)} cm.</li>`;
+    else{
+      s+=`<li>Đóng mạch: dòng điện ${st.src==='ac'?'xoay chiều':'một chiều'} I = ${fmt(st.I,1)} A chạy trong thanh; đoạn thanh nằm giữa hai cực nam châm dài L = 10 cm, vuông góc với B = ${fmt(st.B,2)} T (đường sức xanh lá).</li>`;
+      s+=`<li>Lực từ F = B·I·L = ${fmt(st.B*st.I*LMAG,3)} N${st.src==='ac'?' (giá trị hiệu dụng)':''}, phương thẳng đứng; theo quy tắc bàn tay trái hiện đang hướng <b>${F>0?'xuống':F<0?'lên':'—'}</b> (mũi tên tím).</li>`;
+      s+=st.src==='dc'?`<li>Cân bằng: 2F<sub>đh</sub> = P ${F>0?'+':'−'} F ⇒ mỗi lực kế chỉ ${fmt(eq()*K/100,3)} N, lò xo ${F>0?'dãn thêm':'co bớt'} ${fmt(Math.abs(F)/2/K*100,2)} cm so với khi chưa có dòng điện. Suy ra F = 2·|F₂ − F₁|.</li>`
+        :st.fq>=50?'<li>Dòng xoay chiều 50 Hz: lực từ đổi chiều 100 lần mỗi giây, thanh có quán tính nên chỉ <b>rung nhẹ</b>; số chỉ trung bình vẫn bằng mg/2 ⇒ không dùng cách này đo lực từ của dòng xoay chiều.</li>'
+        :'<li>Dòng xoay chiều tần số thấp: lực từ lúc hướng xuống, lúc hướng lên ⇒ thanh <b>dao động lên xuống</b>, số chỉ lực kế dao động quanh mg/2.</li>';
+    }
+  }
+  if(st.drag)s+='<li><b>Đang kéo bằng tay:</b> lò xo bị kéo lệch khỏi vị trí cân bằng; thả tay ra, lực đàn hồi kéo vật dao động quanh vị trí cân bằng rồi dừng lại.</li>';
+  s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const base=o=>{Object.assign(st,{sc:3,src:'dc',I:5,B:0.2,m:0.05,pol:1,mag:1},o||{});syncUI()};
+const QS=[
+  {q:'Thanh đồng m = 50 g treo trên hai lực kế giống nhau, chưa có dòng điện. Mỗi lực kế chỉ (g = 9,8 m/s²):',o:['0,245 N','0,49 N','0,98 N','0 N'],e:'2F_đh = mg ⇒ F_đh = 0,05·9,8/2 = 0,245 N.',d:()=>base({sc:2})},
+  {q:'Đoạn thanh dài L = 10 cm nằm trong từ trường B = 0,2 T, vuông góc với đường sức, có dòng điện 5 A. Lực từ tác dụng lên thanh là:',o:['0,1 N','1 N','0,01 N','10 N'],e:'F = BIL = 0,2·5·0,1 = 0,1 N.',d:()=>base()},
+  {q:'Khi có dòng điện, lực từ hướng xuống. Số chỉ mỗi lực kế so với lúc chưa có dòng điện sẽ:',o:['Tăng thêm F/2','Giảm đi F/2','Tăng thêm F','Không đổi'],e:'2F_đh = P + F ⇒ mỗi lực kế tăng thêm F/2.',d:()=>base()},
+  {q:'Đảo cực nam châm (giữ nguyên chiều dòng điện) thì:',o:['Lực từ đổi chiều, các lò xo co bớt (nếu trước đó dãn thêm)','Lực từ giữ nguyên chiều','Lực từ bằng 0','Trọng lực đổi chiều'],e:'Đổi chiều B ⇒ lực từ đổi chiều.',d:()=>base({mag:-1})},
+  {q:'Số chỉ mỗi lực kế khi chưa có dòng là 0,245 N, khi có dòng là 0,295 N. Lực từ tác dụng lên thanh là:',o:['0,1 N','0,05 N','0,295 N','0,54 N'],e:'F = 2·(0,295 − 0,245) = 0,1 N.',d:()=>base()},
+  {q:'Cho dòng điện xoay chiều tần số thấp qua thanh, hiện tượng quan sát được là:',o:['Thanh dao động lên xuống, số chỉ lực kế dao động quanh mg/2','Thanh đứng yên, lực kế chỉ mg/2','Thanh bị đẩy ra khỏi nam châm theo phương ngang','Lò xo không dãn'],e:'Lực từ đổi chiều theo dòng điện ⇒ thanh lúc bị kéo xuống, lúc bị đẩy lên.',d:()=>base({src:'ac',fq:0.5})},
+  {q:'Trước khi treo thanh, độ dãn của lò xo lực kế là:',o:['Bằng 0, lực kế chỉ 0','Bằng chiều dài tự nhiên','Bằng mg/k','Bằng mg/(2k)'],e:'Chưa có lực tác dụng ⇒ lò xo có chiều dài tự nhiên, Δℓ = 0.',d:()=>base({sc:1})}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;st.paused=false;q.d();st.hist=[];hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp: m·ë = mg + F − 2k·e − c·ė (e: độ dãn mỗi lò xo, m) ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+let last=performance.now(),uiT=0;
+function step(h){
+  st.t+=h;
+  if(hung()){if(st.drag&&st.drag.which==='rod')return;
+    const w0=Math.sqrt(2*K/st.m),c=2*0.12*w0;const e=st.e/100,a=(st.m*G+Fdown()-2*K*e)/st.m-c*st.v;st.v+=a*h;st.e=clamp((e+st.v*h)*100,0,EROD);if(st.e<=0||st.e>=EROD)st.v=0}
+  else springs.forEach((s,i)=>{if(!(st.drag&&st.drag.which===i))s.e*=Math.exp(-h/0.08)});   // lò xo nhẹ, không treo vật: nhanh chóng co về chiều dài tự nhiên
+}
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!st.paused){const sub=st.src==='ac'&&st.fq>=50&&st.sc===3?80:8;for(let k=0;k<sub;k++)step(dt/sub);
+    st.ht+=dt;if(st.ht>0.03){st.ht=0;st.hist.push([Fel(0)]);if(st.hist.length>240)st.hist.shift();st.avg.push(Fel(0));if(st.avg.length>66)st.avg.shift()}}
+  // lò xo, móc, thanh
+  springs.forEach((s,i)=>{const e=hung()?st.e:s.e;buildSpring(s.sp,L0+e);const yb=YT-0.2-L0-e;s.hookG.position.y=yb;
+    s.dl.visible=e>0.05;s.dl.scale.y=Math.max(0.01,e);s.dl.position.y=YT-0.2-L0-e/2});
+  const yRod=YT-0.2-L0-(hung()?st.e:0)-HOOK+0.2;
+  rodG.visible=true;if(hung())rodG.position.set(0,yRod,0);else rodG.position.set(0,1.0,11);rodG.rotation.y=hung()?0:0.25;
+  lbRod.position.set(hung()?-4:-8,hung()?yRod-5.5:4,hung()?6:13);
+  buildWires(hung()?yRod:1.0);
+  if(!hung())wires.forEach(w=>w.visible=true);
+  // nam châm trong suốt
+  const x=$('kX').checked;Object.values(magMats).forEach(m=>{m.opacity=x?0.45:1;m.depthWrite=!x});
+  // lực
+  const showL=$('kL').checked,P=st.m*G,F=Fdown();
+  aP.visible=$('kP').checked&&hung();lbP.visible=aP.visible&&showL;
+  if(aP.visible){setArrow(aP,V3(-1.6,yRod-0.5,0.9),-1,P*NPC);lbP.position.set(-3.2,yRod-P*NPC-1.2,1.5);setText(lbP,'P = '+fmt(P,3)+' N')}
+  aF.visible=$('kF').checked&&hung()&&Math.abs(F)>1e-4;lbF.visible=aF.visible&&showL;
+  if(aF.visible){const up=F<0;setArrow(aF,V3(1.6,yRod+(up?0.5:-0.5),0.9),up?1:-1,Math.abs(F)*NPC);lbF.position.set(4.5,yRod+(up?1:-1)*(Math.abs(F)*NPC+1.2),1.5);setText(lbF,'F = '+fmt(Math.abs(F),3)+' N')}
+  springs.forEach((s,i)=>{const fe=Fel(i),show=$('kE').checked&&fe>0.002;aE[i].visible=show;lbE[i].visible=show&&showL;
+    const yb=YT-0.2-L0-(hung()?st.e:s.e)-HOOK+0.2;
+    if(show){setArrow(aE[i],V3(s.g.position.x+(i?1.4:-1.4),yb+0.4,1.0),1,fe*NPC);lbE[i].position.set(s.g.position.x+(i?-4.2:4.2),yb+2.6,1.2);setText(lbE[i],'F_đh = '+fmt(fe,3)+' N')}
+    const e=hung()?st.e:s.e;lbDl[i].visible=showL&&e>0.05;lbDl[i].position.set(s.g.position.x+(i?6.6:-6.6),YT-0.2-L0-e/2,0.6);setText(lbDl[i],'Δℓ = '+fmt(e,2)+' cm');
+    lbRead[i].visible=showL;lbRead[i].position.set(s.g.position.x,YT+4.2,0);setText(lbRead[i],fmt(fe,2)+' N')});
+  // từ trường
+  fieldG.visible=$('kB').checked;lbB.visible=fieldG.visible&&showL;fieldG.children.forEach(o=>{if(o.userData.cone)o.rotation.x=st.mag>0?Math.PI/2:-Math.PI/2});
+  // dòng điện: chạy theo dây (+) → thanh → dây (−)
+  const I=Inow(),showI=$('kI').checked&&Math.abs(I)>1e-3&&hung();
+  if(showI){const sp=Math.sign(I)*0.12*(0.3+Math.min(1,Math.abs(I)/8));const c0=wires[0].userData.curve,c1=wires[1].userData.curve;
+    dots.forEach((d,k)=>{d.visible=true;d.userData.u=((d.userData.u+sp*dt)%1+1)%1;const u=d.userData.u;
+      if(u<0.35)d.position.copy(c0.getPointAt(1-u/0.35));else if(u<0.65)d.position.set(-13.4+26.8*(u-0.35)/0.3,yRod,0);else d.position.copy(c1.getPointAt((u-0.65)/0.35))})}
+  else dots.forEach(d=>d.visible=false);
+  drawPsu();
+  labels.forEach(l=>{if(l!==lbB)l.visible=showL});
+  uiT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__lk={st,springs,Fdown,Fel,eq,step,setScene,syncUI,camera,cam,tc,setView};   // dùng cho kiểm thử tự động
+ui();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

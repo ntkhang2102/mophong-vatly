@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Súng điện từ 3D</title>
+<!-- Thư viện: dùng bản cục bộ (chạy offline); nếu mở riêng file này thì tự tải từ CDN -->
+<script src="lib/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<style>
+/* Bố cục: khung 3D bên trái – bảng điều khiển tối 370px bên phải; ≤860px xếp chồng */
+:root{
+  --panel:#0b1324; --panel2:#111c33; --line:#22314f; --text:#e6ecf7; --muted:#93a3c0;
+  --accent:#3b82f6; --accent2:#60a5fa; --good:#22c55e; --bad:#ef4444;
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--panel);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:100%}
+.stage{position:relative;background:#e5e9f0;min-width:0;overflow:hidden}
+#view{position:absolute;inset:0;touch-action:none}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+.chips{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none;max-width:calc(100% - 160px);z-index:2}
+.chip{background:rgba(255,255,255,.93);color:#1f2937;border:1px solid #c7cfdc;border-radius:10px;padding:5px 10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip b{color:#1e40af}.chip.ind b{color:#c2410c}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
+.back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
+h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sec[hidden]{display:none}
+.sec>h2{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex}
+.seg button{flex:1;border-radius:0;padding:7px 3px;font-size:12.5px}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:-3px}
+button{font-family:inherit;font-size:13px;background:#1a2747;color:var(--text);border:1px solid #2c3d63;border-radius:8px;padding:7px 10px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.on{background:#1e3a8a;border-color:var(--accent2);font-weight:600}
+button.wide{flex:1}
+button:disabled{opacity:.45;cursor:default}
+label.rng{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+label.rng span.v{color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600}
+label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cell{background:#0b1427;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.cell .k{font-size:11.5px;color:var(--muted)}
+.cell .val{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+#graph{width:100%;height:160px;display:block;background:#0b1427;border-radius:8px;border:1px solid var(--line)}
+.explain ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;line-height:1.5}
+.qtext{font-size:14.5px;line-height:1.5;background:#0b1427;border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;line-height:1.4;padding:8px 10px}
+.opts button.ok{background:#14532d;border-color:var(--good)}
+.opts button.no{background:#7f1d1d;border-color:var(--bad)}
+.fb{font-size:13.5px;line-height:1.55;border-radius:8px;padding:8px 10px;background:#0b1427;border-left:3px solid var(--accent)}
+.fb.ok{border-left-color:var(--good)} .fb.no{border-left-color:var(--bad)}
+.score{font-size:12.5px;color:var(--muted)}
+.note{font-size:13px;line-height:1.55;color:#cbd5e1}
+.note li{margin-bottom:3px}
+.nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
+@media (max-width:860px){
+  .chip{font-size:12.5px;padding:3px 8px}
+  .views button{font-size:11px;padding:4px 7px}
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.hint{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="view"></div>
+    <div class="nogl" id="nogl"></div>
+    <div class="chips" id="chips"></div>
+    <div class="views">
+      <button data-view="iso">Nghiêng 3D</button>
+      <button data-view="near">Lại gần thanh</button>
+      <button data-view="side">Nhìn ngang</button>
+      <button data-view="top">Từ trên xuống</button>
+    </div>
+    <div class="hint" id="hint">Bấm “Đóng khóa K” (hoặc bấm vào khóa K trên hình) · Kéo thanh dẫn dọc ray để đặt vị trí · Kéo vùng trống để xoay</div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+      <h1>Súng điện từ – lực từ tác dụng lên dòng điện (3D)</h1>
+      <div class="sub">Vật lí 12 · Lực từ F = B·I·L · Quy tắc bàn tay trái · Gia tốc thanh dẫn trên hai thanh ray</div>
+    </div>
+
+    <div class="sec">
+      <h2>Điều khiển</h2>
+      <div class="row"><button class="wide pri" id="bK">⚡ Đóng khóa K</button><button class="wide" id="bReset">↺ Đặt lại</button></div>
+      <div class="lbl">Vật đặt trên hai thanh ray</div>
+      <div class="seg" id="segA"><button data-v="bar">Thanh thẳng (trượt)</button><button data-v="cyl">Hình trụ (lăn)</button><button data-v="gun">Đạn điện từ</button></div>
+      <label class="rng">Cường độ dòng điện I<span class="v" id="vI"></span><input type="range" id="rI" min="5" max="100" step="5" value="50"></label>
+      <label class="rng">Cảm ứng từ B<span class="v" id="vB"></span><input type="range" id="rB" min="0.1" max="1" step="0.05" value="0.5"></label>
+      <label class="rng">Khối lượng vật m<span class="v" id="vM"></span><input type="range" id="rM" min="50" max="500" step="10" value="100"></label>
+      <div class="row"><button class="wide" id="bPol">⇄ Đảo cực nguồn</button><button class="wide" id="bBdir">⇅ Đảo chiều B</button></div>
+      <label class="chk"><input type="checkbox" id="kFr"> Có ma sát (hệ số μ = 0,2)</label>
+      <label class="chk"><input type="checkbox" id="kEmf"> Kể đến suất điện động cảm ứng e = B·L·v (định luật Len-xơ)</label>
+      <div class="lbl">Tốc độ chiếu</div>
+      <div class="seg" id="segS"><button data-v="10">Chậm 10 lần</button><button data-v="25">Chậm 25 lần</button><button data-v="60">Chậm 60 lần</button></div>
+    </div>
+
+    <div class="sec">
+      <h2>Hiển thị</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="kB" checked> Cảm ứng từ B</label>
+        <label><input type="checkbox" id="kF" checked> Lực từ F</label>
+        <label><input type="checkbox" id="kV" checked> Vận tốc v</label>
+        <label><input type="checkbox" id="kI" checked> Dòng điện I</label>
+        <label><input type="checkbox" id="kH" checked> Quy tắc bàn tay trái</label>
+        <label><input type="checkbox" id="kL" checked> Chú thích</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Kết quả</h2>
+      <div class="grid2" id="res"></div>
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="sec explain">
+      <h2>Giải thích từng bước</h2>
+      <div id="explain"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Đố nhanh</h2>
+      <div class="row"><button class="wide pri" id="bNew">Câu hỏi mới</button></div>
+      <div id="qbox"><div class="note">Bấm <b>Câu hỏi mới</b>. Sau khi trả lời, mô phỏng tự chuyển sang tình huống minh họa.</div></div>
+      <div class="score" id="score"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Ghi nhớ</h2>
+      <ul class="note" style="margin:0;padding-left:18px">
+        <li>Đoạn dây dẫn dài L mang dòng điện I đặt vuông góc với từ trường B chịu <b>lực từ F = B·I·L</b>; phương vuông góc với cả dây và B, chiều theo <b>quy tắc bàn tay trái</b>: đường sức từ hướng vào lòng bàn tay, chiều từ cổ tay đến ngón giữa là chiều dòng điện, ngón cái choãi ra 90° chỉ chiều lực từ.</li>
+        <li>Trong hệ hai thanh ray: dòng điện đi theo một ray, qua thanh dẫn, về ray kia. Thanh dẫn chịu lực từ dọc theo ray ⇒ <b>thanh trượt có gia tốc a = F/m</b> (không ma sát). Hình trụ lăn không trượt có gia tốc nhỏ hơn: a = 2F/(3m) vì một phần năng lượng làm trụ quay.</li>
+        <li>Đổi chiều dòng điện <b>hoặc</b> đổi chiều B ⇒ lực từ đổi chiều. Đổi cả hai ⇒ lực từ giữ nguyên chiều.</li>
+        <li><b>Súng điện từ (railgun):</b> viên đạn (hoặc thanh dẫn đẩy viên đạn) được lực từ tăng tốc suốt chiều dài ray: v² = 2aℓ = 2BILℓ/m ⇒ dòng điện rất lớn, ray dài thì đạn bay ra với vận tốc rất lớn, không cần thuốc súng.</li>
+        <li>Khi thanh chuyển động, trong mạch xuất hiện suất điện động cảm ứng e = BLv chống lại nguồn (định luật Len-xơ) ⇒ dòng điện và lực từ giảm dần khi vận tốc tăng.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const fmt=(v,n=1)=>(Math.abs(v)<0.5*Math.pow(10,-n)?0:v).toFixed(n).replace('.',',').replace('-','−');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU=Math.PI*2,G=9.8;
+if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
+
+// ====== Thông số (1 đơn vị hình = 0,1 m). Ray dọc trục x, hai ray ở z = ±1 (L = 0,2 m), B theo trục y ======
+const U=0.1,XR0=-8,XR1=12,ZR=1,RY=0.3,LROD=2*ZR*U;      // đầu ray trái/phải, nửa khoảng cách ray, mặt trên ray, chiều dài đoạn dây giữa hai ray (m)
+const X0=-5.5,XSTOP=11.4,RCYL=0.32,R0=0.05;              // vị trí xuất phát, chốt chặn cuối ray (chế độ đạn), bán kính trụ, điện trở mạch (Ω)
+const st={arm:'bar',I:50,B:0.5,m:0.1,pol:1,bdir:1,fr:false,emf:false,slow:25,K:false,x:X0,v:0,y:0,vy:0,t:0,phase:'rail',bx:0,by:0,bvx:0,bvy:0,bFly:false,hist:[],ht:0,vExit:null,tExit:null,drag:false,spin:0};
+// dòng điện thực trong thanh (A); pol = +1: dòng đi trong thanh từ ray trước (z > 0) sang ray sau
+// có kể suất điện động cảm ứng: thanh chạy theo +x trong B theo +y ⇒ v×B theo +z, ngược chiều dòng quy ước (−z) ⇒ I = (pol·E − bdir·B·L·v)/R
+function Inow(){if(!st.K||st.phase!=='rail')return 0;if(!st.emf)return st.I*st.pol;return clamp((st.pol*st.I*R0-st.bdir*st.B*LROD*st.v)/R0,-st.I,st.I)}
+// lực từ dọc ray: F = I·(ℓ × B); ℓ theo −z khi I > 0, B theo +y khi bdir = +1 ⇒ (−z) × (+y) = +x
+const Fx=()=>Inow()*LROD*st.B*st.bdir;
+const meff=()=>st.arm==='cyl'?1.5*st.m:st.arm==='gun'?st.m+0.02:st.m;
+
+// ====== Cảnh 3D ======
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl');n.style.display='flex';n.textContent='Trình duyệt không hỗ trợ WebGL nên không hiển thị được hình 3D.';return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const view=$('view');view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe5e9f0);
+const camera=new THREE.PerspectiveCamera(40,1,0.05,300);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a94a6,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(6,14,10);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xc7d7ff,0.35);fill.position.set(-8,5,-6);scene.add(fill);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),UP=V3(0,1,0);
+const M=(color,o={})=>new THREE.MeshStandardMaterial({color,roughness:.5,...o});
+const box=(w,h,d,mat,x,y,z,par=scene)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);par.add(m);return m};
+const tubeAB=(a,b,r,mat,par=scene)=>{const d=b.clone().sub(a),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),10),mat);m.position.copy(a).add(b).multiplyScalar(0.5);m.quaternion.setFromUnitVectors(UP,d.normalize());par.add(m);return m};
+const mats={wood:M(0xc8a273,{roughness:.8}),cu:M(0xd9844a,{metalness:.3,roughness:.35}),rod:M(0xcbd5e1,{metalness:.35,roughness:.3}),dark:M(0x1f2937),red:M(0xdc2626),
+  bat:M(0x1e3a5f,{roughness:.6}),ins:M(0xf8fafc,{roughness:.6}),N:M(0xdc2626,{roughness:.5}),bullet:M(0xb88a2e,{metalness:.7,roughness:.3}),stop:M(0x475569,{metalness:.4})};
+const grid=new THREE.GridHelper(80,40,0xa3acb9,0xc8ced8);grid.position.y=-3;scene.add(grid);
+// bàn đỡ bằng gỗ, nam châm (cực N) phẳng bên dưới tạo từ trường hướng lên
+box(23,0.3,4.2,mats.wood,2,-0.15,0);
+const magBot=box(23,0.5,4.2,mats.N,2,-0.6,0);
+const magLbl=(()=>{const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.fillStyle='#fff';g.font='bold 80px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('N',256,68);
+  const t=new THREE.CanvasTexture(c);const m=new THREE.Mesh(new THREE.PlaneGeometry(2,0.5),new THREE.MeshBasicMaterial({map:t,transparent:true}));m.position.set(-6,-0.6,2.11);scene.add(m);return{c,t,m}})();
+function drawMagLbl(){const g=magLbl.c.getContext('2d');g.clearRect(0,0,512,128);g.fillStyle='#fff';g.font='bold 80px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(st.bdir>0?'N':'S',256,68);magLbl.t.needsUpdate=true;magBot.material.color.setHex(st.bdir>0?0xdc2626:0x2563eb)}
+// hai thanh ray bằng đồng
+for(const z of[ZR,-ZR])box(XR1-XR0,RY,0.22,mats.cu,(XR0+XR1)/2,RY/2,z);
+// chốt chặn cuối ray (chế độ đạn)
+const stopper=new THREE.Group();scene.add(stopper);for(const z of[ZR,-ZR])box(0.3,1.0,0.5,mats.stop,XSTOP+0.35,RY+0.5,z,stopper);
+// nguồn điện (ắc quy) và khóa K
+const BX=-11.5;box(1.6,1.4,2.8,mats.bat,BX,0.7,0);
+const termF=V3(BX+0.3,1.45,ZR+0.2),termB=V3(BX+0.3,1.45,-ZR-0.2);
+const tF=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.3,12),mats.red),tB=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.3,12),mats.dark);tF.position.copy(termF);tB.position.copy(termB);scene.add(tF,tB);
+const batC=document.createElement('canvas');batC.width=256;batC.height=128;const batT=new THREE.CanvasTexture(batC);
+{const m=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.6),new THREE.MeshBasicMaterial({map:batT}));m.position.set(BX+0.81,0.75,0);m.rotation.y=Math.PI/2;scene.add(m)}
+function drawBat(){const g=batC.getContext('2d');g.fillStyle='#1e3a5f';g.fillRect(0,0,256,128);g.font='bold 54px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
+  g.fillStyle='#fca5a5';g.fillText(st.pol>0?'+':'−',50,64);g.fillStyle='#fff';g.fillText('⎓',128,64);g.fillStyle='#cbd5e1';g.fillText(st.pol>0?'−':'+',206,64);batT.needsUpdate=true}
+// khóa K (cầu dao) trên dây phía trước
+const KX=-9.6,KZ=ZR+0.2,KY=0.35;
+box(0.9,0.12,0.5,mats.ins,KX,KY-0.06,KZ);
+const kHinge=V3(KX-0.35,KY+0.1,KZ),kContact=V3(KX+0.35,KY+0.1,KZ);
+[kHinge,kContact].forEach(p=>box(0.12,0.25,0.25,mats.cu,p.x,p.y,p.z));
+const blade=new THREE.Group();blade.position.copy(kHinge);scene.add(blade);
+{const b=box(0.7,0.06,0.1,mats.cu,0.35,0,0,blade);const h=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.35,10),mats.dark);h.position.set(0.7,0,0);h.rotation.x=Math.PI/2;blade.add(h)}
+// dây nối: cực trước → khóa K → ray trước; cực sau → ray sau
+const wireM=M(0x7c2d12,{metalness:.4});
+const wF1=new THREE.CatmullRomCurve3([termF,V3(BX+0.9,1.0,KZ),V3(kHinge.x-0.2,KY+0.15,KZ),kHinge.clone()]);
+const wF2=new THREE.CatmullRomCurve3([kContact.clone(),V3(kContact.x+0.4,KY+0.1,KZ),V3(XR0+0.3,RY+0.05,ZR)]);
+const wB=new THREE.CatmullRomCurve3([termB,V3(BX+1.0,1.0,-ZR-0.2),V3(XR0-0.6,RY+0.15,-ZR),V3(XR0+0.3,RY+0.05,-ZR)]);
+[wF1,wF2,wB].forEach(c=>scene.add(new THREE.Mesh(new THREE.TubeGeometry(c,30,0.05,6),wireM)));
+// ---- vật trên ray ----
+const arm=new THREE.Group();scene.add(arm);
+const bar=box(0.3,0.3,2*ZR+0.6,mats.rod,0,0.15,0,arm);
+const cylG=new THREE.Group();arm.add(cylG);
+{const c=new THREE.Mesh(new THREE.CylinderGeometry(RCYL,RCYL,2*ZR+0.6,32),mats.rod);c.rotation.x=Math.PI/2;cylG.add(c);
+ // vạch sơn để thấy hình trụ lăn
+ const s=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.04,2*ZR+0.62),mats.red);s.position.y=RCYL-0.01;cylG.add(s)}
+cylG.position.y=RCYL;
+// viên đạn: đặt phía trước thanh dẫn, nằm trên giá đỡ cách điện
+const bullet=new THREE.Group();scene.add(bullet);
+{const b=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.9,20),mats.bullet);b.rotation.z=Math.PI/2;bullet.add(b);
+ const tip=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.5,20),mats.bullet);tip.rotation.z=-Math.PI/2;tip.position.x=0.7;bullet.add(tip)}
+const sabot=box(0.25,0.4,0.5,mats.ins,0.3,0.45,0,arm);
+const BY=RY+0.95;    // độ cao trục viên đạn
+// bia: tấm gỗ phía xa
+const target=new THREE.Group();target.position.set(21,0,0);target.rotation.y=0.7;scene.add(target);
+box(0.3,5,4,M(0xf5f5f4),0,-0.5,0,target);
+[1.6,1.1,0.6].forEach((r,i)=>{const m=new THREE.Mesh(new THREE.CircleGeometry(r,32),new THREE.MeshBasicMaterial({color:i%2?0xffffff:0xdc2626}));m.position.set(-0.16,BY-0.0,0);m.rotation.y=-Math.PI/2;m.position.x=-0.17-i*0.012;target.add(m)});
+box(0.3,2.5,0.3,mats.stop,0,-1.75,0,target);
+const hole=new THREE.Mesh(new THREE.CircleGeometry(0.2,16),new THREE.MeshBasicMaterial({color:0x111827}));hole.rotation.y=-Math.PI/2;hole.visible=false;target.add(hole);
+
+// ====== Từ trường, lực, vận tốc ======
+const fieldG=new THREE.Group();scene.add(fieldG);
+const gMat=new THREE.MeshBasicMaterial({color:0x16a34a,transparent:true,opacity:.55}),gCone=new THREE.MeshBasicMaterial({color:0x15803d});
+const fieldArrows=[];
+for(let x=XR0+1;x<=XR1;x+=2.5)for(const z of[-1.7,0,1.7]){const g=new THREE.Group();g.position.set(x,0,z);
+  const s=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,2.6,6),gMat);s.position.y=1.3;g.add(s);const c=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.25,8),gCone);c.position.y=2.65;g.add(c);fieldG.add(g);fieldArrows.push(g)}
+function mkArrow(color,r=0.08){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.35});
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,12),m);g.add(sh);const hd=new THREE.Mesh(new THREE.ConeGeometry(r*2.6,r*6,14),m);g.add(hd);g.userData={sh,hd,r};scene.add(g);return g}
+// đặt mũi tên: gốc p, hướng dir (đơn vị), độ dài len
+function setArrow(g,p,dir,len){const{sh,hd,r}=g.userData;const hl=r*6;sh.scale.y=Math.max(.01,len-hl);sh.position.y=(len-hl)/2;hd.position.y=len-hl/2;g.position.copy(p);g.quaternion.setFromUnitVectors(UP,dir)}
+const aF=mkArrow(0x7c3aed,0.1),aV=mkArrow(0x0284c7,0.08),aB=mkArrow(0x16a34a,0.1);
+// dòng điện: hạt vàng chạy theo mạch kín
+const dotM=new THREE.MeshBasicMaterial({color:0xfde047});const dots=[];for(let k=0;k<70;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,6),dotM);d.userData.u=k/70;scene.add(d);dots.push(d)}
+const iArr=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.4,12),new THREE.MeshBasicMaterial({color:0xf59e0b}));scene.add(iArr);
+function circuitPts(){const xr=st.x;const a=[...wF1.getPoints(12),...wF2.getPoints(10),V3(xr,RY+0.08,ZR),V3(xr,RY+0.08,-ZR),...wB.getPoints(14).reverse()];return a}
+// quy tắc bàn tay trái: bàn tay đơn giản hóa (lòng bàn tay, 4 ngón, ngón cái)
+const hand=new THREE.Group();scene.add(hand);
+{const skin=M(0xf2c29b,{roughness:.7});const palm=box(0.9,0.18,1.1,skin,0,0,0,hand);
+  for(let k=0;k<4;k++){const f=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,0.75,8),skin);f.rotation.x=Math.PI/2;f.position.set(-0.32+k*0.21,0,-0.92);hand.add(f)}
+  const th=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.65,8),skin);th.rotation.z=Math.PI/2;th.position.set(0.75,0,0.15);hand.add(th);
+  hand.userData.palm=palm;hand.scale.setScalar(1.5)}
+
+// ====== Nhãn ======
+function makeLabel(text,color='#0f172a',size=0.3){
+  const c=document.createElement('canvas'),g=c.getContext('2d'),font='bold 46px system-ui,"Segoe UI",sans-serif';g.font=font;
+  const lines=text.split('\n'),w=Math.ceil(Math.max(...lines.map(l=>g.measureText(l).width)))+36,h=60*lines.length+14;c.width=w;c.height=h;g.font=font;
+  g.fillStyle='rgba(255,255,255,.9)';g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+const labels=[];const L=(t,c,x,y,z,s=0.6)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);labels.push(l);return l};
+L('Nguồn điện không đổi','#1e3a8a',BX,2.3,0);L('Khóa K','#111827',KX,1.3,KZ+0.7,0.5);L('Hai thanh ray','#9a3412',4,0.9,2.4);
+const lbArm=L('Thanh dẫn','#374151',0,0,0,0.5),lbF=L('F','#6d28d9',0,0,0,0.6),lbV=L('v','#0369a1',0,0,0,0.6),lbB=L('B','#15803d',0,0,0,0.6),lbI=L('I','#b45309',0,0,0,0.55);
+const lbTarget=L('Bia','#b91c1c',21,2.8,0,0.6),lbHand=L('Bàn tay trái','#9a3412',0,0,0,0.45);
+
+// ====== Camera, kéo thanh, bấm khóa K ======
+const cam={az:0.42,el:0.42,r:26,tx:1.5,ty:0.5,tz:0};const tc={...cam};
+const VIEWS={iso:[0.42,0.42,26,1.5,0.5,0],near:[0.75,0.45,9,0,0.6,0],side:[0.0001,0.12,26,4,1,0],top:[0.0001,1.52,26,3,0,0]};
+let follow=false;
+function setView(k){follow=false;const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);if(k==='near'){tc.tx=st.x;follow=true}if(st.arm==='gun'&&k!=='near'){tc.tx+=8;tc.r*=1.3;tc.az=Math.min(tc.az,0.3)}const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.3&&k!=='near')tc.r*=Math.pow(1.3/a,0.85)}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function applyCam(){if(follow)tc.tx=clamp(st.x,-6,12);for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hit=new THREE.Vector3();const dPlane=new THREE.Plane(UP.clone(),-(RY+0.15));let dOff=0;
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=26,orbit=false;
+const armMeshes=()=>{const a=[];arm.traverse(o=>{if(o.isMesh&&o.visible&&o.parent.visible)a.push(o)});return a};
+const kMeshes=[];blade.traverse(o=>{if(o.isMesh)kMeshes.push(o)});
+function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();
+  if(ptrs.size===2){st.drag=false;orbit=false;const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r;return}
+  setNdc(e);
+  if(ray.intersectObjects(kMeshes).length){toggleK();return}
+  if(st.phase==='rail'&&ray.intersectObjects(armMeshes()).length){st.drag=true;if(ray.ray.intersectPlane(dPlane,hit))dOff=st.x-hit.x;el.style.cursor='grabbing';return}
+  orbit=true});
+el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
+  if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(kMeshes).length?'pointer':(st.phase==='rail'&&ray.intersectObjects(armMeshes()).length?'grab':'default');return}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,4,70);return}
+  if(st.drag){setNdc(e);if(ray.ray.intersectPlane(dPlane,hit)){st.x=clamp(hit.x+dOff,XR0+0.6,XR1-0.6-(st.arm==='gun'?0.6:0));st.v=0}}
+  else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.1,1.52)}});
+function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;if(st.drag&&!ptrs.size){st.drag=false;el.style.cursor='default'}if(!ptrs.size)orbit=false}
+el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
+el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),4,70)},{passive:false});
+let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
+
+// ====== Bảng điều khiển ======
+function reset(){st.K=false;st.x=X0;st.v=0;st.y=0;st.vy=0;st.t=0;st.phase='rail';st.bFly=false;st.hist=[];st.vExit=null;st.tExit=null;st.spin=0;hole.visible=false;syncUI()}
+function toggleK(){st.K=!st.K;if(st.K&&st.phase!=='rail')reset(),st.K=true;if(st.K){st.t=st.t||0;hint('Đóng khóa K: có dòng điện qua thanh ⇒ lực từ đẩy thanh')}syncUI()}
+function syncUI(){
+  $('segA').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.arm));
+  $('segS').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.slow));
+  $('vI').textContent=st.I+' A';$('rI').value=st.I;$('vB').textContent=fmt(st.B,2)+' T';$('rB').value=st.B;$('vM').textContent=Math.round(st.m*1000)+' g';$('rM').value=Math.round(st.m*1000);
+  $('kFr').checked=st.fr;$('kEmf').checked=st.emf;
+  $('bK').textContent=st.K?'⏻ Ngắt khóa K':'⚡ Đóng khóa K';$('bK').classList.toggle('pri',!st.K);
+  bar.visible=st.arm!=='cyl';cylG.visible=st.arm==='cyl';sabot.visible=st.arm==='gun';bullet.visible=st.arm==='gun';stopper.visible=st.arm==='gun';target.visible=lbTarget.visible=st.arm==='gun';
+  blade.rotation.z=st.K?0:1.1;drawBat();drawMagLbl();
+}
+$('bK').onclick=toggleK;$('bReset').onclick=reset;
+$('segA').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.arm=b.dataset.v;reset();setView('iso');hint({bar:'Thanh thẳng trượt trên ray',cyl:'Hình trụ lăn trên ray (lăn không trượt)',gun:'Súng điện từ: thanh dẫn đẩy viên đạn, đạn bay ra ở cuối ray'}[st.arm])});
+$('segS').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.slow=+b.dataset.v;syncUI()});
+$('rI').oninput=e=>{st.I=+e.target.value;syncUI()};$('rB').oninput=e=>{st.B=+e.target.value;syncUI()};$('rM').oninput=e=>{st.m=+e.target.value/1000;syncUI()};
+$('bPol').onclick=()=>{st.pol*=-1;syncUI();hint('Đảo cực nguồn ⇒ dòng điện trong thanh đổi chiều ⇒ lực từ đổi chiều')};
+$('bBdir').onclick=()=>{st.bdir*=-1;syncUI();hint('Đảo chiều B (lật nam châm) ⇒ lực từ đổi chiều')};
+$('kFr').onchange=e=>{st.fr=e.target.checked};$('kEmf').onchange=e=>{st.emf=e.target.checked};
+syncUI();
+
+// ====== Đồ thị v(t) ======
+const gcv=$('graph'),gctx=gcv.getContext('2d');
+function drawGraph(){
+  const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(gcv.width!==Math.round(r.width*dpr)){gcv.width=r.width*dpr;gcv.height=r.height*dpr}
+  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  const x0=36,y0=h/2+4,H=h/2-18,tm=Math.max(0.3,...st.hist.map(q=>q[0]))*1.1,vm=Math.max(5,...st.hist.map(q=>Math.abs(q[1])))*1.15,X=t=>x0+t/tm*(w-x0-8),Y=v=>y0-v/vm*H;
+  g.font='10.5px system-ui,sans-serif';g.strokeStyle='#3a4b70';g.beginPath();g.moveTo(x0,8);g.lineTo(x0,h-6);g.moveTo(x0,y0);g.lineTo(w-6,y0);g.stroke();
+  g.fillStyle='#93a3c0';g.textAlign='right';g.fillText(fmt(vm/1.15,0),x0-3,Y(vm/1.15)+3);g.fillText('0',x0-3,y0+3);g.textAlign='left';g.fillText('t (s)',w-30,y0+12);
+  g.strokeStyle='#38bdf8';g.lineWidth=2.2;g.beginPath();st.hist.forEach(([t,v],i)=>i?g.lineTo(X(t),Y(v)):g.moveTo(X(t),Y(v)));g.stroke();
+  g.strokeStyle='#a78bfa';g.lineWidth=1.5;g.beginPath();const fm=Math.max(0.5,...st.hist.map(q=>Math.abs(q[2])));st.hist.forEach(([t,,f],i)=>{const y=y0-f/fm*H*0.8;i?g.lineTo(X(t),y):g.moveTo(X(t),y)});g.stroke();
+  g.fillStyle='#38bdf8';g.fillText('━ vận tốc v (m/s)',x0+4,12);g.fillStyle='#a78bfa';g.fillText('━ lực từ F (tỉ lệ)',x0+120,12);
+}
+
+// ====== Kết quả, chip, giải thích ======
+let lastE='',lastC='',lastR='';
+function ui(){
+  const I=Inow(),F=Fx(),dir=F>0?'sang phải →':F<0?'← sang trái':'0';
+  const fr=st.fr?0.2*st.m*G:0,a=st.phase==='rail'&&Math.abs(F)>fr?(st.arm==='cyl'?2*F/(3*st.m):(F-Math.sign(F)*fr)/meff()):0;
+  const c=[['K',st.K?'đóng':'mở'],['F',fmt(Math.abs(F),2)+' N '+(F?(F>0?'→':'←'):''),'ind'],['v',fmt(Math.abs(st.phase==='rail'?st.v:st.bvx||st.v),2)+' m/s']].map(([a,b,cl])=>`<div class="chip ${cl||''}">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const r=[['Dòng điện trong thanh',fmt(Math.abs(I),1)+' A'],['Lực từ F = B·I·L',fmt(Math.abs(F),2)+' N, '+dir],['Gia tốc a',fmt(Math.abs(a),1)+' m/s²'],['Vận tốc v',fmt(Math.abs(st.phase==='rail'?st.v:st.bvx),2)+' m/s'],
+    ['Quãng đường trên ray',fmt((st.x-X0)*U,2)+' m'],['Vận tốc rời ray',st.vExit!==null?fmt(st.vExit,2)+' m/s':'—']]
+    .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val" style="font-size:14px">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
+  const fwd=st.pol*st.bdir>0;
+  let s='<ol>';
+  s+=`<li>Từ trường B của nam châm hướng thẳng đứng <b>${st.bdir>0?'lên trên':'xuống dưới'}</b> (mũi tên xanh lá), vuông góc với mặt phẳng hai thanh ray.</li>`;
+  if(!st.K)s+='<li>Khóa K đang mở ⇒ mạch hở, không có dòng điện ⇒ thanh dẫn không chịu lực từ, đứng yên. Hãy đóng khóa K.</li>';
+  else if(st.phase!=='rail')s+=`<li>Vật đã rời khỏi hai thanh ray với vận tốc v ≈ ${fmt(st.vExit||0,2)} m/s; không còn dòng điện qua vật nên không còn lực từ${st.arm==='gun'?' – viên đạn bay theo quán tính (chuyển động ném ngang) tới bia':''}.</li>`;
+  else{
+    s+=`<li>Đóng K: dòng điện I = ${fmt(Math.abs(I),1)} A đi từ cực ${st.pol>0?'(+)':'(−)'}… theo ray ${st.pol>0?'trước':'sau'} → qua thanh dẫn → về ray ${st.pol>0?'sau':'trước'} (hạt vàng). Đoạn thanh giữa hai ray dài L = ${fmt(LROD,2)} m vuông góc với B.</li>`;
+    s+=`<li>Theo <b>quy tắc bàn tay trái</b> (bàn tay mô hình): B đâm vào lòng bàn tay, dòng điện theo chiều 4 ngón ⇒ ngón cái chỉ lực từ F hướng <b>${fwd?'sang phải':'sang trái'}</b> dọc theo ray. F = B·I·L = ${fmt(st.B,2)}·${fmt(Math.abs(I),1)}·${fmt(LROD,2)} = ${fmt(Math.abs(F),2)} N.</li>`;
+    s+=st.arm==='cyl'?`<li>Hình trụ <b>lăn không trượt</b>: lực từ vừa làm trụ tiến vừa làm trụ quay ⇒ gia tốc a = 2F/(3m) = ${fmt(Math.abs(a),1)} m/s², nhỏ hơn thanh trượt cùng khối lượng.</li>`
+      :`<li>Theo định luật II Newton: a = ${st.fr?'(F − μmg)/m':'F/m'} = ${fmt(Math.abs(a),1)} m/s² ⇒ ${Math.abs(a)>0?'vật chuyển động nhanh dần, vận tốc tăng theo thời gian (đồ thị)':'lực từ chưa thắng được ma sát nghỉ ⇒ thanh đứng yên'}.</li>`;
+    if(st.arm==='gun')s+='<li>Thanh dẫn đẩy viên đạn suốt chiều dài ray. Đến cuối ray thanh bị chốt chặn giữ lại, <b>viên đạn bay ra</b> với vận tốc lớn – đó là nguyên tắc của súng điện từ (railgun).</li>';
+    if(st.emf)s+=`<li>Khi thanh chuyển động cắt đường sức, trong mạch xuất hiện suất điện động cảm ứng e = BLv = ${fmt(st.B*LROD*Math.abs(st.v),2)} V chống lại nguồn (Len-xơ) ⇒ dòng điện và lực từ giảm dần.</li>`;
+  }
+  s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
+}
+
+// ====== Đố nhanh ======
+const base=o=>{st.arm='bar';st.I=50;st.B=0.5;st.m=0.1;st.pol=1;st.bdir=1;st.fr=false;st.emf=false;Object.assign(st,o||{});reset();st.K=true;syncUI()};
+const QS=[
+  {q:'Thanh dẫn dài 0,2 m mang dòng điện 50 A đặt vuông góc trong từ trường B = 0,5 T. Lực từ tác dụng lên thanh có độ lớn:',o:['5 N','50 N','0,5 N','25 N'],e:'F = BIL = 0,5·50·0,2 = 5 N.',d:()=>base()},
+  {q:'Đổi chiều dòng điện qua thanh dẫn (giữ nguyên B) thì thanh:',o:['Chuyển động theo chiều ngược lại','Chuyển động như cũ','Đứng yên','Nhảy lên khỏi ray'],e:'Lực từ đổi chiều khi dòng điện đổi chiều (quy tắc bàn tay trái).',d:()=>base({pol:-1})},
+  {q:'Đồng thời đổi chiều dòng điện và đổi chiều từ trường thì lực từ:',o:['Giữ nguyên chiều','Đổi chiều','Bằng 0','Tăng gấp đôi'],e:'Đổi chiều hai lần ⇒ chiều lực từ trở lại như cũ.',d:()=>base({pol:-1,bdir:-1})},
+  {q:'Trong súng điện từ, muốn viên đạn bay ra với vận tốc lớn hơn, cần:',o:['Tăng cường độ dòng điện, tăng B hoặc dùng ray dài hơn','Giảm cường độ dòng điện','Dùng viên đạn nặng hơn','Giảm cảm ứng từ'],e:'v² = 2aℓ = 2BILℓ/m ⇒ tăng I, B, ℓ hoặc giảm m.',d:()=>base({arm:'gun',I:100})},
+  {q:'Cùng khối lượng và cùng lực từ, so sánh gia tốc của thanh trượt không ma sát và hình trụ đặc lăn không trượt:',o:['Thanh trượt có gia tốc lớn hơn','Hình trụ có gia tốc lớn hơn','Bằng nhau','Hình trụ đứng yên'],e:'Thanh trượt: a = F/m; trụ lăn: a = 2F/(3m) vì một phần năng lượng làm trụ quay.',d:()=>base({arm:'cyl'})},
+  {q:'Khi thanh dẫn chuyển động trên ray, trong mạch xuất hiện suất điện động cảm ứng. Suất điện động này:',o:['Chống lại nguồn, làm dòng điện giảm dần','Cùng chiều nguồn, làm dòng điện tăng','Không ảnh hưởng gì','Làm từ trường tăng'],e:'Theo định luật Len-xơ, dòng cảm ứng chống lại nguyên nhân sinh ra nó (chuyển động của thanh).',d:()=>base({emf:true})},
+  {q:'Theo quy tắc bàn tay trái, chiều từ cổ tay đến ngón giữa chỉ:',o:['Chiều dòng điện','Chiều lực từ','Chiều đường sức từ','Chiều vận tốc'],e:'Đường sức vào lòng bàn tay, cổ tay → ngón giữa là chiều dòng điện, ngón cái choãi 90° là chiều lực từ.',d:()=>base({arm:'bar',I:20})}
+];
+const Q={n:0,ok:0};
+$('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.map((_,i)=>i).sort(()=>Math.random()-.5),correct=idx.indexOf(0);let done=false;
+  $('qbox').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><div class="qtext">${q.q}</div><div class="opts">${idx.map((i,j)=>`<button data-j="${j}">${'ABCD'[j]}. ${q.o[i]}</button>`).join('')}</div><div id="fb"></div></div>`;
+  $('qbox').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{if(done)return;done=true;const j=+b.dataset.j;Q.n++;if(j===correct)Q.ok++;
+    const bs=$('qbox').querySelectorAll('.opts button');bs[correct].classList.add('ok');if(j!==correct)bs[j].classList.add('no');
+    $('fb').innerHTML=`<div class="fb ${j===correct?'ok':'no'}"><b>${j===correct?'Chính xác!':'Chưa đúng.'}</b> Đáp án ${'ABCD'[correct]}. ${q.e}</div>`;
+    $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;q.d();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
+
+// ====== Vòng lặp (thời gian thực = thời gian hình / hệ số chiếu chậm) ======
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+const _p=V3(0,0,0),_d=V3(0,0,0);let last=performance.now(),uiT=0;
+function step(h){   // h: giây thực
+  if(st.phase==='rail'){
+    if(st.drag)return;
+    const F=Fx(),fr=st.fr?0.2*st.m*G:0;let a=0;
+    if(st.arm==='cyl')a=2*F/(3*st.m);
+    else if(Math.abs(st.v)<1e-6&&Math.abs(F)<=fr)a=0;
+    else a=(F-(st.fr?Math.sign(st.v||F)*fr:0))/meff();
+    const vOld=st.v;st.v+=a*h;if(st.fr&&st.arm!=='cyl'&&vOld!==0&&Math.sign(st.v)!==Math.sign(vOld)&&Math.abs(F)<=fr)st.v=0;
+    st.x+=st.v*h/U;if(st.arm==='cyl')st.spin-=st.v*h/(RCYL*U);
+    if(st.K||Math.abs(st.v)>0)st.t+=h;
+    // chạm đầu trái ray: dừng lại
+    if(st.x<XR0+0.5){st.x=XR0+0.5;st.v=0}
+    // cuối ray
+    const xEnd=st.arm==='gun'?XSTOP-0.25:XR1-0.1;
+    if(st.x>=xEnd){st.x=xEnd;st.vExit=Math.abs(st.v);st.tExit=st.t;
+      if(st.arm==='gun'){st.phase='fly';st.bx=st.x+0.6;st.by=BY;st.bvx=st.v;st.bvy=0;st.v=0}
+      else{st.phase='fall';st.vy=0;st.bvx=st.v}
+      hint('Vật rời khỏi ray với vận tốc '+fmt(st.vExit,2)+' m/s')}
+  }else if(st.phase==='fall'){st.t+=h;st.x+=st.bvx*h/U;st.vy-=G*h;st.y+=st.vy*h/U;if(st.y<-2.7-RY){st.y=-2.7-RY;st.bvx*=0.0;st.phase='done'}}
+  else if(st.phase==='fly'){st.t+=h;st.bx+=st.bvx*h/U;st.bvy-=G*h;st.by+=st.bvy*h/U;
+    if(st.bx>=20.6&&st.bx<21.5&&Math.abs(st.by-BY)<2.3){st.bx=20.6;hole.position.set(-0.17,st.by,0);hole.visible=true;st.phase='hit';st.bvx=0}
+    if(st.by<-2.7){st.phase='hit';st.bvx=0}}
+}
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  const h=dt/st.slow,sub=6;for(let k=0;k<sub;k++)step(h/sub);
+  if(st.phase==='rail'&&(st.K||st.v)){st.ht+=dt;if(st.ht>0.05){st.ht=0;st.hist.push([st.t,st.v,Fx()]);if(st.hist.length>400)st.hist.shift()}}
+  // vị trí vật
+  arm.position.set(st.x,RY+st.y,0);cylG.rotation.z=st.spin;
+  if(st.phase==='fly'||st.phase==='hit')bullet.position.set(st.bx,st.by,0);else bullet.position.set(st.x+0.75,BY,0);
+  bullet.rotation.z=st.phase==='fly'?Math.atan2(st.bvy,Math.max(1e-3,st.bvx)):0;
+  // B
+  const showL=$('kL').checked;fieldG.visible=$('kB').checked;fieldArrows.forEach(g=>g.rotation.x=st.bdir>0?0:Math.PI);
+  aB.visible=lbB.visible=$('kB').checked;setArrow(aB,V3(st.x-1.6,0.4,ZR+0.9),V3(0,st.bdir,0),2.2);lbB.position.set(st.x-1.6,st.bdir>0?2.9:-0.3,ZR+0.9);lbB.visible=lbB.visible&&showL;if(st.bdir<0)aB.position.y=2.6;
+  // F
+  const F=Fx(),yc=RY+(st.arm==='cyl'?RCYL:0.15)+st.y;
+  aF.visible=$('kF').checked&&Math.abs(F)>1e-6;lbF.visible=aF.visible&&showL;
+  if(aF.visible){const len=0.8+2.4*Math.min(1,Math.abs(F)/10);setArrow(aF,V3(st.x,yc+0.55,0),V3(Math.sign(F),0,0),len);lbF.position.set(st.x+Math.sign(F)*(len+0.4),yc+0.9,0)}
+  // v
+  const vx=st.phase==='fly'||st.phase==='hit'?st.bvx:st.phase==='rail'?st.v:st.bvx;
+  aV.visible=$('kV').checked&&Math.abs(vx)>0.05;lbV.visible=aV.visible&&showL;
+  if(aV.visible){const px=st.phase==='fly'?st.bx:st.x,py=st.phase==='fly'?st.by:yc;const len=0.6+3*Math.min(1,Math.abs(vx)/15);setArrow(aV,V3(px,py-0.05,-ZR-0.9),V3(Math.sign(vx),0,0),len);lbV.position.set(px+Math.sign(vx)*(len+0.4),py+0.3,-ZR-0.9)}
+  // dòng điện
+  const I=Inow(),showI=$('kI').checked&&Math.abs(I)>1e-6;
+  if(showI){const pts=circuitPts(),c=new THREE.CatmullRomCurve3(pts,false,'catmullrom',0.01),sp=Math.sign(I)*0.12*(0.4+Math.min(1,Math.abs(I)/60));
+    dots.forEach(d=>{d.visible=true;d.userData.u=((d.userData.u+sp*dt)%1+1)%1;d.position.copy(c.getPointAt(d.userData.u))});
+    iArr.visible=true;iArr.position.set(st.x,yc+0.2,0);iArr.rotation.set(I>0?-Math.PI/2:Math.PI/2,0,0);lbI.visible=showL;lbI.position.set(st.x+0.5,yc+0.3,I>0?-ZR-0.3:ZR+0.3)}
+  else{dots.forEach(d=>d.visible=false);iArr.visible=false;lbI.visible=false}
+  // bàn tay trái: lòng bàn tay đón B (pháp tuyến lòng tay ngược hướng B), 4 ngón theo I, ngón cái theo F
+  hand.visible=$('kH').checked&&showI&&st.phase==='rail';lbHand.visible=hand.visible&&showL;
+  if(hand.visible){const Iv=V3(0,0,-Math.sign(I)),Bv=V3(0,st.bdir,0),Fv=Iv.clone().cross(Bv);  // F ∥ I × B
+    // hệ trục bàn tay: −z cục bộ = chiều ngón tay (I), +y cục bộ = mu bàn tay (B đi vào lòng tay từ phía −y), +x cục bộ = ngón cái (F)
+    const m=new THREE.Matrix4().makeBasis(Fv,Bv,Iv.clone().negate());hand.quaternion.setFromRotationMatrix(m);hand.position.set(st.x-3.2,yc+2.8,0.3);lbHand.position.set(st.x-3.2,yc+4.1,0.3)}
+  lbArm.visible=showL&&st.phase==='rail';lbArm.position.set(st.x,yc+(st.arm==='gun'?2.1:1.4),ZR+0.4);lbArm.material.map&&0;
+  labels.forEach(l=>{if(![lbF,lbV,lbB,lbI,lbArm,lbHand,lbTarget].includes(l))l.visible=showL});lbTarget.visible=showL&&st.arm==='gun';
+  uiT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}
+  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+window.__sung={st,Fx,Inow,step,reset,toggleK,syncUI,camera,cam,tc,setView,hand};   // dùng cho kiểm thử tự động
+ui();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
