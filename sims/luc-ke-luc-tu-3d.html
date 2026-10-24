@@ -115,7 +115,7 @@ label.chk input{accent-color:var(--accent)}
       <div class="seg" id="segSrc"><button data-v="dc">⎓ Một chiều</button><button data-v="ac">∿ Xoay chiều</button></div>
       <div id="boxAC" hidden><div class="lbl">Tần số</div><div class="seg" id="segFq"><button data-v="0.5">0,5 Hz (chiếu chậm)</button><button data-v="50">50 Hz (thực tế)</button></div></div>
       <label class="rng">Cường độ dòng điện I<span class="v" id="vI"></span><input type="range" id="rI" min="0" max="10" step="0.5" value="5"></label>
-      <label class="rng">Cảm ứng từ B giữa hai cực<span class="v" id="vB"></span><input type="range" id="rB" min="0.1" max="0.5" step="0.05" value="0.2"></label>
+      <label class="rng">Cảm ứng từ B giữa hai cực<span class="v" id="vB"></span><input type="range" id="rB" min="0.1" max="1" step="0.05" value="0.2"></label>
       <label class="rng">Khối lượng thanh đồng m<span class="v" id="vM"></span><input type="range" id="rM" min="20" max="100" step="5" value="50"></label>
       <div class="row"><button class="wide" id="bPol">⇄ Đảo cực nguồn</button><button class="wide" id="bMag">⇄ Đảo cực nam châm</button></div>
     </div>
@@ -155,10 +155,11 @@ label.chk input{accent-color:var(--accent)}
     <div class="sec">
       <h2>Ghi nhớ</h2>
       <ul class="note" style="margin:0;padding-left:18px">
-        <li><b>Chưa treo thanh:</b> lò xo có chiều dài tự nhiên ℓ₀, độ dãn Δℓ = 0, lực kế chỉ 0.</li>
+        <li><b>Chưa treo thanh:</b> lò xo có chiều dài tự nhiên ℓ₀, đầu lò xo ở vạch 0 giữa thước, lực kế chỉ 0. Thước đối xứng: phía dưới vạch 0 là <b>dãn</b> (+), phía trên là <b>nén</b> (−), vạch chia 1 mm.</li>
         <li><b>Treo thanh, chưa có dòng điện:</b> thanh cân bằng dưới tác dụng của trọng lực P = mg và hai lực đàn hồi: 2F<sub>đh</sub> = P ⇒ mỗi lực kế chỉ F₁ = mg/2, mỗi lò xo dãn Δℓ₁ = mg/(2k).</li>
         <li><b>Có dòng điện:</b> đoạn thanh nằm trong từ trường (dài L) chịu thêm lực từ F = B·I·L, phương thẳng đứng (dây ⟂ B), chiều theo quy tắc bàn tay trái. Lực từ hướng xuống ⇒ 2F<sub>đh</sub> = P + F (lò xo dãn thêm); lực từ hướng lên ⇒ 2F<sub>đh</sub> = P − F (lò xo co bớt).</li>
         <li><b>Đo lực từ:</b> F = 2·|F₂ − F₁| = 2k·|Δℓ₂ − Δℓ₁| (F₁, F₂: số chỉ mỗi lực kế khi chưa và khi có dòng điện). Từ đó tính B = F/(I·L).</li>
+        <li>Nếu lực từ hướng lên và <b>lớn hơn trọng lực</b> (F > mg) thì lò xo bị <b>nén</b>: 2F<sub>đh</sub> = F − mg, lực đàn hồi hướng xuống, lực kế chỉ số âm.</li>
         <li>Đảo cực nguồn <b>hoặc</b> đảo cực nam châm ⇒ lực từ đổi chiều. Dòng xoay chiều ⇒ lực từ đổi chiều liên tục ⇒ thanh dao động lên xuống quanh vị trí cân bằng (với 50 Hz chỉ rung nhẹ, số chỉ trung bình bằng mg/2).</li>
       </ul>
     </div>
@@ -174,14 +175,17 @@ const TAU=Math.PI*2,G=9.8;
 if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không tải được thư viện 3D (three.js). Hãy kết nối mạng hoặc mở file trong thư mục có sẵn thư mục lib/.';return}
 
 // ====== Thông số (1 đơn vị hình = 1 cm). Thanh dọc trục x, B nằm ngang theo trục z ======
-const K=10,L0=8,LMAG=0.10;                            // độ cứng mỗi lò xo (N/m), chiều dài tự nhiên lò xo (cm), bề rộng vùng từ trường = chiều dài L (m)
-const YT=36,XS=9,HOOK=1.5,EMAX=14,EROD=7.2;   // EROD: độ dãn lớn nhất khi treo thanh (thanh chạm đế nam châm)                    // độ cao điểm treo, vị trí hai lực kế, chiều dài móc, độ dãn lớn nhất
-const YMC=22.5;                                       // tâm vùng từ trường (độ cao)
+const K=5,L0=12,LMAG=0.10;                            // độ cứng mỗi lò xo (N/m), chiều dài tự nhiên lò xo (cm), bề rộng vùng từ trường = chiều dài L (m)
+const YT=48,XS=9,HOOK=1.5,EPOS=12,ENEG=-9;   // giới hạn dãn / nén của lò xo (cm)   // EROD: độ dãn lớn nhất khi treo thanh (thanh chạm đế nam châm)                    // độ cao điểm treo, vị trí hai lực kế, chiều dài móc, độ dãn lớn nhất
+const YMC=30,ARMH=20;                                 // tâm vùng từ trường, chiều cao hai nhánh nam châm
+const yRodOf=e=>YT-0.2-L0-e-HOOK+0.2;                 // độ cao thanh khi mỗi lò xo biến dạng e (cm)
+// thanh ra khỏi khe nam châm thì lực từ giảm dần về 0
+const inField=()=>clamp((ARMH/2+1.5-Math.abs(yRodOf(st.e)-YMC))/3,0,1);
 const st={sc:3,src:'dc',fq:0.5,I:5,B:0.2,m:0.05,pol:1,mag:1,e:0,v:0,eH:0,t:0,drag:null,paused:false,hist:[],ht:0,avg:[]};
 // dòng điện tức thời (A), chiều dương: thanh từ trái (x < 0) sang phải
 const Inow=()=>st.sc<3?0:st.src==='ac'?st.pol*st.I*Math.SQRT2*Math.sin(TAU*st.fq*st.t):st.pol*st.I;
 // lực từ thẳng đứng (N, dương = hướng XUỐNG): F = I·L(+x) × B; mag = +1: B theo +z ⇒ x × z = −y (xuống)
-const Fdown=()=>Inow()*LMAG*st.B*st.mag;
+const Fdown=()=>Inow()*LMAG*st.B*st.mag*inField();
 const hung=()=>st.sc>=2;
 
 // ====== Cảnh 3D ======
@@ -207,19 +211,19 @@ cyl(0.6,33,mats.steel,0,YT+1.5,-3).rotation.z=Math.PI/2;
 for(const x of[-16,16])box(4,0.8,6,mats.dark,x,0.4,-3);
 // ---- nam châm chữ U: đế trên bục gỗ, hai nhánh hai bên khe (z = ±), vùng giữa rộng ----
 const GAPH=4.2,ARMT=3,MW=10;                          // nửa khe, bề dày nhánh, bề rộng nam châm theo x (= L)
-box(MW+2,YMC-8,16,mats.wood,0,(YMC-8)/2,0);
+box(MW+2,YMC-ARMH/2-3.5,16,mats.wood,0,(YMC-ARMH/2-3.5)/2,0);
 const magG=new THREE.Group();scene.add(magG);
 const magMats={N:new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.45,transparent:true}),S:new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.45,transparent:true}),
   base:new THREE.MeshStandardMaterial({color:0x52525b,roughness:.5,metalness:.3,transparent:true})};
-box(MW,4,2*(GAPH+ARMT),magMats.base,0,YMC-6,0,magG);
-const armB=box(MW,11,ARMT,magMats.N,0,YMC+0.5-1.5,-(GAPH+ARMT/2),magG),armF=box(MW,11,ARMT,magMats.S,0,YMC+0.5-1.5,GAPH+ARMT/2,magG);
+box(MW,4,2*(GAPH+ARMT),magMats.base,0,YMC-ARMH/2-1.5,0,magG);
+const armB=box(MW,ARMH+0.5,ARMT,magMats.N,0,YMC-0.25,-(GAPH+ARMT/2),magG),armF=box(MW,ARMH+0.5,ARMT,magMats.S,0,YMC-0.25,GAPH+ARMT/2,magG);
 function letter(t){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle='#fff';g.font='bold 100px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,72);
   const tex=new THREE.CanvasTexture(c);return{m:new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false})),c,tex}}
-const ltF=letter('S'),ltB=letter('N');ltF.m.position.set(0,YMC+2.5,GAPH+ARMT+0.02);magG.add(ltF.m);ltB.m.position.set(0,YMC+2.5,-(GAPH+ARMT)-0.02);ltB.m.rotation.y=Math.PI;magG.add(ltB.m);
+const ltF=letter('S'),ltB=letter('N');ltF.m.position.set(0,YMC+6.5,GAPH+ARMT+0.02);magG.add(ltF.m);ltB.m.position.set(0,YMC+6.5,-(GAPH+ARMT)-0.02);ltB.m.rotation.y=Math.PI;magG.add(ltB.m);
 function setLetter(L,t){const g=L.c.getContext('2d');g.clearRect(0,0,128,128);g.fillStyle='#fff';g.font='bold 100px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,72);L.tex.needsUpdate=true}
 // đường sức từ trong khe
 const fieldG=new THREE.Group();scene.add(fieldG);const gMat=new THREE.MeshBasicMaterial({color:0x16a34a}),gCone=new THREE.MeshBasicMaterial({color:0x15803d});
-for(const x of[-3.5,-1.2,1.2,3.5])for(const y of[YMC-3,YMC,YMC+3]){const t=cyl(0.09,2*GAPH-0.2,gMat,x,y,0,fieldG,6);t.rotation.x=Math.PI/2;
+for(const x of[-3.5,-1.2,1.2,3.5])for(const y of[YMC-7.5,YMC-3.75,YMC,YMC+3.75,YMC+7.5]){const t=cyl(0.09,2*GAPH-0.2,gMat,x,y,0,fieldG,6);t.rotation.x=Math.PI/2;
   const c=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.9,10),gCone);c.position.set(x,y,GAPH*0.55);c.rotation.x=Math.PI/2;c.userData.cone=1;fieldG.add(c)}
 // ---- hai lực kế lò xo: móc trên, lò xo xoắn, móc dưới, thước chia độ dãn ----
 const springs=[-XS,XS].map((x,i)=>{
@@ -231,14 +235,23 @@ const springs=[-XS,XS].map((x,i)=>{
   cyl(0.15,HOOK-0.4,mats.steel,0,-(HOOK-0.4)/2,0,hookG,8);
   const hk=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.15,8,20,Math.PI*1.4),mats.steel);hk.position.y=-HOOK+0.25;hk.rotation.z=Math.PI*0.8;hookG.add(hk);
   // thước: vạch 0 ngang với đầu dưới lò xo khi chưa dãn
-  const rC=document.createElement('canvas');rC.width=96;rC.height=1024;const rg=rC.getContext('2d');rg.fillStyle='#fffbeb';rg.fillRect(0,0,96,1024);rg.fillStyle='#0f172a';rg.strokeStyle='#0f172a';rg.textAlign='left';rg.textBaseline='middle';
-  const RL=16;for(let c=0;c<=RL*2;c++){const y=12+c*(1000/(RL*2)),big=c%2===0;rg.lineWidth=big?3:1.5;rg.beginPath();rg.moveTo(0,y);rg.lineTo(big?40:24,y);rg.stroke();if(big&&c%4===0){rg.font='bold 34px system-ui,sans-serif';rg.fillText(String(c/2),46,y)}}
-  const ruler=new THREE.Mesh(new THREE.PlaneGeometry(2.4,RL*1024/1000),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(rC)}));
-  // căn: vạch 0 (y canvas = 12) ở độ cao YT − 0,2 − L0
-  const top=YT-0.2-L0+12*RL/1000;ruler.position.set(i?2.6:-2.6,top-RL*1024/1000/2,0.2);g.add(ruler);
+  // thước đối xứng −12 … 0 … +12 cm: phía trên vạch 0 là NÉN (−), phía dưới là DÃN (+); vạch chia 1 mm
+  const RCM=12,RLEN=2*RCM+1,rC=document.createElement('canvas');rC.width=160;rC.height=2048;const rg=rC.getContext('2d'),PX=2048/RLEN,y0c=1024;
+  rg.fillStyle='#fffbeb';rg.fillRect(0,0,160,2048);rg.fillStyle='rgba(56,189,248,.18)';rg.fillRect(0,0,160,y0c);rg.fillStyle='rgba(249,115,22,.14)';rg.fillRect(0,y0c,160,1024);
+  rg.textAlign='left';rg.textBaseline='middle';
+  for(let mm=-RCM*10;mm<=RCM*10;mm++){const y=y0c+mm/10*PX,cm=mm%10===0,half=mm%5===0;rg.strokeStyle=mm===0?'#15803d':'#0f172a';rg.lineWidth=mm===0?5:cm?3:1.2;
+    rg.beginPath();rg.moveTo(0,y);rg.lineTo(mm===0?100:cm?52:half?36:22,y);rg.stroke();
+    if(cm&&mm%20===0){const v=mm/10;rg.font='bold 34px system-ui,sans-serif';rg.fillStyle=v<0?'#0369a1':v>0?'#c2410c':'#15803d';rg.fillText(v>0?'+'+v:v<0?'−'+(-v):'0',58,y)}}
+  rg.save();rg.font='bold 30px system-ui,sans-serif';rg.fillStyle='#0369a1';rg.translate(140,y0c-260);rg.rotate(-Math.PI/2);rg.fillText('NÉN',0,0);rg.restore();
+  rg.save();rg.font='bold 30px system-ui,sans-serif';rg.fillStyle='#c2410c';rg.translate(140,y0c+330);rg.rotate(-Math.PI/2);rg.fillText('DÃN',0,0);rg.restore();
+  const tx=new THREE.CanvasTexture(rC);tx.anisotropy=4;
+  const ruler=new THREE.Mesh(new THREE.PlaneGeometry(3.2,RLEN),new THREE.MeshBasicMaterial({map:tx}));
+  ruler.position.set(i?2.9:-2.9,YT-0.2-L0,0.2);g.add(ruler);
   // đoạn tô màu thể hiện độ dãn Δℓ
   const dl=box(0.5,1,0.3,new THREE.MeshBasicMaterial({color:0xf97316}),i?1.25:-1.25,0,0.25,g);
-  return{g,sp,hookG,ruler,dl,e:0}});
+  // kim chỉ (gắn ở đầu dưới lò xo) chỉ lên thước
+  const ptr=box(1.6,0.12,0.12,new THREE.MeshBasicMaterial({color:0xdc2626}),i?1.9:-1.9,0,0.3,g);
+  return{g,sp,hookG,ruler,dl,ptr,e:0}});
 function buildSpring(sp,len){if(Math.abs(sp.userData.len-len)<0.01)return;sp.userData.len=len;const NT=8,pts=[];
   pts.push(V3(0,0,0));for(let k=0;k<=NT*24;k++){const a=k/24*TAU;pts.push(V3(0.9*Math.cos(a),-0.3-(len-0.6)*k/(NT*24),0.9*Math.sin(a)))}pts.push(V3(0,-len,0));
   sp.geometry.dispose();sp.geometry=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),NT*40,0.1,6,false)}
@@ -278,14 +291,14 @@ function makeLabel(text,color='#0f172a',size=0.3){
 function dynLabel(color,size){const s=makeLabel(' ',color,size);s.userData={color,size,text:''};scene.add(s);return s}
 function setText(s,t){if(s.userData.text===t)return;s.userData.text=t;const n=makeLabel(t,s.userData.color,s.userData.size);s.material.map.dispose();s.material.map=n.material.map;s.scale.copy(n.scale)}
 const labels=[];const L=(t,c,x,y,z,s=1.3)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);labels.push(l);return l};
-L('Lực kế 1','#1e3a8a',-XS-5,YT+1.5,0);L('Lực kế 2','#1e3a8a',XS+5,YT+1.5,0);const lbMag=L('Nam châm chữ U','#374151',-10,YMC-6,8);
+L('Lực kế 1','#1e3a8a',-XS-5,YT+1.5,0);L('Lực kế 2','#1e3a8a',XS+5,YT+1.5,0);const lbMag=L('Nam châm chữ U','#374151',-10,YMC-ARMH/2,8);
 L('Nguồn điện','#1e3a8a',PX,8,PZ);const lbRod=L('Thanh đồng (dòng điện thẳng)','#9a3412',0,0,0,1.1);
-const lbP=dynLabel('#b91c1c',1.2),lbF=dynLabel('#6d28d9',1.2),lbE=[dynLabel('#1d4ed8',1.1),dynLabel('#1d4ed8',1.1)],lbDl=[dynLabel('#c2410c',1.0),dynLabel('#c2410c',1.0)],lbB=L('B','#15803d',4.5,YMC+5,GAPH+0.8,1.3);
+const lbP=dynLabel('#b91c1c',1.2),lbF=dynLabel('#6d28d9',1.2),lbE=[dynLabel('#1d4ed8',1.1),dynLabel('#1d4ed8',1.1)],lbDl=[dynLabel('#c2410c',1.0),dynLabel('#c2410c',1.0)],lbB=L('B','#15803d',4.5,YMC+9,GAPH+0.8,1.3);
 const lbRead=[dynLabel('#0f172a',1.6),dynLabel('#0f172a',1.6)];
 
 // ====== Camera và kéo ======
 const cam={az:0.5,el:0.3,r:78,tx:2,ty:20,tz:0};const tc={...cam};
-const VIEWS={iso:[0.5,0.3,78,2,20,0],front:[0.0001,0.08,74,2,20,0],gap:[0.45,0.45,28,0,YMC+1,0],spring:[0.25,0.12,30,XS,YT-8,0]};
+const VIEWS={iso:[0.5,0.3,92,2,26,0],front:[0.0001,0.08,88,2,26,0],gap:[0.45,0.45,34,0,YMC+1,0],spring:[0.25,0.1,36,XS,YT-L0-2,0]};
 function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-Math.PI;tc.az=cam.az+d;[tc.el,tc.r,tc.tx,tc.ty,tc.tz]=v.slice(1);const a=view.clientWidth/Math.max(1,view.clientHeight);if(a<1.1&&(k==='iso'||k==='front'))tc.r*=Math.pow(1.1/a,0.85)}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
 function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.14;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
@@ -303,7 +316,7 @@ el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
   if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(grabMeshes()).length?'grab':'default';return}
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,10,150);return}
-  if(st.drag){setNdc(e);if(ray.ray.intersectPlane(dPlane,hit)){const e2=clamp(dE0+(dY0-hit.y),0,st.drag.which==='rod'?EROD:EMAX);if(st.drag.which==='rod'){st.e=e2;st.v=0}else springs[st.drag.which].e=e2}}
+  if(st.drag){setNdc(e);if(ray.ray.intersectPlane(dPlane,hit)){const e2=clamp(dE0+(dY0-hit.y),ENEG,EPOS);if(st.drag.which==='rod'){st.e=e2;st.v=0}else springs[st.drag.which].e=e2}}
   else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.2,1.5)}});
 function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;if(st.drag&&!ptrs.size){st.drag=null;el.style.cursor='default';hint('Thả tay: lực đàn hồi kéo vật về vị trí cân bằng')}if(!ptrs.size)orbit=false}
 el.addEventListener('pointerup',endPtr);el.addEventListener('pointercancel',endPtr);
@@ -357,18 +370,19 @@ function ui(){
     ['Kiểm tra: 2F_đh',hung()?fmt(2*fe[0],3)+' N ≈ P '+(st.sc===3?(F>=0?'+':'−')+' F':''):'0'],['Số chỉ trung bình (2 s)',fmt(fA,3)+' N']]
     .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val" style="font-size:14px">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
   let s='<ol>';
-  if(st.sc===1)s+='<li>Chưa treo thanh đồng: lò xo có chiều dài tự nhiên ℓ₀ = 8 cm, độ dãn Δℓ = 0 ⇒ lực kế chỉ 0.</li><li>Có thể kéo móc lò xo bằng chuột: lò xo dãn càng nhiều, lực đàn hồi F<sub>đh</sub> = k·Δℓ (k = 10 N/m) càng lớn – lực kế đo chính lực này.</li>';
+  if(st.sc===1)s+='<li>Chưa treo thanh đồng: lò xo có chiều dài tự nhiên ℓ₀ = 12 cm, đầu lò xo ở <b>vạch 0</b> giữa thước ⇒ lực kế chỉ 0.</li><li>Có thể kéo móc lò xo xuống (dãn, số dương) hoặc đẩy lên (nén, số âm) bằng chuột: biến dạng càng lớn, lực đàn hồi F<sub>đh</sub> = k·Δℓ (k = 5 N/m) càng lớn – lực kế đo chính lực này.</li>';
   else{
     s+=`<li>Thanh đồng khối lượng m = ${Math.round(st.m*1000)} g treo trên hai lực kế: trọng lực P = mg = ${fmt(P,3)} N (mũi tên đỏ) được cân bằng bởi hai lực đàn hồi (mũi tên xanh dương).</li>`;
     if(st.sc===2)s+=`<li>Chưa có dòng điện ⇒ không có lực từ ⇒ 2F<sub>đh</sub> = P ⇒ mỗi lực kế chỉ P/2 = ${fmt(P/2,3)} N, mỗi lò xo dãn Δℓ₁ = mg/(2k) = ${fmt(P/2/K*100,2)} cm.</li>`;
     else{
       s+=`<li>Đóng mạch: dòng điện ${st.src==='ac'?'xoay chiều':'một chiều'} I = ${fmt(st.I,1)} A chạy trong thanh; đoạn thanh nằm giữa hai cực nam châm dài L = 10 cm, vuông góc với B = ${fmt(st.B,2)} T (đường sức xanh lá).</li>`;
       s+=`<li>Lực từ F = B·I·L = ${fmt(st.B*st.I*LMAG,3)} N${st.src==='ac'?' (giá trị hiệu dụng)':''}, phương thẳng đứng; theo quy tắc bàn tay trái hiện đang hướng <b>${F>0?'xuống':F<0?'lên':'—'}</b> (mũi tên tím).</li>`;
-      s+=st.src==='dc'?`<li>Cân bằng: 2F<sub>đh</sub> = P ${F>0?'+':'−'} F ⇒ mỗi lực kế chỉ ${fmt(eq()*K/100,3)} N, lò xo ${F>0?'dãn thêm':'co bớt'} ${fmt(Math.abs(F)/2/K*100,2)} cm so với khi chưa có dòng điện. Suy ra F = 2·|F₂ − F₁|.</li>`
+      s+=st.src==='dc'?(inField()<0.99?'<li><b>Thanh đã ra khỏi khe nam châm</b> ⇒ không còn nằm trong từ trường ⇒ lực từ giảm mạnh.</li>':`<li>Cân bằng: 2F<sub>đh</sub> = P ${F>0?'+':'−'} F ⇒ mỗi lực kế chỉ ${fmt(eq()*K/100,3)} N, lò xo ${F>0?'dãn thêm':'co bớt'} ${fmt(Math.abs(F)/2/K*100,2)} cm so với khi chưa có dòng điện. Suy ra F = 2·|F₂ − F₁|.</li>`+(F<0&&-F>P?`<li>Lực từ hướng lên <b>lớn hơn trọng lực</b> (F > P) ⇒ thanh bị đẩy lên quá vị trí lò xo tự nhiên ⇒ hai lò xo bị <b>nén</b> ${fmt(Math.abs(eq()),2)} cm (kim chỉ phía trên vạch 0, số chỉ âm): lực đàn hồi lúc này hướng <b>xuống</b>, 2F<sub>đh</sub> = F − P.</li>`:''))
         :st.fq>=50?'<li>Dòng xoay chiều 50 Hz: lực từ đổi chiều 100 lần mỗi giây, thanh có quán tính nên chỉ <b>rung nhẹ</b>; số chỉ trung bình vẫn bằng mg/2 ⇒ không dùng cách này đo lực từ của dòng xoay chiều.</li>'
         :'<li>Dòng xoay chiều tần số thấp: lực từ lúc hướng xuống, lúc hướng lên ⇒ thanh <b>dao động lên xuống</b>, số chỉ lực kế dao động quanh mg/2.</li>';
     }
   }
+  if(hung()&&!st.drag&&(st.e>=EPOS-0.01||st.e<=ENEG+0.01))s+=`<li><b>⚠ Lò xo đã ${st.e>0?'dãn':'nén'} tới giới hạn của thước (${st.e>0?'+':'−'}${st.e>0?EPOS:-ENEG} cm) – vượt giới hạn đo!</b> Số chỉ lúc này không còn đúng; hãy giảm I, B hoặc khối lượng thanh.</li>`;
   if(st.drag)s+='<li><b>Đang kéo bằng tay:</b> lò xo bị kéo lệch khỏi vị trí cân bằng; thả tay ra, lực đàn hồi kéo vật dao động quanh vị trí cân bằng rồi dừng lại.</li>';
   s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
 }
@@ -382,6 +396,7 @@ const QS=[
   {q:'Đảo cực nam châm (giữ nguyên chiều dòng điện) thì:',o:['Lực từ đổi chiều, các lò xo co bớt (nếu trước đó dãn thêm)','Lực từ giữ nguyên chiều','Lực từ bằng 0','Trọng lực đổi chiều'],e:'Đổi chiều B ⇒ lực từ đổi chiều.',d:()=>base({mag:-1})},
   {q:'Số chỉ mỗi lực kế khi chưa có dòng là 0,245 N, khi có dòng là 0,295 N. Lực từ tác dụng lên thanh là:',o:['0,1 N','0,05 N','0,295 N','0,54 N'],e:'F = 2·(0,295 − 0,245) = 0,1 N.',d:()=>base()},
   {q:'Cho dòng điện xoay chiều tần số thấp qua thanh, hiện tượng quan sát được là:',o:['Thanh dao động lên xuống, số chỉ lực kế dao động quanh mg/2','Thanh đứng yên, lực kế chỉ mg/2','Thanh bị đẩy ra khỏi nam châm theo phương ngang','Lò xo không dãn'],e:'Lực từ đổi chiều theo dòng điện ⇒ thanh lúc bị kéo xuống, lúc bị đẩy lên.',d:()=>base({src:'ac',fq:0.5})},
+  {q:'Thanh m = 20 g, lực từ hướng lên F = 0,5 N. Hai lò xo (k = 5 N/m mỗi lò xo) sẽ:',o:['Bị nén khoảng 3 cm mỗi lò xo','Bị dãn khoảng 3 cm mỗi lò xo','Không biến dạng','Bị dãn 10 cm'],e:'F > mg = 0,196 N ⇒ 2kΔℓ = F − mg = 0,304 N ⇒ Δℓ ≈ 3 cm (nén).',d:()=>base({m:0.02,B:1,I:5,mag:-1})},
   {q:'Trước khi treo thanh, độ dãn của lò xo lực kế là:',o:['Bằng 0, lực kế chỉ 0','Bằng chiều dài tự nhiên','Bằng mg/k','Bằng mg/(2k)'],e:'Chưa có lực tác dụng ⇒ lò xo có chiều dài tự nhiên, Δℓ = 0.',d:()=>base({sc:1})}
 ];
 const Q={n:0,ok:0};
@@ -399,7 +414,7 @@ let last=performance.now(),uiT=0;
 function step(h){
   st.t+=h;
   if(hung()){if(st.drag&&st.drag.which==='rod')return;
-    const w0=Math.sqrt(2*K/st.m),c=2*0.12*w0;const e=st.e/100,a=(st.m*G+Fdown()-2*K*e)/st.m-c*st.v;st.v+=a*h;st.e=clamp((e+st.v*h)*100,0,EROD);if(st.e<=0||st.e>=EROD)st.v=0}
+    const w0=Math.sqrt(2*K/st.m),c=2*0.12*w0;const e=st.e/100,a=(st.m*G+Fdown()-2*K*e)/st.m-c*st.v;st.v+=a*h;st.e=clamp((e+st.v*h)*100,ENEG,EPOS);if(st.e<=ENEG||st.e>=EPOS)st.v=0}
   else springs.forEach((s,i)=>{if(!(st.drag&&st.drag.which===i))s.e*=Math.exp(-h/0.08)});   // lò xo nhẹ, không treo vật: nhanh chóng co về chiều dài tự nhiên
 }
 function loop(now){
@@ -408,8 +423,8 @@ function loop(now){
     st.ht+=dt;if(st.ht>0.03){st.ht=0;st.hist.push([Fel(0)]);if(st.hist.length>240)st.hist.shift();st.avg.push(Fel(0));if(st.avg.length>66)st.avg.shift()}}
   // lò xo, móc, thanh
   springs.forEach((s,i)=>{const e=hung()?st.e:s.e;buildSpring(s.sp,L0+e);const yb=YT-0.2-L0-e;s.hookG.position.y=yb;
-    s.dl.visible=e>0.05;s.dl.scale.y=Math.max(0.01,e);s.dl.position.y=YT-0.2-L0-e/2});
-  const yRod=YT-0.2-L0-(hung()?st.e:0)-HOOK+0.2;
+    s.dl.visible=Math.abs(e)>0.05;s.dl.scale.y=Math.max(0.01,Math.abs(e));s.dl.position.y=YT-0.2-L0-e/2;s.dl.material.color.setHex(e<0?0x0ea5e9:0xf97316);s.ptr.position.y=yb});
+  const yRod=yRodOf(hung()?st.e:0);
   rodG.visible=true;if(hung())rodG.position.set(0,yRod,0);else rodG.position.set(0,1.0,11);rodG.rotation.y=hung()?0:0.25;
   lbRod.position.set(hung()?-4:-8,hung()?yRod-5.5:4,hung()?6:13);
   buildWires(hung()?yRod:1.0);
@@ -422,11 +437,11 @@ function loop(now){
   if(aP.visible){setArrow(aP,V3(-1.6,yRod-0.5,0.9),-1,P*NPC);lbP.position.set(-3.2,yRod-P*NPC-1.2,1.5);setText(lbP,'P = '+fmt(P,3)+' N')}
   aF.visible=$('kF').checked&&hung()&&Math.abs(F)>1e-4;lbF.visible=aF.visible&&showL;
   if(aF.visible){const up=F<0;setArrow(aF,V3(1.6,yRod+(up?0.5:-0.5),0.9),up?1:-1,Math.abs(F)*NPC);lbF.position.set(4.5,yRod+(up?1:-1)*(Math.abs(F)*NPC+1.2),1.5);setText(lbF,'F = '+fmt(Math.abs(F),3)+' N')}
-  springs.forEach((s,i)=>{const fe=Fel(i),show=$('kE').checked&&fe>0.002;aE[i].visible=show;lbE[i].visible=show&&showL;
+  springs.forEach((s,i)=>{const fe=Fel(i),show=$('kE').checked&&Math.abs(fe)>0.002;aE[i].visible=show;lbE[i].visible=show&&showL;
     const yb=YT-0.2-L0-(hung()?st.e:s.e)-HOOK+0.2;
-    if(show){setArrow(aE[i],V3(s.g.position.x+(i?1.4:-1.4),yb+0.4,1.0),1,fe*NPC);lbE[i].position.set(s.g.position.x+(i?-4.2:4.2),yb+2.6,1.2);setText(lbE[i],'F_đh = '+fmt(fe,3)+' N')}
-    const e=hung()?st.e:s.e;lbDl[i].visible=showL&&e>0.05;lbDl[i].position.set(s.g.position.x+(i?6.6:-6.6),YT-0.2-L0-e/2,0.6);setText(lbDl[i],'Δℓ = '+fmt(e,2)+' cm');
-    lbRead[i].visible=showL;lbRead[i].position.set(s.g.position.x,YT+4.2,0);setText(lbRead[i],fmt(fe,2)+' N')});
+    if(show){setArrow(aE[i],V3(s.g.position.x+(i?1.4:-1.4),yb+(fe>0?0.4:-0.4),1.0),fe>0?1:-1,Math.abs(fe)*NPC);lbE[i].position.set(s.g.position.x+(i?-4.2:4.2),yb+2.6,1.2);setText(lbE[i],'F_đh = '+fmt(fe,3)+' N')}
+    const e=hung()?st.e:s.e;lbDl[i].visible=showL&&Math.abs(e)>0.05;lbDl[i].position.set(s.g.position.x+(i?7.2:-7.2),YT-0.2-L0-e/2,0.6);setText(lbDl[i],(e<0?'nén ':'dãn ')+fmt(Math.abs(e),2)+' cm');
+    lbRead[i].visible=showL;lbRead[i].position.set(s.g.position.x,YT+4.2,0);setText(lbRead[i],fmt(fe,3)+' N'+(fe<-0.0005?' (nén)':''))});
   // từ trường
   fieldG.visible=$('kB').checked;lbB.visible=fieldG.visible&&showL;fieldG.children.forEach(o=>{if(o.userData.cone)o.rotation.x=st.mag>0?Math.PI/2:-Math.PI/2});
   // dòng điện: chạy theo dây (+) → thanh → dây (−)
