@@ -109,7 +109,8 @@ label.chk input{accent-color:var(--accent)}
       <h2>Quá trình biến đổi</h2>
       <div class="seg" id="segP"><button data-v="T">Đẳng nhiệt<br><small>Boyle</small></button><button data-v="p">Đẳng áp<br><small>Charles</small></button><button data-v="V">Đẳng tích</button></div>
       <label class="rng" id="lV">Thể tích V<span class="v" id="vV"></span><input type="range" id="rV" min="0.5" max="3" step="0.05" value="1.5"></label>
-      <label class="rng" id="lT">Nhiệt độ T<span class="v" id="vT"></span><input type="range" id="rT" min="150" max="600" step="5" value="300"></label>
+      <div class="row" id="rowFast"><button class="wide" id="bFast">⚡ Nén nhanh</button><button class="wide" id="bSlow">🐢 Nén chậm</button><button class="wide" id="bExp">⚡ Dãn nhanh</button></div>
+      <label class="rng" id="lT"><span id="tT">Nhiệt độ T</span><span class="v" id="vT"></span><input type="range" id="rT" min="150" max="600" step="5" value="300"></label>
       <label class="rng" id="lp">Áp suất p (quả nặng trên pít-tông)<span class="v" id="vp"></span><input type="range" id="rp" min="40" max="300" step="5" value="100"></label>
       <div class="row"><button class="wide pri" id="bAuto">▶ Chạy tự động</button><button class="wide" id="bClr">Xóa đồ thị</button></div>
       <div class="note" id="pNote"></div>
@@ -151,7 +152,8 @@ label.chk input{accent-color:var(--accent)}
       <ul class="note" style="margin:0;padding-left:18px">
         <li><b>Mô hình động học phân tử:</b> khí gồm rất nhiều phân tử chuyển động hỗn loạn không ngừng; nhiệt độ càng cao, phân tử chuyển động càng nhanh. <b>Áp suất</b> của khí do các phân tử <b>va chạm</b> vào thành bình gây ra.</li>
         <li><b>Đẳng nhiệt (Boyle):</b> T không đổi ⇒ <b>p·V = hằng số</b>, p tỉ lệ nghịch với V; đường đẳng nhiệt trên đồ thị p – V là đường hypebol.</li>
-        <li><b>Đẳng áp (Charles):</b> p không đổi ⇒ <b>V/T = hằng số</b>; đồ thị V – T là đường thẳng kéo dài đi qua gốc O (0 K).</li>
+        <li><b>Nén nhanh</b> thì khí không kịp trao đổi nhiệt: công của lực nén làm nội năng tăng ⇒ nhiệt độ <b>tăng đột ngột</b>, áp suất tăng vọt hơn so với nén đẳng nhiệt; sau đó khí tỏa nhiệt ra môi trường, nhiệt độ <b>giảm dần về như cũ</b>. Muốn quá trình gần đẳng nhiệt phải nén <b>thật chậm</b>.</li>
+        <li><b>Đẳng áp (Charles):</b> p không đổi ⇒ <b>V/T = hằng số</b>; đồ thị V – T là đường thẳng kéo dài đi qua gốc O (0 K). Trong thí nghiệm, xi lanh được nhúng chìm trong nước và đun nóng nước từ từ: khí nhận nhiệt từ nước; khi cân bằng nhiệt, nhiệt độ khí bằng nhiệt độ nước ⇒ nhiệt kế đặt trong nước đo <b>gián tiếp</b> nhiệt độ của khí.</li>
         <li><b>Đẳng tích:</b> V không đổi ⇒ <b>p/T = hằng số</b>; đồ thị p – T là đường thẳng kéo dài đi qua gốc O.</li>
         <li><b>Phương trình trạng thái:</b> pV/T = hằng số, hay <b>pV = nRT</b> (R = 8,31 J/(mol·K)); T là nhiệt độ tuyệt đối: T(K) = t(°C) + 273.</li>
         <li>Động năng tịnh tiến trung bình của phân tử: <b>E = (3/2)kT</b> ⇒ tốc độ căn quân phương v = √(3RT/M).</li>
@@ -173,7 +175,8 @@ const NMOL=0.04;                                   // lượng khí (mol): ở 3
 const R=2,Y0=0.3,HPL=2.4,RM=0.09,NP=160;           // bán kính trong xi lanh, đáy khí, chiều cao ứng với 1 L, bán kính phân tử, số phân tử vẽ
 const VMIN=0.5,VMAX=3,TMIN=150,TMAX=600;
 const S0=3.2;                                      // độ lệch chuẩn mỗi thành phần vận tốc ở 300 K (đơn vị hình/giây, chiếu chậm)
-const st={proc:'T',V:1.5,T:300,p:0,graph:'pV',paused:false,auto:null,trail:[],hits:0,hitT:0,pKin:0,impulse:0,imT:0,hist:[],drag:false};
+const GAM=1.4;                                     // chỉ số đoạn nhiệt của không khí
+const st={proc:'T',V:1.5,T:300,Tset:300,Tw:300,Vlast:1.5,ramp:null,p:0,graph:'pV',paused:false,auto:null,trail:[],hits:0,hitT:0,pKin:0,impulse:0,imT:0,hist:[],drag:false};
 const pOf=(V,T)=>NMOL*RG*T/V;                      // kPa khi V tính bằng lít
 st.p=pOf(st.V,st.T);
 const hOf=V=>V*HPL;
@@ -209,6 +212,26 @@ for(let v=0.5;v<=3.001;v+=0.25){const big=Math.abs(v*2-Math.round(v*2))<1e-6;con
 // không khí trong xi lanh: khối mờ màu theo nhiệt độ
 const gasM=new THREE.MeshBasicMaterial({color:0x93c5fd,transparent:true,opacity:.12,depthWrite:false});
 const gas=new THREE.Mesh(new THREE.CylinderGeometry(R-0.01,R-0.01,1,40),gasM);scene.add(gas);
+// bể nước (đẳng áp): xi lanh có pít-tông đặt chìm trong nước, bếp đun nước
+const tank=new THREE.Group();scene.add(tank);const TKR=R+1.05,TKH=7.4,WL=7.0;
+{const g=new THREE.Mesh(new THREE.CylinderGeometry(TKR,TKR,TKH,56,1,true),new THREE.MeshStandardMaterial({color:0xe0f2fe,transparent:true,opacity:.18,roughness:.05,side:THREE.DoubleSide,depthWrite:false}));g.position.y=TKH/2-0.15;tank.add(g);
+ const b=cyl(TKR,0.12,mats.white,0,-0.18,0,tank,56);b.material=new THREE.MeshStandardMaterial({color:0xe0f2fe,transparent:true,opacity:.4});
+ const r=new THREE.Mesh(new THREE.TorusGeometry(TKR,0.05,8,56),M(0xbae6fd));r.rotation.x=Math.PI/2;r.position.y=TKH-0.15;tank.add(r)}
+// nước: vành khuyên quanh xi lanh (không vẽ nước bên trong khí)
+const WC0=new THREE.Color(0x60a5fa),WC1=new THREE.Color(0xfb923c);
+const waterM=new THREE.MeshStandardMaterial({color:0x60a5fa,transparent:true,opacity:.32,roughness:.1,depthWrite:false,side:THREE.DoubleSide});
+{const sh=new THREE.Shape();sh.absarc(0,0,TKR-0.03,0,TAU,false);const hole=new THREE.Path();hole.absarc(0,0,R+0.16,0,TAU,true);sh.holes.push(hole);
+ const geo=new THREE.ExtrudeGeometry(sh,{depth:WL,bevelEnabled:false,curveSegments:48});geo.rotateX(-Math.PI/2);const w=new THREE.Mesh(geo,waterM);w.position.y=-0.12;tank.add(w)}
+// nhiệt kế nước (°C), nhúng trong nước giữa xi lanh và thành bể
+const thW=new THREE.Group();thW.position.set(-(R+0.62),0,0.35);tank.add(thW);
+cyl(0.18,8.2,new THREE.MeshStandardMaterial({color:0xf8fafc,transparent:true,opacity:.55,roughness:.1,depthWrite:false}),0,4.1,0,thW,16);
+const bulbW=new THREE.Mesh(new THREE.SphereGeometry(0.26,16,12),M(0x2563eb));bulbW.position.y=0.25;thW.add(bulbW);
+const colW=cyl(0.075,1,M(0x2563eb),0,0,0,thW,12);
+const thC=c=>0.5+7.2*c/100;                             // độ cao cột ứng với nhiệt độ (°C)
+for(let c=0;c<=100;c+=5){const big=c%10===0;box(big?0.36:0.22,0.025,0.02,new THREE.MeshBasicMaterial({color:0x0f172a}),0.22,thC(c),0.0,thW)}
+// bọt nhỏ đối lưu khi đun
+const bubbles=[];for(let k=0;k<28;k++){const b=new THREE.Mesh(new THREE.SphereGeometry(0.05+Math.random()*0.05,8,6),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.6}));
+  const a=Math.random()*TAU,r=R+0.3+Math.random()*(TKR-R-0.45);b.userData={x:r*Math.cos(a),z:r*Math.sin(a),y:Math.random()*WL};tank.add(b);bubbles.push(b)}
 // pít-tông, cán, tay cầm
 const pist=new THREE.Group();scene.add(pist);
 cyl(R-0.02,0.42,mats.piston,0,0.21,0,pist);[0.1,0.32].forEach(y=>{const o=new THREE.Mesh(new THREE.TorusGeometry(R-0.02,0.04,6,48),mats.rubber);o.rotation.x=Math.PI/2;o.position.y=y;pist.add(o)});
@@ -225,6 +248,7 @@ for(const s of[1,-1]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,
 const PGX=R+1.6,PGY=1.0;
 {const t=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.5,12),mats.brass);t.rotation.z=Math.PI/2;t.position.set(R+0.75,PGY*0.7,0);scene.add(t)}
 cyl(0.1,0.6,mats.brass,PGX,PGY*0.7+0.3,0,scene,12);
+const pipeX=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1,12),mats.brass);pipeX.rotation.z=Math.PI/2;scene.add(pipeX);
 const dial=new THREE.Group();dial.position.set(PGX,PGY+1.05,0);dial.rotation.y=0.5;scene.add(dial);
 {const c=cyl(1.0,0.25,mats.brass,0,0,0,dial,40);c.rotation.x=Math.PI/2;
  const cv=document.createElement('canvas');cv.width=cv.height=512;const g=cv.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(256,256,250,0,TAU);g.fill();
@@ -244,7 +268,7 @@ const col=cyl(0.1,1,mats.red,0,0,0,thG,12);
 const thT=y=>0.45+5.6*(y-100)/(650-100);           // độ cao cột đỏ ứng với T (K)
 for(let T=100;T<=650;T+=50){const big=T%100===0;box(big?0.42:0.26,0.025,0.02,new THREE.MeshBasicMaterial({color:0x0f172a}),0.3,thT(T),0.0,thG)}
 // dây đầu dò
-{const c=new THREE.CatmullRomCurve3([V3(TX,0.2,0.4),V3(TX+0.6,-0.1,0.8),V3(-R-0.2,0.15,0.6)]);scene.add(new THREE.Mesh(new THREE.TubeGeometry(c,20,0.04,6),mats.rubber))}
+const probe=(()=>{const c=new THREE.CatmullRomCurve3([V3(TX,0.2,0.4),V3(TX+0.6,-0.1,0.8),V3(-R-0.2,0.15,0.6)]);const m=new THREE.Mesh(new THREE.TubeGeometry(c,20,0.04,6),mats.rubber);scene.add(m);return m})();
 
 // ====== Phân tử: InstancedMesh, tô màu theo tốc độ ======
 const molM=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.35});
@@ -276,9 +300,12 @@ function makeLabel(text,color='#0f172a',size=0.3){
   s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
 const labels=[];const L=(t,c,x,y,z,s)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);labels.push(l);return l};
 const lbPist=L('Pít-tông','#334155',-2.6,0,1.2,0.32),lbW=L('Quả nặng (giữ p không đổi)','#334155',2.4,0,1.2,0.3),lbPin=L('Chốt khóa (giữ V không đổi)','#b91c1c',2.9,0,0.4,0.3);
-L('Áp kế','#78350f',PGX+0.4,PGY+2.45,0.6,0.32);L('Nhiệt kế','#b91c1c',TX-0.2,6.9,0.4,0.32);const lbHeat=L('Bếp điện','#9a3412',2.6,-0.35,2.2,0.3);
-[200,400,600].forEach(T=>L(T+' K','#334155',TX-0.85,thT(T),0.4,0.27));
+L('Áp kế','#78350f',PGX+0.4,PGY+2.45,0.6,0.32);const lbThG=L('Nhiệt kế (đo khí)','#b91c1c',TX-0.2,6.9,0.4,0.32);const lbHeat=L('Bếp điện','#9a3412',2.6,-0.35,2.2,0.3);
+const thGlbl=[200,400,600].map(T=>L(T+' K','#334155',TX-0.85,thT(T),0.4,0.27));
 const lbGas=L('Khí lí tưởng','#1e40af',-1.0,0,2.5,0.3);
+const lbWater=L('Nước (bể đun)','#0369a1',2.9,1.3,1.8,0.3),lbThW=L('Nhiệt kế đo nước','#1d4ed8',-(R+0.62),8.9,0.35,0.3);
+const thWlbl=[0,50,100].map(c=>L(c+' °C','#334155',-(R+0.62)-0.75,thC(c),0.35,0.24));
+const gasThLabels=[];
 
 // ====== Âm thanh: không dùng. Camera, kéo pít-tông ======
 const cam={az:0.5,el:0.3,r:17,tx:0.4,ty:4,tz:0};const tc={...cam};
@@ -310,7 +337,7 @@ let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textCo
 // ====== Trạng thái: hai đại lượng đặt, đại lượng còn lại tính từ pV = nRT ======
 // Đẳng nhiệt: đặt V, T ⇒ p. Đẳng áp: đặt p, T ⇒ V. Đẳng tích: đặt V, T ⇒ p.
 function applyState(){
-  if(st.proc==='p'){st.V=NMOL*RG*st.T/st.p;if(st.V>VMAX||st.V<VMIN){st.V=clamp(st.V,VMIN,VMAX);st.T=st.p*st.V/(NMOL*RG)}}
+  if(st.proc==='p'){st.V=clamp(NMOL*RG*st.T/st.p,VMIN,VMAX)}
   else st.p=pOf(st.V,st.T);
   addPoint();
 }
@@ -322,26 +349,33 @@ function addPoint(){const q=[st.p,st.V,st.T,st.proc];const l=st.hist[st.hist.len
 function syncUI(){
   $('segP').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.proc));
   $('segG').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.graph));
-  $('vV').textContent=fmt(st.V,2)+' L';$('rV').value=st.V;$('vT').textContent=Math.round(st.T)+' K ('+Math.round(st.T-273)+' °C)';$('rT').value=st.T;
+  const TR={T:[200,500,'Nhiệt độ môi trường (khí trở về nhiệt độ này)'],p:[280,370,'Nhiệt độ đặt của bếp đun nước'],V:[150,600,'Nhiệt độ của bếp (đun trực tiếp)']}[st.proc];
+  $('rT').min=TR[0];$('rT').max=TR[1];$('tT').textContent=TR[2];$('rowFast').style.display=st.proc==='T'?'':'none';
+  if(st.proc==='p'){$('rp').min=50;$('rp').max=180}else{$('rp').min=40;$('rp').max=300}
+  $('vV').textContent=fmt(st.V,2)+' L';$('rV').value=st.V;$('vT').textContent=Math.round(st.Tset)+' K ('+Math.round(st.Tset-273)+' °C)';$('rT').value=st.Tset;
   $('vp').textContent=Math.round(st.p)+' kPa';$('rp').value=Math.round(st.p);
   $('rV').disabled=st.proc!=='T';$('rp').disabled=st.proc!=='p';$('lV').style.opacity=st.proc==='T'?1:.55;$('lp').style.opacity=st.proc==='p'?1:.55;
-  $('pNote').innerHTML={T:'Nhiệt độ được giữ không đổi. <b>Kéo tay cầm pít-tông</b> hoặc kéo thanh trượt V để nén / giãn khí. Thanh nhiệt độ chọn đường đẳng nhiệt khác.',
-    p:'Các quả nặng giữ áp suất không đổi. Thay đổi <b>nhiệt độ T</b> (bếp điện) – pít-tông tự dịch chuyển.',V:'Pít-tông bị chốt khóa, thể tích không đổi. Thay đổi <b>nhiệt độ T</b> và quan sát áp kế.'}[st.proc];
+  $('pNote').innerHTML={T:'Xi lanh trao đổi nhiệt với môi trường. <b>Kéo chậm</b> tay cầm pít-tông (hoặc bấm <b>Nén chậm</b>) thì nhiệt độ gần như không đổi. Bấm <b>Nén nhanh</b> để thấy nhiệt độ tăng đột ngột rồi giảm dần về như cũ.',
+    p:'Xi lanh (có pít-tông và quả nặng giữ p không đổi) đặt <b>chìm trong bể nước</b>. Tăng nhiệt độ đặt của bếp: nước ấm lên từ từ, khí nhận nhiệt từ nước, pít-tông dâng lên. Nhiệt kế đặt trong nước.',V:'Pít-tông bị chốt khóa, thể tích không đổi. Thay đổi <b>nhiệt độ T</b> và quan sát áp kế.'}[st.proc];
   $('bAuto').textContent=st.auto?'■ Dừng chạy tự động':'▶ Chạy tự động';$('bPause').textContent=st.paused?'▶ Tiếp tục':'⏸ Dừng hình';
 }
-$('segP').querySelectorAll('button').forEach(b=>b.onclick=()=>{stopAuto();st.proc=b.dataset.v;st.graph={T:'pV',p:'VT',V:'pT'}[st.proc];if(st.proc==='p')st.p=Math.round(clamp(st.p,40,300)/5)*5;applyState();syncUI();
-  hint({T:'Đẳng nhiệt: T không đổi – kéo pít-tông',p:'Đẳng áp: p không đổi – đổi nhiệt độ',V:'Đẳng tích: V không đổi – đổi nhiệt độ'}[st.proc])});
+$('segP').querySelectorAll('button').forEach(b=>b.onclick=()=>{stopAuto();st.ramp=null;st.proc=b.dataset.v;st.graph={T:'pV',p:'VT',V:'pT'}[st.proc];
+  if(st.proc==='p'){st.T=st.Tw=st.Tset=Math.round(clamp(st.T,285,365));st.p=Math.round(clamp(st.p,50,180)/5)*5}else st.Tset=st.T=Math.round(st.T);brk();applyState();st.Vlast=st.V;syncUI();
+  hint({T:'Đẳng nhiệt: kéo chậm pít-tông; thử “Nén nhanh” để thấy nhiệt độ tăng đột ngột',p:'Đẳng áp: xi lanh chìm trong nước – tăng nhiệt độ bếp để đun nước từ từ',V:'Đẳng tích: V không đổi – đổi nhiệt độ'}[st.proc])});
 $('segG').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.graph=b.dataset.v;syncUI()});
-$('rV').oninput=e=>{stopAuto();st.V=+e.target.value;applyState();syncUI()};
-$('rT').oninput=e=>{stopAuto();if(st.proc==='T')brk();st.T=+e.target.value;applyState();syncUI()};
+$('rV').oninput=e=>{stopAuto();st.ramp=null;st.V=+e.target.value;applyState();syncUI()};
+$('rT').oninput=e=>{stopAuto();st.Tset=+e.target.value;syncUI()};
 $('rp').oninput=e=>{stopAuto();brk();st.p=+e.target.value;applyState();syncUI()};
 $('bClr').onclick=()=>{st.hist=[];addPoint()};
+// nén / dãn với tốc độ khác nhau (đẳng nhiệt): V thay đổi trong dur giây
+function rampV(to,dur){stopAuto();st.ramp={from:st.V,to:clamp(to,VMIN,VMAX),t:0,dur};hint(dur<1?'Nén / dãn nhanh: khí không kịp trao đổi nhiệt ⇒ nhiệt độ thay đổi đột ngột':'Nén chậm: khí kịp tỏa nhiệt ra môi trường ⇒ nhiệt độ gần như không đổi')}
+$('bFast').onclick=()=>rampV(st.V/2,0.3);$('bSlow').onclick=()=>rampV(st.V/2,25);$('bExp').onclick=()=>rampV(st.V*2,0.3);
 $('bPause').onclick=()=>{st.paused=!st.paused;syncUI()};
 function stopAuto(){if(st.auto){st.auto=null;syncUI()}}
 $('bAuto').onclick=()=>{if(st.auto){stopAuto();return}
   // đi chậm từ đầu này sang đầu kia của dải giá trị rồi quay lại
-  st.auto={key:st.proc==='T'?'V':'T',dir:1,lo:st.proc==='T'?0.6:200,hi:st.proc==='T'?3:550};if(st.proc==='p'){st.auto.hi=Math.min(550,VMAX*st.p/(NMOL*RG));st.auto.lo=Math.max(160,VMIN*st.p/(NMOL*RG))}
-  brk();st[st.auto.key]=st.auto.lo;applyState();syncUI()};
+  st.auto={key:st.proc==='T'?'V':'Tset',dir:1,lo:st.proc==='T'?0.6:st.proc==='p'?285:200,hi:st.proc==='T'?3:st.proc==='p'?365:550};
+  brk();if(st.proc==='T')st.V=st.auto.lo;applyState();syncUI()};
 syncUI();
 
 // ====== Đồ thị ======
@@ -359,7 +393,7 @@ function drawGraph(){
   g.fillStyle='#cbd5e1';g.textAlign='right';g.fillText(A.xl,x0+W,y0-4);g.textAlign='left';g.fillText(A.yl,x0+4,22);
   // đường lí thuyết qua trạng thái hiện tại (nét đứt), kéo dài về gốc O với đồ thị theo T
   g.setLineDash([5,4]);g.strokeStyle='#64748b';g.lineWidth=1.5;g.beginPath();
-  if(st.graph==='pV'){const c=st.p*st.V;for(let v=0.3;v<=3.2;v+=0.02){const p=c/v;if(p>A.ym*1.05)continue;g.lineTo(X(v),Y(Math.min(p,A.ym)))}}
+  if(st.graph==='pV'){const c=st.proc==='T'?NMOL*RG*st.Tset:st.p*st.V;for(let v=0.3;v<=3.2;v+=0.02){const p=c/v;if(p>A.ym*1.05)continue;g.lineTo(X(v),Y(Math.min(p,A.ym)))}}
   else{const k=st.graph==='VT'?st.V/st.T:st.p/st.T;g.moveTo(X(0),Y(0));g.lineTo(X(A.xm),Y(Math.min(A.ym,k*A.xm)))}
   g.stroke();g.setLineDash([]);
   // vết các trạng thái đã đi qua
@@ -373,29 +407,39 @@ function drawGraph(){
 // ====== Kết quả, chip, giải thích ======
 let lastE='',lastC='',lastR='';
 function ui(){
-  const c=[['p',Math.round(st.p)+' kPa'],['V',fmt(st.V,2)+' L'],['T',Math.round(st.T)+' K']].map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const c=[['p',Math.round(st.p)+' kPa'],['V',fmt(st.V,2)+' L'],['T khí',Math.round(st.T)+' K'],...(st.proc==='p'?[['Nước',fmt(st.Tw-273,1)+' °C']]:st.proc==='T'&&Math.abs(st.T-st.Tset)>2?[['Môi trường',Math.round(st.Tset)+' K']]:[])].map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
   const vrms=Math.sqrt(3*RG*st.T/0.028);
   const r=[['p·V (kPa·L = J)',fmt(st.p*st.V,1)],['V / T (L/K)',fmt(st.V/st.T*1000,3)+'·10⁻³'],['p / T (kPa/K)',fmt(st.p/st.T,3)],['p·V / T = nR',fmt(st.p*st.V/st.T,4)],
-    ['p tính từ va chạm phân tử',st.pKin?Math.round(st.pKin)+' kPa':'đang đo…'],['Tốc độ căn quân phương (khí N₂)',Math.round(vrms)+' m/s']]
+    ['p tính từ va chạm phân tử',st.pKin?Math.round(st.pKin)+' kPa':'đang đo…'],...(st.proc==='p'?[['Nhiệt kế (nước)',fmt(st.Tw-273,1)+' °C = '+Math.round(st.Tw)+' K'],['Nhiệt độ khí (thực)',fmt(st.T-273,1)+' °C']]:st.proc==='T'?[['Nhiệt độ môi trường',Math.round(st.Tset)+' K'],['Nhiệt độ khí',Math.round(st.T)+' K'+(st.T-st.Tset>2?' ↑':st.T-st.Tset<-2?' ↓':'')]]:[]),['Tốc độ căn quân phương (khí N₂)',Math.round(vrms)+' m/s']]
     .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
   let s='<ol>';
   s+=`<li>Trong xi lanh có ${NMOL} mol khí (hình vẽ ${NP} phân tử đại diện, chuyển động chiếu chậm). Các phân tử chuyển động <b>hỗn loạn</b>, va chạm vào thành bình và pít-tông ⇒ gây ra <b>áp suất</b>.</li>`;
-  if(st.proc==='T')s+=`<li><b>Đẳng nhiệt</b> (T = ${Math.round(st.T)} K): tốc độ trung bình của phân tử không đổi. Nén khí (V giảm) ⇒ mật độ phân tử tăng ⇒ số va chạm lên mỗi đơn vị diện tích trong 1 s tăng ⇒ <b>p tăng</b>.</li><li>Kết quả: p·V ≈ ${fmt(st.p*st.V,1)} không đổi (định luật <b>Boyle</b>); đồ thị p – V là đường hypebol.</li>`;
-  if(st.proc==='p')s+=`<li><b>Đẳng áp</b> (p = ${Math.round(st.p)} kPa do các quả nặng): đun nóng ⇒ phân tử chuyển động nhanh hơn, va chạm mạnh hơn ⇒ đẩy pít-tông lên ⇒ <b>V tăng</b> cho đến khi áp suất khí lại cân bằng với áp suất ngoài.</li><li>Kết quả: V/T không đổi (định luật <b>Charles</b>); đồ thị V – T là đường thẳng kéo dài qua gốc O.</li>`;
+  if(st.proc==='T'){const dT=st.T-st.Tset;
+    s+=`<li><b>Đẳng nhiệt</b>: xi lanh trao đổi nhiệt với môi trường ở ${Math.round(st.Tset)} K. Nén khí (V giảm) ⇒ mật độ phân tử tăng ⇒ số va chạm lên mỗi đơn vị diện tích trong 1 s tăng ⇒ <b>p tăng</b>.</li>`;
+    if(dT>4)s+=`<li><b>Vừa nén nhanh:</b> lực nén thực hiện công, khí không kịp tỏa nhiệt ⇒ nội năng tăng ⇒ nhiệt độ khí <b>tăng đột ngột</b> lên ${Math.round(st.T)} K (phân tử chuyển động nhanh hơn, màu đỏ hơn); áp suất tăng vọt cao hơn đường đẳng nhiệt.</li><li>Sau đó khí tỏa nhiệt qua thành xi lanh ⇒ nhiệt độ <b>giảm dần về ${Math.round(st.Tset)} K</b>, áp suất giảm theo (trên đồ thị p – V: điểm trạng thái tụt thẳng xuống đường đẳng nhiệt).</li>`;
+    else if(dT<-4)s+=`<li><b>Vừa dãn nhanh:</b> khí sinh công đẩy pít-tông, không kịp nhận nhiệt ⇒ nhiệt độ <b>giảm đột ngột</b> xuống ${Math.round(st.T)} K; sau đó khí nhận nhiệt từ môi trường ⇒ nhiệt độ tăng dần về ${Math.round(st.Tset)} K.</li>`;
+    else s+=`<li>Nhiệt độ khí bằng nhiệt độ môi trường ⇒ p·V ≈ ${fmt(st.p*st.V,1)} không đổi (định luật <b>Boyle</b>); đồ thị p – V là đường hypebol. Muốn quá trình là đẳng nhiệt phải nén / dãn <b>chậm</b> để khí kịp trao đổi nhiệt.</li>`}
+  if(st.proc==='p'){const heat=st.Tset-st.Tw;
+    s+=`<li><b>Đẳng áp</b> (p = ${Math.round(st.p)} kPa do quả nặng): xi lanh đặt chìm trong bể nước; bếp ${heat>0.5?'đang <b>đun nước</b> – nước ấm lên từ từ':heat<-0.5?'đã giảm nhiệt – nước nguội dần':'giữ nước ở nhiệt độ ổn định'} (nhiệt kế: ${fmt(st.Tw-273,1)} °C).</li>`;
+    s+=`<li>Nhiệt truyền từ nước qua thành xi lanh vào khí ⇒ khí nóng lên chậm hơn nước một chút (khí: ${fmt(st.T-273,1)} °C). Khi <b>cân bằng nhiệt</b>, nhiệt độ khí bằng nhiệt độ nước ⇒ nhiệt kế đặt trong nước đo <b>gián tiếp</b> nhiệt độ của khí.</li>`;
+    s+=`<li>Khí nóng lên ⇒ phân tử chuyển động nhanh hơn, va chạm mạnh hơn ⇒ đẩy pít-tông lên ⇒ <b>V tăng</b> cho đến khi áp suất khí lại cân bằng áp suất của quả nặng. Kết quả: V/T không đổi (định luật <b>Charles</b>), V/T = ${fmt(st.V/st.T*1000,3)}·10⁻³ L/K.</li>`}
   if(st.proc==='V')s+=`<li><b>Đẳng tích</b> (V = ${fmt(st.V,2)} L, pít-tông bị chốt): đun nóng ⇒ phân tử chuyển động nhanh hơn ⇒ va chạm <b>thường xuyên hơn và mạnh hơn</b> ⇒ <b>p tăng</b> (kim áp kế quay).</li><li>Kết quả: p/T không đổi; đồ thị p – T là đường thẳng kéo dài qua gốc O (0 K).</li>`;
   s+=`<li>Ô “p tính từ va chạm phân tử” cộng động lượng các phân tử truyền cho pít-tông trong mỗi giây rồi chia cho diện tích – kết quả xấp xỉ bằng p = nRT/V = ${Math.round(st.p)} kPa.</li>`;
   s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
 }
 
 // ====== Đố nhanh ======
-const go=(proc,V,T,p)=>{stopAuto();brk();st.proc=proc;st.graph={T:'pV',p:'VT',V:'pT'}[proc];if(V)st.V=V;if(T)st.T=T;if(p)st.p=p;applyState()};
+const go=(proc,V,T,p)=>{stopAuto();st.ramp=null;brk();st.proc=proc;st.graph={T:'pV',p:'VT',V:'pT'}[proc];if(V)st.V=V;if(T){st.T=st.Tset=T;st.Tw=clamp(T,280,370)}if(p)st.p=p;applyState();st.Vlast=st.V};
 const QS=[
+  {q:'Nén thật nhanh khí trong xi lanh rồi giữ nguyên pít-tông. Nhiệt độ của khí:',o:['Tăng đột ngột rồi giảm dần về nhiệt độ môi trường','Không thay đổi','Giảm đột ngột rồi tăng dần','Tăng mãi không giảm'],e:'Nén nhanh: công của lực nén làm nội năng tăng (khí không kịp tỏa nhiệt) ⇒ T tăng; sau đó khí tỏa nhiệt ra môi trường ⇒ T trở về như cũ.',d:()=>{go('T',2,300);rampV(1,0.3)}},
+  {q:'Muốn nén khí theo quá trình gần đúng đẳng nhiệt, cần:',o:['Nén thật chậm để khí kịp trao đổi nhiệt với môi trường','Nén thật nhanh','Bọc xi lanh bằng chất cách nhiệt','Đun nóng xi lanh'],e:'Nén chậm ⇒ nhiệt sinh ra kịp truyền ra ngoài ⇒ nhiệt độ khí gần như không đổi.',d:()=>{go('T',2,300);rampV(1,25)}},
+  {q:'Trong thí nghiệm đẳng áp, xi lanh đặt chìm trong nước và nhiệt kế đặt trong nước. Nhiệt kế cho biết nhiệt độ của khí vì:',o:['Khi cân bằng nhiệt, nhiệt độ khí bằng nhiệt độ nước','Nhiệt kế đo trực tiếp các phân tử khí','Nước và khí luôn cùng nhiệt độ ở mọi thời điểm','Áp suất của khí bằng áp suất của nước'],e:'Khí trao đổi nhiệt với nước qua thành xi lanh; sau một thời gian đạt cân bằng nhiệt ⇒ T khí = T nước.',d:()=>{go('p',null,295,80);st.Tset=360}},
   {q:'Nén đẳng nhiệt một lượng khí từ 2 L xuống 1 L thì áp suất của khí:',o:['Tăng gấp đôi','Giảm một nửa','Không đổi','Tăng gấp bốn'],e:'Boyle: p₁V₁ = p₂V₂ ⇒ V giảm 2 lần thì p tăng 2 lần.',d:()=>{go('T',1,300)}},
   {q:'Áp suất chất khí lên thành bình là do:',o:['Các phân tử khí va chạm vào thành bình','Trọng lượng của các phân tử khí','Lực hút giữa các phân tử khí và thành bình','Các phân tử khí đứng yên ép lên thành'],e:'Mỗi va chạm truyền động lượng cho thành bình; vô số va chạm tạo lực đều đặn ⇒ áp suất.',d:()=>{go('V',1.5,300);$('kH').checked=true}},
-  {q:'Trong quá trình đẳng áp, khi nhiệt độ tuyệt đối tăng gấp đôi thì thể tích khí:',o:['Tăng gấp đôi','Giảm một nửa','Không đổi','Tăng gấp bốn'],e:'Charles: V/T = hằng số ⇒ V tỉ lệ thuận với T.',d:()=>{go('p',null,500,100)}},
+  {q:'Trong quá trình đẳng áp, khi nhiệt độ tuyệt đối tăng gấp đôi thì thể tích khí:',o:['Tăng gấp đôi','Giảm một nửa','Không đổi','Tăng gấp bốn'],e:'Charles: V/T = hằng số ⇒ V tỉ lệ thuận với T.',d:()=>{go('p',null,285,80);st.Tset=365}},
   {q:'Đun nóng đẳng tích một lượng khí. Nhận xét nào đúng?',o:['Áp suất tăng vì phân tử chuyển động nhanh hơn, va chạm mạnh và nhiều hơn','Áp suất giảm','Thể tích tăng','Số phân tử khí tăng'],e:'V không đổi, T tăng ⇒ p/T không đổi ⇒ p tăng.',d:()=>{go('V',1.2,550)}},
   {q:'Đường đẳng nhiệt trong hệ tọa độ p – V có dạng:',o:['Đường hypebol','Đường thẳng qua gốc tọa độ','Đường thẳng song song trục V','Đường parabol'],e:'p = hằng số / V ⇒ hypebol.',d:()=>{go('T',0.6,300);st.graph='pV'}},
-  {q:'Đồ thị V – T của quá trình đẳng áp, khi kéo dài sẽ đi qua:',o:['Gốc tọa độ (T = 0 K)','Điểm T = 273 K','Điểm V = 1 L','Không đi qua điểm đặc biệt nào'],e:'V = (nR/p)·T ⇒ đường thẳng qua gốc O, ứng với 0 K = −273 °C.',d:()=>{go('p',null,300,100);st.graph='VT'}},
+  {q:'Đồ thị V – T của quá trình đẳng áp, khi kéo dài sẽ đi qua:',o:['Gốc tọa độ (T = 0 K)','Điểm T = 273 K','Điểm V = 1 L','Không đi qua điểm đặc biệt nào'],e:'V = (nR/p)·T ⇒ đường thẳng qua gốc O, ứng với 0 K = −273 °C.',d:()=>{go('p',null,300,80);st.graph='VT';st.Tset=360}},
   {q:'Nhiệt độ 27 °C ứng với nhiệt độ tuyệt đối:',o:['300 K','27 K','246 K','327 K'],e:'T = t + 273 = 27 + 273 = 300 K.',d:()=>{go('T',1.5,300)}},
   {q:'Khi nhiệt độ của khí tăng, tốc độ chuyển động trung bình của các phân tử:',o:['Tăng','Giảm','Không đổi','Bằng 0'],e:'Động năng trung bình (3/2)kT tăng theo T ⇒ phân tử chuyển động nhanh hơn.',d:()=>{go('V',1.5,600)}}
 ];
@@ -419,7 +463,14 @@ function loop(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(!st.paused){
     // chạy tự động
-    if(st.auto){const a=st.auto,sp=a.key==='V'?0.35:60;st[a.key]+=a.dir*sp*dt;if(st[a.key]>=a.hi){st[a.key]=a.hi;a.dir=-1}if(st[a.key]<=a.lo){st[a.key]=a.lo;a.dir=1}applyState();syncUI()}
+    if(st.auto){const a=st.auto,sp=a.key==='V'?0.12:st.proc==='p'?6:60;st[a.key]+=a.dir*sp*dt;if(st[a.key]>=a.hi){st[a.key]=a.hi;a.dir=-1}if(st[a.key]<=a.lo){st[a.key]=a.lo;a.dir=1}}
+    if(st.ramp){const r=st.ramp;r.t+=dt;const u=Math.min(1,r.t/r.dur);st.V=r.from+(r.to-r.from)*u;if(u>=1)st.ramp=null}
+    // nhiệt độ của khí
+    if(st.proc==='T'){if(Math.abs(st.V-st.Vlast)>1e-6)st.T*=Math.pow(st.Vlast/st.V,GAM-1);   // nén / dãn: T·V^(γ−1) không đổi trong thời gian ngắn
+      st.T+=(st.Tset-st.T)*(1-Math.exp(-dt/1.3))}                                         // trao đổi nhiệt với môi trường
+    else if(st.proc==='p'){st.Tw+=(st.Tset-st.Tw)*(1-Math.exp(-dt/14));st.T+=(st.Tw-st.T)*(1-Math.exp(-dt/2.5))}   // bếp → nước (chậm) → khí
+    else st.T+=(st.Tset-st.T)*(1-Math.exp(-dt/1.2));
+    applyState();st.Vlast=st.V;
     // đổi nhiệt độ ⇒ đổi tốc độ phân tử
     if(Math.abs(st.T-curT)>0.01){const k=Math.sqrt(st.T/curT);for(let i=0;i<NP*3;i++)Vv[i]*=k;curT=st.T}
     // pít-tông dịch chuyển mượt về vị trí mới
@@ -448,20 +499,28 @@ function loop(now){
   if(showTr&&!st.paused){const a=trGeo.attributes.position.array;if(trN<TRN)trN++;a.copyWithin(3,0,(TRN-1)*3);a[0]=P[0];a[1]=P[1];a[2]=P[2];if(trN===1)for(let k=1;k<TRN;k++){a[3*k]=P[0];a[3*k+1]=P[1];a[3*k+2]=P[2]}trGeo.attributes.position.needsUpdate=true;trGeo.setDrawRange(0,trN)}
   // pít-tông, khối khí, quả nặng, chốt
   pist.position.y=Y0+hy;gas.scale.y=hy;gas.position.y=Y0+hy/2;
-  const warm=clamp((st.T-150)/450,0,1);gasM.color.setHSL(0.6-0.6*warm,0.8,0.6);gasM.opacity=0.08+0.08*warm;
+  const warm=clamp((st.T-150)/450,0,1),isoP=st.proc==='p';gasM.color.setHSL(0.6-0.6*warm,0.8,0.6);gasM.opacity=0.08+0.08*warm;
   wts.visible=st.proc==='p';const nW=clamp(Math.round(st.p/40),1,8);wtM.forEach((w,k)=>w.visible=k<nW);
   pins.visible=st.proc==='V';pins.position.y=Y0+hy+0.55;
-  heatM.emissiveIntensity=st.proc==='T'?0.05:0.15+1.2*warm;
+  heatM.emissiveIntensity=st.proc==='T'?0.05:isoP?0.1+clamp((st.Tset-st.Tw)/15,0,1.3):0.15+1.2*clamp((st.Tset-150)/450,0,1);
+  // bể nước, nhiệt kế nước, bọt đối lưu
+  tank.visible=isoP;const tw=clamp((st.Tw-283)/80,0,1);waterM.color.lerpColors(WC0,WC1,tw);waterM.opacity=0.28+0.1*tw;
+  colW.scale.y=thC(st.Tw-273)-0.25;colW.position.y=0.25+(thC(st.Tw-273)-0.25)/2;
+  const boil=isoP?clamp((st.Tset-st.Tw)/10,0,1)+clamp((st.Tw-345)/25,0,1):0;
+  bubbles.forEach(b=>{const u=b.userData;b.visible=boil>0.05;if(!b.visible)return;if(!st.paused)u.y+=dt*(0.6+boil*1.2);if(u.y>WL-0.3)u.y=0.1;b.position.set(u.x,u.y,u.z);b.material.opacity=0.25+0.45*boil});
+  thG.visible=probe.visible=!isoP;
   needle.rotation.z=-(-225+270*clamp(st.p,0,400)/400+90)*Math.PI/180;
   col.scale.y=thT(st.T)-0.25;col.position.y=0.25+(thT(st.T)-0.25)/2;
+  dial.position.x=isoP?TKR+1.2:PGX;pipeX.visible=isoP;pipeX.scale.y=TKR+1.2-PGX+0.2;pipeX.position.set((PGX+TKR+1.2)/2,PGY*0.7+0.6,0);
   // nhãn
   const showL=$('kL').checked;labels.forEach(l=>l.visible=showL);
   lbPist.position.y=Y0+hy+0.6;lbW.visible=showL&&st.proc==='p';lbW.position.y=Y0+hy+0.55+0.27*nW+0.3;lbPin.visible=showL&&st.proc==='V';lbPin.position.y=Y0+hy+1.1;
   lbGas.position.y=Y0+Math.min(hy*0.5,2.2);lbHeat.visible=showL&&st.proc!=='T';
+  [lbWater,lbThW,...thWlbl].forEach(l=>l.visible=showL&&isoP);[lbThG,...thGlbl].forEach(l=>l.visible=showL&&!isoP);
   uiT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}
   applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
 }
-window.__khi={st,P,Vv,applyState,syncUI,camera,cam,tc,setView,pOf};   // dùng cho kiểm thử tự động
+window.__khi={rampV,st,P,Vv,applyState,syncUI,camera,cam,tc,setView,pOf};   // dùng cho kiểm thử tự động
 ui();requestAnimationFrame(loop);
 })();
 </script>
