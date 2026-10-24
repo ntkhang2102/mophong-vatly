@@ -103,6 +103,7 @@ label.chk input{accent-color:var(--accent)}
       <a class="back" href="../index.html">← Tất cả mô phỏng</a>
       <h1>Ampe kế khung quay – cấu tạo và nguyên lý hoạt động (3D)</h1>
       <div class="sub">Vật lí 12 · Lực từ tác dụng lên khung dây mang dòng điện · Ngẫu lực từ cân bằng với lò xo xoắn</div>
+      <a class="back" href="dien-ke-so-0-giua-3d.html" style="font-size:13px;font-weight:700;display:inline-block;margin-top:4px">↔ Xem điện kế số 0 ở giữa (chỉ số âm và dương) →</a>
     </div>
 
     <div class="sec">
@@ -262,7 +263,7 @@ function drawDial(){const g=dialC.getContext('2d'),c=512,sc=512/DR1;g.clearRect(
   const nDiv=50;for(let i=0;i<=nDiv;i++){const th=i/nDiv*90,a=(-90-45+th)*DEG;const big=i%10===0,mid=i%5===0;g.lineWidth=big?5:2;
     const r1=DR1*sc-8,r0=r1-(big?60:mid?42:26);g.beginPath();g.moveTo(c+Math.cos(a)*r0,c+Math.sin(a)*r0);g.lineTo(c+Math.cos(a)*r1,c+Math.sin(a)*r1);g.stroke();
     if(big){const v=st.range*i/nDiv;g.font='bold 40px system-ui,sans-serif';const r=r0-34;g.fillText(st.range<0.1?Math.round(v*1000):String(+v.toFixed(2)).replace('.',','),c+Math.cos(a)*r,c+Math.sin(a)*r)}}
-  g.font='bold 54px system-ui,sans-serif';g.fillStyle='#1e3a8a';g.fillText(st.range<0.1?'mA':'A',c,c-DR0*sc+70);dialT.needsUpdate=true}
+  g.font='bold 38px system-ui,sans-serif';g.fillStyle='#1e3a8a';{const a=-126*DEG,r=DR0*sc+34;g.fillText(st.range<0.1?'mA':'A',c+Math.cos(a)*r,c+Math.sin(a)*r)}dialT.needsUpdate=true}
 // ---- cọc nối (+) (−), dây dẫn tới lò xo, điện trở sơn ----
 const TP=V3(-2.4,-2.55,2.0),TN=V3(2.4,-2.55,2.0);
 [[TP,mats.red],[TN,mats.black]].forEach(([p,m])=>{const c=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.6,16),m);c.position.copy(p);scene.add(c)});

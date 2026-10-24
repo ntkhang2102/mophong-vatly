@@ -13,6 +13,14 @@ window.MO_PHONG = [
     tags: ["ampe kế", "điện kế", "khung quay", "lò xo xoắn", "ngẫu lực từ", "điện trở sơn", "cản dịu", "3D"]
   },
   {
+    ten: "Điện kế số 0 ở giữa – chỉ số âm và dương 3D",
+    mota: "Điện kế khung quay có vạch 0 chính giữa: dòng điện chiều thuận kim lệch phải (số dương), đổi chiều kim lệch trái (số âm). Thang ±50 μA, ±1 mA, ±10 mA; dòng xoay chiều 0,25 Hz kim lắc hai phía, 50 Hz kim đứng yên ở 0. Dùng trong thí nghiệm cảm ứng điện từ.",
+    chuong: "Từ trường",
+    lop: 12,
+    file: "sims/dien-ke-so-0-giua-3d.html",
+    tags: ["điện kế", "số 0 ở giữa", "galvanometer", "chiều dòng điện", "khung quay", "lò xo xoắn", "xoay chiều", "3D"]
+  },
+  {
     ten: "Cân dòng điện – đo cảm ứng từ 3D",
     mota: "Nam châm chữ U đặt trên cân điện tử, khung dây đồng treo trong khe từ. Thay đổi I, L, góc α, đảo chiều dòng điện; lực từ F = BIL sin α làm số chỉ cân thay đổi (định luật III Newton). Ghi bảng số liệu, vẽ đồ thị F – I, đo B của nam châm bí ẩn.",
     chuong: "Từ trường",
