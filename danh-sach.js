@@ -149,6 +149,14 @@ window.MO_PHONG = [
     tags: ["loa", "loa điện động", "micro", "lực từ", "quy tắc bàn tay trái", "âm thanh", "3D"]
   },
   {
+    ten: "Dynamo xe đạp",
+    mota: "Bánh xe quay núm dẫn động, nam châm hai cực quay trong lõi sắt non; từ thông qua cuộn dây đổi chiều sinh dòng điện xoay chiều thắp sáng bóng đèn. Chỉnh tốc độ xe 0–30 km/h, xem đường sức từ, chiều dòng điện, đồ thị u(t), tần số và hiệu điện thế; ngắt mạch để thấy đèn tắt.",
+    chuong: "Ứng dụng cảm ứng điện từ",
+    lop: 12,
+    file: "sims/dynamo-xe-dap.html",
+    tags: ["dynamo", "xe đạp", "máy phát điện", "nam châm quay", "lõi sắt non", "cuộn dây", "dòng điện xoay chiều", "bóng đèn"]
+  },
+  {
     ten: "Từ thông và hiện tượng cảm ứng điện từ",
     mota: "Kéo, quay nam châm thẳng gần cuộn dây nối bóng đèn và khóa K; quan sát đường sức, từ thông, dòng điện cảm ứng, từ trường cảm ứng và cực từ của cuộn dây theo định luật Lenz.",
     chuong: "Cảm ứng điện từ",

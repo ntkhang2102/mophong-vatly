@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dynamo xe đạp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: bàn thí nghiệm — mô hình lớn bên trái, sơ đồ từ thông + dao động ký + điều khiển bên phải, giải thích bên dưới */
+  :root {
+    --bg: #eef2f1;
+    --surface: #ffffff;
+    --ink: #16201e;
+    --muted: #586662;
+    --line: #c9d2cf;
+    --accent: #b86e00;      /* ánh đèn */
+    --spin: #1f8f5f;        /* mũi tên quay */
+    --copper: #b4612a;
+    --iron: #7b878b;
+    --north: #d43a3a;
+    --south: #2d5bcc;
+    --glass: rgba(150, 175, 185, 0.16);
+    --glass-edge: #8fa3a8;
+    --field: #7a3fc0;
+    --f-display: "Lexend", "Segoe UI", system-ui, sans-serif;
+    --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1514; --surface: #172020; --ink: #e4ebe9; --muted: #92a19d; --line: #2b3735;
+      --accent: #f2b13a; --spin: #45c58b; --copper: #d27a3c; --iron: #8d999d;
+      --north: #ef5a5a; --south: #5b86f0; --glass: rgba(160, 190, 200, 0.08); --glass-edge: #5f7378;
+      --field: #b48af0; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1514; --surface: #172020; --ink: #e4ebe9; --muted: #92a19d; --line: #2b3735;
+    --accent: #f2b13a; --spin: #45c58b; --copper: #d27a3c; --iron: #8d999d;
+    --north: #ef5a5a; --south: #5b86f0; --glass: rgba(160, 190, 200, 0.08); --glass-edge: #5f7378;
+    --field: #b48af0; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    margin: 0; font: 15px/1.6 var(--f-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 48px;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; display: grid; gap: 24px; }
+  header { display: grid; gap: 6px; }
+  .back { justify-self: start; color: var(--muted); text-decoration: none; font-size: 14px; margin-bottom: 6px; }
+  .back:hover { color: var(--ink); text-decoration: underline; }
+  .eyebrow { font: 500 12px/1.5 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font: 700 clamp(28px, 4vw, 40px)/1.15 var(--f-display); margin: 0; text-wrap: balance; }
+  .lede { margin: 0; color: var(--muted); max-width: 62ch; }
+
+  .bench { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  .panel h2 { font: 600 14px/1.3 var(--f-display); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel h2 small { font: 400 12px/1.3 var(--f-mono); color: var(--muted); }
+  canvas { display: block; width: 100%; max-width: 100%; }
+  .side { display: grid; gap: 16px; min-width: 0; }
+
+  .controls { display: grid; gap: 14px; }
+  .speed-row { display: grid; gap: 6px; }
+  .speed-row label { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; }
+  .speed-row output { font: 500 22px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--accent); }
+  .speed-row output span { font-size: 13px; color: var(--muted); margin-left: 4px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .ticks { display: flex; justify-content: space-between; font: 12px var(--f-mono); color: var(--muted); }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button, .toggle {
+    font: 500 14px/1 var(--f-body); color: var(--ink);
+    background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 9px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  button:hover, .toggle:hover { border-color: var(--muted); }
+  button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toggle input { accent-color: var(--accent); margin: 0; }
+
+  .readouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .readouts div { background: var(--surface); padding: 10px 12px; display: grid; gap: 2px; }
+  .readouts dt { font-size: 12px; color: var(--muted); }
+  .readouts dd { margin: 0; font: 500 18px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+  .lamp-state { display: inline-block; font: 600 12px/1 var(--f-body); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); }
+  .lamp-state.on { color: var(--accent); border-color: var(--accent); }
+
+  .explain { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 860px) { .explain { grid-template-columns: minmax(0, 1fr); } }
+  .explain h2 { font: 600 18px/1.3 var(--f-display); margin: 0 0 10px; }
+  .chain { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+  .chain li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; counter-increment: s; }
+  .chain li::before { content: counter(s); font: 600 13px/28px var(--f-mono); text-align: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); color: var(--muted); }
+  .energy { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+  .energy span { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); font-weight: 600; font-size: 14px; }
+  .energy i { font-style: normal; color: var(--muted); }
+  .note { color: var(--muted); font-size: 13px; margin: 0; }
+  b.n { color: var(--north); } b.s { color: var(--south); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../index.html">← Tất cả mô phỏng</a>
+    <div class="eyebrow">Vật lí 12 · Hình 12.7 · Ứng dụng cảm ứng điện từ</div>
+    <h1>Mô hình dynamo xe đạp</h1>
+    <p class="lede">Kéo thanh tốc độ để quay bánh xe. Núm dẫn động làm nam châm quay trong lõi sắt non, từ trường qua cuộn dây đổi chiều liên tục và sinh ra dòng điện xoay chiều thắp sáng bóng đèn.</p>
+  </header>
+
+  <section class="bench">
+    <div class="panel">
+      <h2>Cấu tạo dynamo <small id="slowTag">hoạt ảnh chậm 80 lần</small></h2>
+      <canvas id="main" role="img" aria-label="Mô hình dynamo: bóng đèn, núm dẫn động, trục quay, nam châm, lõi sắt non, cuộn dây dẫn, dây nối thành mạch kín"></canvas>
+    </div>
+
+    <div class="side">
+      <div class="panel controls">
+        <div class="speed-row">
+          <label for="speed">Tốc độ xe đạp <output id="speedOut">15<span>km/h</span></output></label>
+          <input type="range" id="speed" min="0" max="30" step="0.5" value="15">
+          <div class="ticks"><span>0</span><span>10</span><span>20</span><span>30 km/h</span></div>
+        </div>
+        <div class="btns">
+          <button id="play" class="primary" type="button">Tạm dừng</button>
+          <label class="toggle"><input type="checkbox" id="circuit" checked> Nối đèn vào mạch</label>
+          <label class="toggle"><input type="checkbox" id="field" checked> Hiện đường sức từ</label>
+        </div>
+        <dl class="readouts">
+          <div><dt>Nam châm quay</dt><dd id="rRpm">–</dd></div>
+          <div><dt>Tần số dòng điện</dt><dd id="rFreq">–</dd></div>
+          <div><dt>Hiệu điện thế hiệu dụng</dt><dd id="rU">–</dd></div>
+          <div><dt>Bóng đèn</dt><dd><span id="rLamp" class="lamp-state">–</span></dd></div>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h2>Từ thông qua cuộn dây <small>nhìn từ trên xuống</small></h2>
+        <canvas id="top" role="img" aria-label="Nhìn từ trên: nam châm quay giữa hai cực của lõi sắt, đường sức đi qua cuộn dây đổi chiều"></canvas>
+      </div>
+
+      <div class="panel">
+        <h2>Hiệu điện thế giữa hai đầu cuộn dây <small id="scopeTag">u (V) theo t</small></h2>
+        <canvas id="scope" role="img" aria-label="Đồ thị hiệu điện thế xoay chiều hình sin theo thời gian"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="explain">
+    <div class="panel">
+      <h2>Nguyên lí hoạt động</h2>
+      <ol class="chain">
+        <li><span>Bánh xe quay, tì vào <b>núm dẫn động</b> làm núm và <b>trục quay</b> quay theo.</span></li>
+        <li><span><b>Nam châm</b> gắn trên trục quay theo. Cực <b class="n">Bắc (N)</b> và <b class="s">Nam (S)</b> lần lượt hướng về từng cực của <b>lõi sắt non</b>.</span></li>
+        <li><span>Lõi sắt dẫn từ trường đi qua <b>cuộn dây dẫn</b>. Số đường sức từ xuyên qua cuộn dây tăng, giảm và đổi chiều liên tục.</span></li>
+        <li><span>Trong cuộn dây xuất hiện <b>dòng điện cảm ứng xoay chiều</b>. Mỗi vòng quay của nam châm, dòng điện đổi chiều hai lần.</span></li>
+        <li><span>Dòng điện chạy qua dây nối tới <b>bóng đèn</b> và làm đèn sáng. Xe đi càng nhanh, đèn càng sáng.</span></li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>Chuyển hoá năng lượng</h2>
+      <p class="energy"><span>Cơ năng</span><i>→</i><span>Điện năng</span><i>→</i><span>Quang năng + nhiệt năng</span></p>
+      <p class="note">Thử bỏ chọn “Nối đèn vào mạch”: đồ thị vẫn còn hiệu điện thế nhưng không có dòng điện, nên đèn tắt. Khi nam châm đứng yên (0 km/h), từ trường qua cuộn dây không đổi nên không có dòng điện cảm ứng.</p>
+      <p class="note" style="margin-top:10px">Số liệu mô hình: núm dẫn động bán kính 1,25 cm, nam châm 2 cực, cho khoảng 6 V hiệu dụng ở 15 km/h. Hoạt ảnh được làm chậm 80 lần để mắt theo kịp.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const SLOW = 80;            // hệ số làm chậm hoạt ảnh
+  const R_KNOB = 0.0125;      // m
+  const U_PER_KMH = 6 / 15;   // V hiệu dụng mỗi km/h
+
+  const $ = id => document.getElementById(id);
+  const speedEl = $('speed'), playEl = $('play'), circuitEl = $('circuit'), fieldEl = $('field');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const st = { v: 15, theta: 0.6, running: !reduce, closed: true, field: true, B: 0.9, flow: 0, tVis: 0, samples: [] };
+
+  // ---------- theme tokens ----------
+  let C = {};
+  function readTokens() {
+    const s = getComputedStyle(document.documentElement);
+    for (const k of ['surface','ink','muted','line','accent','spin','copper','iron','north','south','glass','glass-edge','field'])
+      C[k] = s.getPropertyValue('--' + k).trim();
+  }
+  readTokens();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTokens(); drawAll(); });
+  new MutationObserver(() => { readTokens(); drawAll(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- canvas setup ----------
+  function setup(id, W, H) {
+    const cv = $(id), ctx = cv.getContext('2d');
+    const o = { cv, ctx, W, H, k: 1 };
+    const fit = () => {
+      const w = cv.clientWidth || W, dpr = window.devicePixelRatio || 1;
+      cv.style.height = (w * H / W) + 'px';
+      cv.width = Math.round(w * dpr); cv.height = Math.round(w * H / W * dpr);
+      o.k = cv.width / W;
+    };
+    new ResizeObserver(() => { fit(); drawAll(); }).observe(cv);
+    fit();
+    return o;
+  }
+  const M = setup('main', 560, 620), T = setup('top', 320, 290), S = setup('scope', 320, 170);
+
+  // ---------- physics ----------
+  const omega = () => (st.v / 3.6) / R_KNOB;                // rad/s thực
+  const uRms = () => st.v * U_PER_KMH;
+  const uPeak = () => uRms() * Math.SQRT2;
+  const emf = () => uPeak() * Math.sin(st.theta);           // e = -dΦ/dt, Φ ∝ cos θ
+
+  // ---------- helpers ----------
+  function arrowHead(ctx, x, y, dx, dy, size, color) {
+    const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(x + dx * size, y + dy * size);
+    ctx.lineTo(x - dy * size * 0.6, y + dx * size * 0.6);
+    ctx.lineTo(x + dy * size * 0.6, y - dx * size * 0.6);
+    ctx.closePath(); ctx.fill();
+  }
+  function spinArrow(ctx, x, y, rx, ry) {
+    if (st.v <= 0) return;
+    ctx.strokeStyle = C.spin; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0.18 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+    const t = 0.18 * Math.PI;
+    arrowHead(ctx, x + rx * Math.cos(t), y + ry * Math.sin(t), rx * Math.sin(t), -ry * Math.cos(t), 9, C.spin);
+  }
+  function polyPoint(pts, d) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], L = Math.hypot(x2 - x1, y2 - y1);
+      if (d <= L) return [x1 + (x2 - x1) * d / L, y1 + (y2 - y1) * d / L, x2 - x1, y2 - y1, i];
+      d -= L;
+    }
+    const n = pts.length - 1; return [pts[n][0], pts[n][1], 1, 0, n - 1];
+  }
+  const polyLen = pts => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
+  const fmt = (n, d = 1) => n.toLocaleString('vi-VN', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  // ---------- main side view ----------
+  const CX = 250;
+  // vòng mạch kín: dây A → cuộn dây → dây B → bóng đèn
+  const LOOP = [[212,48],[40,48],[40,590],[305,590],[305,440],[195,440],[195,560],[75,560],[75,56],[212,56],[212,48]];
+  const LOOP_LEN = polyLen(LOOP);
+  const HIDDEN_SEG = new Set([4, 9]); // đoạn trong cuộn dây và trong đèn
+  // đường sức qua lõi sắt (khi N hướng sang phải)
+  const FIELD_PATH = [[296,356],[315,356],[315,422],[185,422],[185,356],[204,356]];
+  const FIELD_LEN = polyLen(FIELD_PATH);
+
+  function drawMain() {
+    const { ctx, k, W, H } = M;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const th = st.theta, cos = Math.cos(th), sin = Math.sin(th);
+    const lamp = st.closed ? st.B * (0.9 + 0.1 * sin * sin) : 0;
+
+    // dây nối
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(...LOOP[0]); for (let i = 1; i <= 4; i++) ctx.lineTo(...LOOP[i]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(...LOOP[5]); for (let i = 6; i <= 9; i++) ctx.lineTo(...LOOP[i]); ctx.stroke();
+    if (!st.closed) { // công tắc hở trên dây A
+      ctx.fillStyle = C.surface; ctx.fillRect(34, 280, 12, 44);
+      ctx.strokeStyle = C.ink; ctx.beginPath(); ctx.moveTo(40, 324); ctx.lineTo(58, 286); ctx.stroke();
+      ctx.fillStyle = C.ink; [[40,280],[40,324]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill(); });
+      ctx.font = '500 13px "Be Vietnam Pro", sans-serif'; ctx.fillStyle = C.muted; ctx.fillText('mạch hở', 50, 345);
+    }
+
+    // chấm dòng điện chạy trên dây
+    if (st.closed && st.v > 0) {
+      const gap = 22; let off = ((st.flow % gap) + gap) % gap;
+      ctx.fillStyle = C.accent;
+      for (let d = off; d < LOOP_LEN; d += gap) {
+        const p = polyPoint(LOOP, d);
+        if (HIDDEN_SEG.has(p[4])) continue;
+        const a = Math.min(1, Math.abs(sin) * 1.2 + 0.15);
+        ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(p[0], p[1], 3.2, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // mũi tên chiều dòng điện
+      const dir = Math.sign(emf()) || 1, ax = 40, ay = 200;
+      if (Math.abs(sin) > 0.15) {
+        arrowHead(ctx, ax + 14, ay, 0, -dir, 9, C.accent);
+        ctx.font = 'italic 600 15px "Be Vietnam Pro", sans-serif'; ctx.fillStyle = C.accent; ctx.fillText('i', ax + 26, ay + 5);
+      }
+    }
+
+    // bóng đèn
+    const bx = 252, by = 50;
+    if (lamp > 0.02) {
+      const g = ctx.createRadialGradient(bx, by, 6, bx, by, 26 + 70 * lamp);
+      g.addColorStop(0, `rgba(255,205,90,${0.75 * Math.min(1, lamp)})`);
+      g.addColorStop(1, 'rgba(255,205,90,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, 26 + 70 * lamp, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = C.iron; ctx.fillRect(212, 42, 18, 20);
+    ctx.strokeStyle = C.surface; ctx.lineWidth = 1;
+    for (let x = 216; x < 230; x += 4) { ctx.beginPath(); ctx.moveTo(x, 42); ctx.lineTo(x, 62); ctx.stroke(); }
+    ctx.fillStyle = lamp > 0.02 ? `rgba(255,226,140,${0.35 + 0.5 * Math.min(1, lamp)})` : C.glass;
+    ctx.strokeStyle = C['glass-edge']; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(bx, by, 22, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = lamp > 0.05 ? `rgb(255,${200 + 55 * Math.min(1, lamp)|0},${120 + 120 * Math.min(1, lamp)|0})` : C.muted;
+    ctx.lineWidth = lamp > 0.05 ? 2.2 : 1.4;
+    ctx.beginPath(); ctx.moveTo(230, 46); ctx.lineTo(244, 46);
+    for (let i = 0; i < 6; i++) ctx.lineTo(246 + i * 3, i % 2 ? 42 : 52);
+    ctx.lineTo(262, 54); ctx.lineTo(230, 56); ctx.stroke();
+
+    // vỏ dynamo (thân chai)
+    ctx.beginPath();
+    ctx.moveTo(212, 150); ctx.lineTo(288, 150); ctx.lineTo(288, 190);
+    ctx.bezierCurveTo(288, 215, 360, 210, 360, 245);
+    ctx.lineTo(360, 490); ctx.quadraticCurveTo(360, 518, 332, 518);
+    ctx.lineTo(168, 518); ctx.quadraticCurveTo(140, 518, 140, 490);
+    ctx.lineTo(140, 245); ctx.bezierCurveTo(140, 210, 212, 215, 212, 190); ctx.closePath();
+    ctx.fillStyle = C.glass; ctx.fill(); ctx.strokeStyle = C['glass-edge']; ctx.lineWidth = 2; ctx.stroke();
+
+    // trục quay
+    const sg = ctx.createLinearGradient(245, 0, 255, 0);
+    sg.addColorStop(0, C.iron); sg.addColorStop(0.5, C.surface); sg.addColorStop(1, C.iron);
+    ctx.fillStyle = sg; ctx.fillRect(246, 130, 8, 205);
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.strokeRect(246, 130, 8, 205);
+
+    // núm dẫn động có khía
+    const kg = ctx.createLinearGradient(215, 0, 285, 0);
+    kg.addColorStop(0, C.iron); kg.addColorStop(0.35, C.surface); kg.addColorStop(1, C.iron);
+    ctx.fillStyle = kg; ctx.strokeStyle = C.muted; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(215, 92, 70, 40, [8, 8, 4, 4]); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 24; i++) {
+      const a = th + i * Math.PI * 2 / 24;
+      if (Math.sin(a) >= 0) continue;
+      const x = CX + 35 * Math.cos(a);
+      ctx.beginPath(); ctx.moveTo(x, 97); ctx.lineTo(x, 128); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(CX, 94, 33, 5, 0, 0, 7); ctx.strokeStyle = C.muted; ctx.stroke();
+    spinArrow(ctx, CX, 80, 48, 9);
+
+    // lõi sắt non (chữ U ôm nam châm)
+    ctx.fillStyle = C.iron;
+    ctx.fillRect(176, 318, 16, 122); ctx.fillRect(308, 318, 16, 122); ctx.fillRect(176, 412, 148, 22);
+    ctx.fillRect(192, 326, 9, 60); ctx.fillRect(299, 326, 9, 60);
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(176, 318); ctx.lineTo(192, 318); ctx.lineTo(192, 326); ctx.lineTo(201, 326); ctx.lineTo(201, 386); ctx.lineTo(192, 386);
+    ctx.lineTo(192, 412); ctx.lineTo(308, 412); ctx.lineTo(308, 386); ctx.lineTo(299, 386); ctx.lineTo(299, 326); ctx.lineTo(308, 326);
+    ctx.lineTo(308, 318); ctx.lineTo(324, 318); ctx.lineTo(324, 434); ctx.lineTo(176, 434); ctx.closePath(); ctx.stroke();
+
+    // cuộn dây dẫn quấn quanh thanh ngang
+    for (let x = 200; x <= 300; x += 5) {
+      ctx.strokeStyle = C.copper; ctx.lineWidth = 3.4;
+      ctx.beginPath(); ctx.moveTo(x, 404); ctx.lineTo(x + 2, 442); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 0.6, 407); ctx.lineTo(x + 1, 438); ctx.stroke();
+    }
+    ctx.strokeStyle = C.copper; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(200, 442); ctx.lineTo(195, 446); ctx.moveTo(302, 442); ctx.lineTo(305, 446); ctx.stroke();
+
+    // nam châm hình trụ, từ hoá theo đường kính
+    const R = 44, ry = 9, top = 330, bot = 384;
+    for (let i = -R; i < R; i++) {
+      const xr = (i + 0.5) / R, z = Math.sqrt(Math.max(0, 1 - xr * xr));
+      const isN = xr * cos - z * sin > 0;
+      const y0 = top + ry * z, y1 = bot + ry * z;
+      ctx.fillStyle = isN ? C.north : C.south; ctx.fillRect(CX + i, y0, 1.2, y1 - y0);
+      const shade = 0.42 * (1 - z) + 0.12 * Math.max(0, xr);
+      ctx.fillStyle = `rgba(0,0,0,${shade})`; ctx.fillRect(CX + i, y0, 1.2, y1 - y0);
+    }
+    const cap = (from, color) => {
+      ctx.beginPath(); ctx.moveTo(CX, top);
+      for (let j = 0; j <= 24; j++) { const p = from + Math.PI * j / 24; ctx.lineTo(CX + R * Math.cos(p), top - ry * Math.sin(p)); }
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill();
+    };
+    cap(th - Math.PI / 2, C.north); cap(th + Math.PI / 2, C.south);
+    ctx.fillStyle = C.iron; ctx.beginPath(); ctx.ellipse(CX, top, 4, 1.6, 0, 0, 7); ctx.fill();
+    ctx.font = '700 13px Lexend, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // chữ N/S trên mặt trước khi nửa đó quay ra phía trước
+    const front = -sin; // hình chiếu của hướng N lên phương nhìn
+    ctx.fillStyle = '#fff';
+    const lx = CX + R * 0.6 * cos;
+    if (Math.abs(cos) > 0.25) {
+      ctx.fillText(cos > 0 ? 'N' : 'S', CX + 22, 360); ctx.fillText(cos > 0 ? 'S' : 'N', CX - 22, 360);
+    } else {
+      ctx.fillText(front > 0 ? 'N' : 'S', CX, 360);
+    }
+    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+    spinArrow(ctx, CX, top - 18, 30, 6);
+
+    // đường sức từ qua lõi sắt
+    if (st.field && Math.abs(cos) > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, Math.abs(cos) * 1.1);
+      ctx.strokeStyle = C.field; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(...FIELD_PATH[0]); FIELD_PATH.slice(1).forEach(p => ctx.lineTo(...p)); ctx.stroke();
+      ctx.setLineDash([]);
+      const dir = cos > 0 ? 1 : -1;
+      for (const f of [0.15, 0.38, 0.62, 0.85]) {
+        const p = polyPoint(FIELD_PATH, FIELD_LEN * f);
+        arrowHead(ctx, p[0], p[1], p[2] * dir, p[3] * dir, 7, C.field);
+      }
+      ctx.restore();
+    }
+
+    // nhãn
+    const labels = [
+      ['Bóng đèn', 274, 40, 40], ['Núm dẫn động', 286, 108, 108], ['Trục quay', 255, 230, 230],
+      ['Nam châm', 288, 340, 300], ['Lõi sắt non', 324, 380, 384], ['Cuộn dây dẫn', 300, 430, 468],
+    ];
+    ctx.font = '500 15px "Be Vietnam Pro", sans-serif';
+    for (const [t, px, py, ly] of labels) {
+      ctx.strokeStyle = C.muted; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(410, ly); ctx.lineTo(420, ly); ctx.stroke();
+      ctx.fillStyle = C.muted; ctx.beginPath(); ctx.arc(px, py, 2.4, 0, 7); ctx.fill();
+      ctx.fillStyle = C.ink; ctx.fillText(t, 426, ly + 5);
+    }
+  }
+
+  // ---------- top view: từ thông ----------
+  const TOP_PATH = [[226,130],[246,130],[246,250],[74,250],[74,130],[94,130]];
+  const TOP_LEN = polyLen(TOP_PATH);
+  function drawTop() {
+    const { ctx, k, W, H } = T;
+    ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, W, H);
+    const cx = 160, cy = 130, R = 52, th = st.theta, cos = Math.cos(th);
+
+    // lõi sắt chữ U và hai má cực
+    ctx.strokeStyle = C.iron; ctx.lineWidth = 18; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(246, 112); ctx.lineTo(246, 250); ctx.lineTo(74, 250); ctx.lineTo(74, 112); ctx.stroke();
+    ctx.fillStyle = C.iron;
+    ctx.fillRect(cx + R - 12, cy - 34, 255 - (cx + R - 12), 68);
+    ctx.fillRect(65, cy - 34, (cx - R + 12) - 65, 68);
+    ctx.fillStyle = C.surface; ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.fill();
+    // cuộn dây
+    for (let x = 104; x <= 216; x += 6) {
+      ctx.strokeStyle = C.copper; ctx.lineWidth = 3.6;
+      ctx.beginPath(); ctx.moveTo(x, 236); ctx.lineTo(x + 2, 264); ctx.stroke();
+    }
+    ctx.font = '500 12px "Be Vietnam Pro", sans-serif'; ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+    ctx.fillText('cuộn dây', 160, 284);
+
+    // đường sức
+    if (st.field && Math.abs(cos) > 0.05) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, Math.abs(cos) * 1.1);
+      ctx.strokeStyle = C.field; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(...TOP_PATH[0]); TOP_PATH.slice(1).forEach(p => ctx.lineTo(...p)); ctx.stroke();
+      ctx.setLineDash([]);
+      const dir = cos > 0 ? 1 : -1;
+      for (const f of [0.12, 0.3, 0.5, 0.7, 0.88]) {
+        const p = polyPoint(TOP_PATH, TOP_LEN * f);
+        arrowHead(ctx, p[0], p[1], p[2] * dir, p[3] * dir, 7, C.field);
+      }
+      ctx.restore();
+    }
+
+    // nam châm
+    const half = (from, color) => {
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      for (let j = 0; j <= 32; j++) { const p = from + Math.PI * j / 32; ctx.lineTo(cx + R * Math.cos(p), cy - R * Math.sin(p)); }
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    };
+    half(th - Math.PI / 2, C.north); half(th + Math.PI / 2, C.south);
+    ctx.fillStyle = C.iron; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+    ctx.font = '700 16px Lexend, sans-serif'; ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+    ctx.fillText('N', cx + R * 0.58 * Math.cos(th), cy - R * 0.58 * Math.sin(th));
+    ctx.fillText('S', cx - R * 0.58 * Math.cos(th), cy + R * 0.58 * Math.sin(th));
+    ctx.textBaseline = 'alphabetic';
+
+    // trạng thái từ thông
+    const phi = cos;
+    ctx.font = '500 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'start'; ctx.fillStyle = C.muted;
+    ctx.fillText('Φ / Φmax', 8, 18);
+    ctx.fillStyle = C.ink; ctx.font = '500 15px "IBM Plex Mono", monospace';
+    ctx.fillText((phi >= 0 ? '+' : '−') + fmt(Math.abs(phi), 2), 8, 38);
+    ctx.textAlign = 'end'; ctx.font = '500 12px "Be Vietnam Pro", sans-serif'; ctx.fillStyle = C.muted;
+    ctx.fillText(Math.abs(phi) > 0.9 ? 'từ thông cực đại' : Math.abs(phi) < 0.12 ? 'từ thông ≈ 0, đổi chiều' : 'từ thông đang thay đổi', W - 8, 18);
+    ctx.textAlign = 'start';
+  }
+
+  // ---------- scope ----------
+  const WINDOW = 3; // giây hoạt ảnh
+  function drawScope() {
+    const { ctx, k, W, H } = S;
+    ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, W, H);
+    const L = 34, Rr = W - 8, Tp = 10, B = H - 24, mid = (Tp + B) / 2;
+    const range = Math.max(10, Math.ceil(uPeak() * 1.15 / 2) * 2);
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+    for (let i = 0; i <= 6; i++) { const x = L + (Rr - L) * i / 6; ctx.beginPath(); ctx.moveTo(x, Tp); ctx.lineTo(x, B); ctx.stroke(); }
+    for (const f of [-1, -0.5, 0, 0.5, 1]) { const y = mid - f * (B - Tp) / 2; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(Rr, y); ctx.stroke(); }
+    ctx.strokeStyle = C.muted; ctx.beginPath(); ctx.moveTo(L, mid); ctx.lineTo(Rr, mid); ctx.stroke();
+    ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'end';
+    ctx.fillText('+' + range, L - 4, Tp + 8); ctx.fillText('0', L - 4, mid + 4); ctx.fillText('−' + range, L - 4, B);
+    ctx.textAlign = 'start';
+    ctx.fillText('← ' + fmt(WINDOW / SLOW * 1000, 1).replace(/,0$/, '') + ' ms thực', L, H - 6);
+
+    // trace
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 2.2; ctx.beginPath();
+    let started = false;
+    for (const s of st.samples) {
+      const age = st.tVis - s.t; if (age > WINDOW) continue;
+      const x = Rr - (Rr - L) * age / WINDOW, y = mid - (s.u / range) * (B - Tp) / 2;
+      started ? ctx.lineTo(x, y) : ctx.moveTo(x, y); started = true;
+    }
+    ctx.stroke();
+    if (st.v > 0) {
+      ctx.textAlign = 'end'; ctx.fillStyle = C.ink; ctx.font = '500 12px "IBM Plex Mono", monospace';
+      ctx.fillText('U₀ = ' + fmt(uPeak()) + ' V', Rr, H - 6); ctx.textAlign = 'start';
+    }
+  }
+
+  // ---------- readouts ----------
+  function updateReadouts() {
+    const w = omega();
+    $('speedOut').firstChild.nodeValue = fmt(st.v, st.v % 1 ? 1 : 0);
+    $('rRpm').textContent = Math.round(w * 60 / (2 * Math.PI)).toLocaleString('vi-VN') + ' vòng/phút';
+    $('rFreq').textContent = fmt(w / (2 * Math.PI)) + ' Hz';
+    $('rU').textContent = fmt(uRms()) + ' V';
+    const lamp = $('rLamp');
+    let txt = 'Tắt', on = false;
+    if (!st.closed) txt = 'Tắt (mạch hở)';
+    else if (st.v === 0) txt = 'Tắt';
+    else if (st.v < 6) { txt = 'Sáng yếu'; on = true; }
+    else if (st.v < 20) { txt = 'Sáng'; on = true; }
+    else { txt = 'Rất sáng'; on = true; }
+    lamp.textContent = txt; lamp.classList.toggle('on', on);
+  }
+
+  function drawAll() { drawMain(); drawTop(); drawScope(); }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (st.running) {
+      st.tVis += dt;
+      st.theta += omega() * dt / SLOW;
+      if (st.theta > 1e4) st.theta %= 2 * Math.PI;
+      const u = emf();
+      if (st.closed) st.flow += u * 9 * dt;
+      st.samples.push({ t: st.tVis, u });
+      while (st.samples.length && st.tVis - st.samples[0].t > WINDOW + 0.1) st.samples.shift();
+      const target = st.closed ? Math.min(1.4, (uRms() / 6) ** 2) : 0;
+      st.B += (target - st.B) * Math.min(1, dt * 4);
+    }
+    drawAll();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- controls ----------
+  speedEl.addEventListener('input', () => { st.v = +speedEl.value; updateReadouts(); });
+  circuitEl.addEventListener('change', () => { st.closed = circuitEl.checked; updateReadouts(); });
+  fieldEl.addEventListener('change', () => { st.field = fieldEl.checked; });
+  playEl.addEventListener('click', () => {
+    st.running = !st.running;
+    playEl.textContent = st.running ? 'Tạm dừng' : 'Chạy tiếp';
+  });
+  playEl.textContent = st.running ? 'Tạm dừng' : 'Chạy tiếp';
+  st.v = +speedEl.value; st.closed = circuitEl.checked; st.field = fieldEl.checked;
+
+  // điền sẵn đồ thị để khung hình đầu đã có sóng
+  for (let i = 0; i <= 180; i++) {
+    const t = -WINDOW + WINDOW * i / 180;
+    const th = st.theta + omega() * t / SLOW;
+    st.samples.push({ t, u: uPeak() * Math.sin(th) });
+  }
+  updateReadouts();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
