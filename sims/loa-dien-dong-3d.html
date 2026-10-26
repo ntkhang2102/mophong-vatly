@@ -136,6 +136,7 @@ label.chk input{accent-color:var(--accent)}
         <label><input type="checkbox" id="kW" checked> Sóng âm</label>
         <label><input type="checkbox" id="kCut" checked> Cắt 1/4 xem bên trong</label>
         <label><input type="checkbox" id="kCone" checked> Nón (màng) loa</label>
+        <label><input type="checkbox" id="kSpi" checked> Nhện định tâm</label>
         <label><input type="checkbox" id="kL" checked> Chú thích</label>
       </div>
       <div class="row"><button class="wide" id="bPause">⏸ Dừng hình</button></div>
@@ -304,7 +305,7 @@ L('Vành nam châm (cực S)','#1d4ed8',-3.4,0.4,0.6,0.3);
 L('Cuộn dây\n(gắn vào nón loa)','#9a3412',3.4,0.5,0.4,0.28);
 const lbCone=L('Nón (màng) loa','#111827',-3.2,2.9,1.2,0.3,mov);
 const lbSur=L('Viền đàn hồi','#111827',3.0,3.5,-3.0,0.26);
-L('Nhện định tâm','#854d0e',2.9,1.25,-0.5,0.24);
+const lbSpi=L('Nhện định tâm','#854d0e',2.9,1.25,-0.5,0.24);
 L('Khung loa','#475569',-4.4,2.0,0.9,0.26);
 L('Đầu nối tín hiệu','#111827',-3.1,MH+0.95,2.6,0.24);
 const lbB=L('B (xuyên tâm)','#15803d',0.6,-0.25,2.6,0.28);
@@ -465,6 +466,8 @@ function loop(now){
   const cut=$('kCut').checked;full.visible=!cut;cutG.visible=cut;
   // ẩn/hiện nón loa, nắp chống bụi và viền đàn hồi để nhìn rõ cuộn dây và khe từ
   const cone=$('kCone').checked;mov.traverse(o=>{if(o.isMesh&&o.material===mats.cone)o.visible=cone});surF.visible=surC.visible=cone;
+  // ẩn/hiện nhện định tâm
+  const spi=$('kSpi').checked;spiF.visible=spiC.visible=spi;
   movF.visible=!cut;movC.visible=cut;
   legs.children.forEach(o=>o.visible=!(cut&&o.userData.phi<Math.PI/2));   // chân nằm trong góc phần tư bị cắt
   // từ trường
@@ -483,7 +486,7 @@ function loop(now){
   const showW=$('kW').checked;
   waves.forEach(w=>{const u=w.userData;if(!w.visible)return;if(!st.paused)u.life+=dt*0.45;if(u.life>1||!showW){w.visible=false;return}
     const k=u.dir>0?u.life:1-u.life,R=1.2+k*6;w.scale.setScalar(R);w.position.y=1.6-R*0.55+st.x;w.material.opacity=0.35*u.amp*(u.dir>0?1-u.life:u.life)});
-  labels.forEach(l=>{if(![lbB,lbI,lbF].includes(l))l.visible=$('kL').checked&&((l!==lbCone&&l!==lbSur)||cone)});
+  labels.forEach(l=>{if(![lbB,lbI,lbF].includes(l))l.visible=$('kL').checked&&((l!==lbCone&&l!==lbSur)||cone)&&(l!==lbSpi||spi)});
   uiT+=dt;if(uiT>0.12){uiT=0;ui();drawGraph()}
   applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
 }
