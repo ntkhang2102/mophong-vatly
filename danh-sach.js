@@ -165,6 +165,14 @@ window.MO_PHONG = [
     tags: ["từ thông", "Lenz", "Faraday", "nam châm", "cuộn dây", "khóa K"]
   },
   {
+    ten: "Sóng điện từ 3D – sự hình thành và lan truyền",
+    mota: "Ba bước theo SGK: (1) Điện từ trường – từ trường biến thiên trong ống dây sinh điện trường xoáy (vòng dây kín có dòng cảm ứng), điện trường biến thiên giữa hai bản tụ sinh từ trường xoáy. (2) Anten lưỡng cực: điện tích dao động, đường sức điện tách khỏi anten lan ra, từ trường vòng quanh, anten thu xoay góc α (cos α). (3) Sóng phẳng: E ⊥ B ⊥ v cùng pha, λ = c/f cho AM, FM, Wi-Fi, ánh sáng; vào điện môi n: v = c/n, λ′ = λ/n, f không đổi.",
+    chuong: "Cảm ứng điện từ",
+    lop: 12,
+    file: "sims/song-dien-tu-3d.html",
+    tags: ["sóng điện từ", "điện từ trường", "Maxwell", "điện trường xoáy", "từ trường xoáy", "anten", "lưỡng cực", "phát sóng", "thu sóng", "λ = c/f", "sóng ngang", "tam diện thuận", "3D"]
+  },
+  {
     ten: "Truyền tải điện năng đi xa – lưới điện Việt Nam 3D",
     mota: "Nhà máy thủy điện (máy phát 25 kV) → máy biến áp tăng áp 25/500 kV → đường dây 500 kV Bắc – Nam → trạm 500/220, 220/110, 110/22 kV → máy biến áp phân phối 22/0,4 kV → nhà dân 220 V. So sánh truyền tải ở 25/110/220/500 kV: dòng điện, hao phí ΔP = P²R/(U²cos²φ), dây nóng đỏ, hiệu suất; bấm từng trạm xem tỉ số vòng dây.",
     chuong: "Máy biến áp – truyền tải điện năng",
