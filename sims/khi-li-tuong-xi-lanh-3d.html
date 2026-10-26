@@ -155,6 +155,7 @@ label.chk input{accent-color:var(--accent)}
         <li><b>Nén nhanh</b> thì khí không kịp trao đổi nhiệt: công của lực nén làm nội năng tăng ⇒ nhiệt độ <b>tăng đột ngột</b>, áp suất tăng vọt hơn so với nén đẳng nhiệt; sau đó khí tỏa nhiệt ra môi trường, nhiệt độ <b>giảm dần về như cũ</b>. Muốn quá trình gần đẳng nhiệt phải nén <b>thật chậm</b>.</li>
         <li><b>Đẳng áp (Charles):</b> p không đổi ⇒ <b>V/T = hằng số</b>; đồ thị V – T là đường thẳng kéo dài đi qua gốc O (0 K). Trong thí nghiệm, xi lanh được nhúng chìm trong nước và đun nóng nước từ từ: khí nhận nhiệt từ nước; khi cân bằng nhiệt, nhiệt độ khí bằng nhiệt độ nước ⇒ nhiệt kế đặt trong nước đo <b>gián tiếp</b> nhiệt độ của khí.</li>
         <li><b>Đẳng tích:</b> V không đổi ⇒ <b>p/T = hằng số</b>; đồ thị p – T là đường thẳng kéo dài đi qua gốc O.</li>
+        <li><b>Áp kế chỉ áp dư:</b> số chỉ là phần chênh lệch so với áp suất khí quyển p₀ (lấy p₀ = 100 kPa). Áp suất tuyệt đối p = p₀ + áp dư; số chỉ âm nghĩa là khí có áp suất nhỏ hơn khí quyển. Khi tính pV = nRT phải dùng <b>áp suất tuyệt đối</b>.</li>
         <li><b>Phương trình trạng thái:</b> pV/T = hằng số, hay <b>pV = nRT</b> (R = 8,31 J/(mol·K)); T là nhiệt độ tuyệt đối: T(K) = t(°C) + 273.</li>
         <li>Động năng tịnh tiến trung bình của phân tử: <b>E = (3/2)kT</b> ⇒ tốc độ căn quân phương v = √(3RT/M).</li>
       </ul>
@@ -178,6 +179,7 @@ const S0=3.2;                                      // độ lệch chuẩn mỗi
 const GAM=1.4;                                     // chỉ số đoạn nhiệt của không khí
 const st={proc:'T',V:1.5,T:300,Tset:300,Tw:300,Vlast:1.5,ramp:null,p:0,graph:'pV',paused:false,auto:null,trail:[],hits:0,hitT:0,pKin:0,impulse:0,imT:0,hist:[],drag:false};
 const pOf=(V,T)=>NMOL*RG*T/V;                      // kPa khi V tính bằng lít
+const P0=100;                                      // áp suất khí quyển (kPa); áp kế chỉ áp dư p − P0
 st.p=pOf(st.V,st.T);
 const hOf=V=>V*HPL;
 
@@ -253,9 +255,11 @@ const dial=new THREE.Group();dial.position.set(PGX,PGY+1.05,0);dial.rotation.y=0
 {const c=cyl(1.0,0.25,mats.brass,0,0,0,dial,40);c.rotation.x=Math.PI/2;
  const cv=document.createElement('canvas');cv.width=cv.height=512;const g=cv.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(256,256,250,0,TAU);g.fill();
  g.strokeStyle='#0f172a';g.fillStyle='#0f172a';g.textAlign='center';g.textBaseline='middle';
- for(let v=0;v<=400;v+=10){const a=(-225+270*v/400)*Math.PI/180,big=v%50===0;g.lineWidth=big?5:2;g.beginPath();g.moveTo(256+Math.cos(a)*(big?190:212),256+Math.sin(a)*(big?190:212));g.lineTo(256+Math.cos(a)*236,256+Math.sin(a)*236);g.stroke();
-   if(v%100===0){g.font='bold 44px system-ui,sans-serif';g.fillText(v,256+Math.cos(a)*145,256+Math.sin(a)*145)}}
- g.font='bold 34px system-ui,sans-serif';g.fillText('kPa',256,340);
+ const ang=v=>(-225+270*(v+100)/400)*Math.PI/180;
+ g.strokeStyle='#dc2626';g.lineWidth=10;g.beginPath();g.arc(256,256,230,ang(-100),ang(0));g.stroke();g.strokeStyle='#0f172a';
+ for(let v=-100;v<=300;v+=10){const a=ang(v),big=v%50===0;g.lineWidth=big?5:2;g.beginPath();g.moveTo(256+Math.cos(a)*(big?190:212),256+Math.sin(a)*(big?190:212));g.lineTo(256+Math.cos(a)*236,256+Math.sin(a)*236);g.stroke();
+   if(v%100===0){g.font='bold 44px system-ui,sans-serif';g.fillText(v<0?'−'+(-v):v,256+Math.cos(a)*145,256+Math.sin(a)*145)}}
+ g.font='bold 34px system-ui,sans-serif';g.fillText('kPa',256,330);g.font='28px system-ui,sans-serif';g.fillText('áp dư',256,372);
  const f=new THREE.Mesh(new THREE.CircleGeometry(0.95,48),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)}));f.position.z=0.13;dial.add(f)}
 const needle=new THREE.Group();needle.position.z=0.15;dial.add(needle);
 {const n=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.8,0.02),mats.red);n.position.y=0.36;needle.add(n);const c=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.06,12),mats.dark);c.rotation.x=Math.PI/2;needle.add(c)}
@@ -407,9 +411,9 @@ function drawGraph(){
 // ====== Kết quả, chip, giải thích ======
 let lastE='',lastC='',lastR='';
 function ui(){
-  const c=[['p',Math.round(st.p)+' kPa'],['V',fmt(st.V,2)+' L'],['T khí',Math.round(st.T)+' K'],...(st.proc==='p'?[['Nước',fmt(st.Tw-273,1)+' °C']]:st.proc==='T'&&Math.abs(st.T-st.Tset)>2?[['Môi trường',Math.round(st.Tset)+' K']]:[])].map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
+  const pg=Math.round(st.p-P0),c=[['p',Math.round(st.p)+' kPa'],['Áp kế',(pg>0?'+':pg<0?'−':'')+Math.abs(pg)+' kPa'],['V',fmt(st.V,2)+' L'],['T khí',Math.round(st.T)+' K'],...(st.proc==='p'?[['Nước',fmt(st.Tw-273,1)+' °C']]:st.proc==='T'&&Math.abs(st.T-st.Tset)>2?[['Môi trường',Math.round(st.Tset)+' K']]:[])].map(([a,b])=>`<div class="chip">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
   const vrms=Math.sqrt(3*RG*st.T/0.028);
-  const r=[['p·V (kPa·L = J)',fmt(st.p*st.V,1)],['V / T (L/K)',fmt(st.V/st.T*1000,3)+'·10⁻³'],['p / T (kPa/K)',fmt(st.p/st.T,3)],['p·V / T = nR',fmt(st.p*st.V/st.T,4)],
+  const r=[['Áp kế chỉ (áp dư) p − p₀',(pg>0?'+':pg<0?'−':'')+Math.abs(pg)+' kPa'],['Áp suất tuyệt đối p = p₀ + áp dư',Math.round(st.p)+' kPa'],['p·V (kPa·L = J)',fmt(st.p*st.V,1)],['V / T (L/K)',fmt(st.V/st.T*1000,3)+'·10⁻³'],['p / T (kPa/K)',fmt(st.p/st.T,3)],['p·V / T = nR',fmt(st.p*st.V/st.T,4)],
     ['p tính từ va chạm phân tử',st.pKin?Math.round(st.pKin)+' kPa':'đang đo…'],...(st.proc==='p'?[['Nhiệt kế (nước)',fmt(st.Tw-273,1)+' °C = '+Math.round(st.Tw)+' K'],['Nhiệt độ khí (thực)',fmt(st.T-273,1)+' °C']]:st.proc==='T'?[['Nhiệt độ môi trường',Math.round(st.Tset)+' K'],['Nhiệt độ khí',Math.round(st.T)+' K'+(st.T-st.Tset>2?' ↑':st.T-st.Tset<-2?' ↓':'')]]:[]),['Tốc độ căn quân phương (khí N₂)',Math.round(vrms)+' m/s']]
     .map(([a,b])=>`<div class="cell"><div class="k">${a}</div><div class="val">${b}</div></div>`).join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
   let s='<ol>';
@@ -424,6 +428,7 @@ function ui(){
     s+=`<li>Nhiệt truyền từ nước qua thành xi lanh vào khí ⇒ khí nóng lên chậm hơn nước một chút (khí: ${fmt(st.T-273,1)} °C). Khi <b>cân bằng nhiệt</b>, nhiệt độ khí bằng nhiệt độ nước ⇒ nhiệt kế đặt trong nước đo <b>gián tiếp</b> nhiệt độ của khí.</li>`;
     s+=`<li>Khí nóng lên ⇒ phân tử chuyển động nhanh hơn, va chạm mạnh hơn ⇒ đẩy pít-tông lên ⇒ <b>V tăng</b> cho đến khi áp suất khí lại cân bằng áp suất của quả nặng. Kết quả: V/T không đổi (định luật <b>Charles</b>), V/T = ${fmt(st.V/st.T*1000,3)}·10⁻³ L/K.</li>`}
   if(st.proc==='V')s+=`<li><b>Đẳng tích</b> (V = ${fmt(st.V,2)} L, pít-tông bị chốt): đun nóng ⇒ phân tử chuyển động nhanh hơn ⇒ va chạm <b>thường xuyên hơn và mạnh hơn</b> ⇒ <b>p tăng</b> (kim áp kế quay).</li><li>Kết quả: p/T không đổi; đồ thị p – T là đường thẳng kéo dài qua gốc O (0 K).</li>`;
+  s+=`<li><b>Áp kế chỉ áp dư</b> (chênh lệch so với khí quyển p₀ = ${P0} kPa): ${pg>0?'khí trong xi lanh có áp suất <b>lớn hơn</b> khí quyển':pg<0?'khí trong xi lanh có áp suất <b>nhỏ hơn</b> khí quyển, kim lệch về vùng đỏ (chân không)':'áp suất khí <b>bằng</b> áp suất khí quyển, kim chỉ 0'}. Áp suất tuyệt đối p = p₀ + áp dư = ${P0} ${pg<0?'−':'+'} ${Math.abs(pg)} = ${Math.round(st.p)} kPa; các định luật chất khí dùng áp suất tuyệt đối này.</li>`;
   s+=`<li>Ô “p tính từ va chạm phân tử” cộng động lượng các phân tử truyền cho pít-tông trong mỗi giây rồi chia cho diện tích – kết quả xấp xỉ bằng p = nRT/V = ${Math.round(st.p)} kPa.</li>`;
   s+='</ol>';if(s!==lastE){$('explain').innerHTML=s;lastE=s}
 }
@@ -509,7 +514,7 @@ function loop(now){
   const boil=isoP?clamp((st.Tset-st.Tw)/10,0,1)+clamp((st.Tw-345)/25,0,1):0;
   bubbles.forEach(b=>{const u=b.userData;b.visible=boil>0.05;if(!b.visible)return;if(!st.paused)u.y+=dt*(0.6+boil*1.2);if(u.y>WL-0.3)u.y=0.1;b.position.set(u.x,u.y,u.z);b.material.opacity=0.25+0.45*boil});
   thG.visible=probe.visible=!isoP;
-  needle.rotation.z=-(-225+270*clamp(st.p,0,400)/400+90)*Math.PI/180;
+  needle.rotation.z=-(-225+270*(clamp(st.p-P0,-100,300)+100)/400+90)*Math.PI/180;
   col.scale.y=thT(st.T)-0.25;col.position.y=0.25+(thT(st.T)-0.25)/2;
   dial.position.x=isoP?TKR+1.2:PGX;pipeX.visible=isoP;pipeX.scale.y=TKR+1.2-PGX+0.2;pipeX.position.set((PGX+TKR+1.2)/2,PGY*0.7+0.6,0);
   // nhãn
