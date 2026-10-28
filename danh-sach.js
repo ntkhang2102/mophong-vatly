@@ -61,6 +61,14 @@ window.MO_PHONG = [
     tags: ["Lenz", "Faraday", "nam châm", "điện kế", "đúng sai", "năng lượng"]
   },
   {
+    ten: "Nam châm rơi qua cuộn dây – cảm biến điện thế 3D",
+    mota: "Thí nghiệm Hình 16.10 – 16.12 (SGK): thả nam châm thẳng rơi qua cuộn dây nối cảm biến điện thế, ghi đồ thị e(t) có hai đỉnh trái dấu. Cực N hay cực S xuống trước, độ cao thả, số vòng dây; e = 0 khi nam châm ở giữa cuộn dây, đỉnh thứ hai lớn hơn vì nam châm rơi nhanh hơn. Mạch kín qua điện trở R: lực từ cản trở, cơ năng chuyển hóa thành điện năng.",
+    chuong: "Cảm ứng điện từ",
+    lop: 12,
+    file: "sims/nam-cham-roi-qua-cuon-day-3d.html",
+    tags: ["nam châm rơi", "cuộn dây", "cảm biến điện thế", "suất điện động cảm ứng", "đồ thị e(t)", "Faraday", "Lenz", "cơ năng", "điện năng", "Em có biết", "3D"]
+  },
+  {
     ten: "Máy biến áp: cấu tạo, đường sức từ và dòng điện Foucault",
     mota: "Chọn nguồn xoay chiều hoặc một chiều, có hoặc không có lõi thép, lõi lá thép mỏng hoặc khối đặc. Quan sát đường sức đổi chiều trong lõi, dòng Foucault làm nóng lõi, đóng/mở khóa K₂ ở cuộn thứ cấp.",
     chuong: "Cảm ứng điện từ",
