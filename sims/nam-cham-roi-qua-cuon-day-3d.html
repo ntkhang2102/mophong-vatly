@@ -320,9 +320,11 @@ const resistor=new THREE.Group();resistor.position.set(2.65,0.3,1.5);scene.add(r
   const lead=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,1.6,6),steel);lead.rotation.z=Math.PI/2;resistor.add(lead)}
 
 // mũi tên dòng điện chạy quanh cuộn dây
-const curArr=[];const cMat=new THREE.MeshBasicMaterial({color:0xfacc15}),cEdge=new THREE.MeshBasicMaterial({color:0x7c2d12});
-for(let k=0;k<6;k++){const g=new THREE.Group();const c=new THREE.Mesh(new THREE.ConeGeometry(.07,.2,10),cMat);g.add(c);const c2=new THREE.Mesh(new THREE.ConeGeometry(.085,.23,10),cEdge);c2.position.y=-0.015;c2.scale.set(1,1,1);g.add(c2);g.userData={o:k/6};scene.add(g);curArr.push(g)}
+// dòng điện cảm ứng: màu vàng tươi, viền tối mảnh (mặt sau) để nổi trên nền cuộn dây đồng
+const curArr=[];const cMat=new THREE.MeshBasicMaterial({color:0xffe600}),cEdge=new THREE.MeshBasicMaterial({color:0x713f12,side:THREE.BackSide});
+for(let k=0;k<6;k++){const g=new THREE.Group();const c=new THREE.Mesh(new THREE.ConeGeometry(.08,.22,12),cMat);g.add(c);const c2=new THREE.Mesh(new THREE.ConeGeometry(.08,.22,12),cEdge);c2.scale.setScalar(1.18);g.add(c2);g.userData={o:k/6};scene.add(g);curArr.push(g)}
 let curPh=0;
+const curRing=new THREE.Mesh(new THREE.TorusGeometry(CRO+0.07,0.022,8,64),new THREE.MeshBasicMaterial({color:0xffe600,transparent:true}));curRing.rotation.x=Math.PI/2;curRing.position.y=YC;scene.add(curRing);   // vòng sáng dọc theo đường đi của dòng điện
 
 // nam châm thẳng: nửa đỏ (N), nửa xanh (S)
 function faceTex(t,col){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle=col;g.fillRect(0,0,128,128);g.fillStyle='#fff';g.font='bold 92px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,70);return new THREE.CanvasTexture(c)}
@@ -559,7 +561,7 @@ function loop(now){
   const showI=$('kI').checked&&act;curPh+=rdt*(0.3+ea*0.6)*Math.sign(mag.e);
   curArr.forEach(c=>{c.visible=showI;if(!showI)return;const b=(c.userData.o+curPh)*TAU,r=CRO+0.07,dir=mag.e>0?1:-1;
     c.position.set(r*Math.cos(b),YC,-r*Math.sin(b));c.quaternion.setFromUnitVectors(UP,V(-Math.sin(b)*dir,0,-Math.cos(b)*dir));c.scale.setScalar(0.7+Math.min(ea,2)*0.3)});
-  cMat.color.setHex(st.mode==='R'?0xfacc15:0xfde68a);
+  curRing.visible=showI;if(showI)curRing.material.opacity=0.45+0.55*Math.min(1,ea/1.5);
   const showP=$('kP').checked&&act&&kL;lbTop.visible=lbBot.visible=showP;
   if(showP){const tp=mag.e>0?'N':'S';if(lbTop.userData.t!==tp){lbTop.userData.t=tp;relabel(lbTop,'Đầu trên: '+tp,tp==='N'?'#dc2626':'#2563eb',0.24);relabel(lbBot,'Đầu dưới: '+(tp==='N'?'S':'N'),tp==='N'?'#2563eb':'#dc2626',0.24)}
     lbTop.position.set(-0.95,YC+0.42,0.2);lbBot.position.set(-0.95,YC-0.42,0.2)}
