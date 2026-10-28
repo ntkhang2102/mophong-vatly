@@ -27,6 +27,12 @@ body{background:var(--panel);color:var(--text);font-family:var(--font);font-size
 .hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
 .views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.views .vsep{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#334155;text-align:center;margin-top:4px;border-top:1px solid #b6c0cf;padding-top:5px}
+.views button.pri{background:var(--accent);border-color:var(--accent)}
+.views button.on{background:#1e3a8a}
+.views .hrow{display:flex;gap:4px;align-items:center}
+.views .hrow button{flex:none;padding:6px 9px}
+.views .hrow span{flex:1;text-align:center;font-size:12.5px;font-weight:600;color:#1f2937;background:rgba(255,255,255,.9);border:1px solid #c7cfdc;border-radius:8px;padding:5px 4px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
 .back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
 h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
@@ -74,7 +80,7 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
 .gfloat{position:absolute;right:10px;bottom:10px;width:min(52%,540px);background:rgba(11,19,36,.94);border:1px solid #22314f;border-radius:12px;padding:6px 8px 6px;z-index:2;box-shadow:0 4px 14px rgba(15,23,42,.25);display:flex;flex-direction:column;gap:4px}
 .gfloat .gh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;font-weight:600}
 .gfloat .gh button{padding:2px 9px;font-size:12px}
-#graph2{width:100%;height:min(270px,38vh);display:block}
+#graph2{width:100%;height:clamp(150px,calc(100vh - 500px),270px);display:block}
 .gleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:11.5px;color:var(--muted)}
 .gleg i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
 .stage.gon .hint{bottom:auto;top:52px}
@@ -85,7 +91,8 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto}
   .stage{height:64vh;min-height:380px}
-  .stage.gon{height:76vh;min-height:520px}
+  .stage.gon{height:76vh;min-height:580px}
+  .views{gap:4px}.views .vsep{margin-top:2px;padding-top:3px;font-size:10px}.views .hrow span{font-size:11px;padding:3px 4px}.views .hrow button{padding:4px 8px}
   .gfloat{left:8px;right:8px;bottom:8px;width:auto;padding:5px 6px}
   #graph2{height:170px}
   .stage.gon .hint{top:auto;bottom:auto;display:none}
@@ -106,6 +113,14 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
       <button data-view="front">Chính diện</button>
       <button data-view="coil">Cận cảnh cuộn dây</button>
       <button data-view="top">Nhìn từ trên</button>
+      <div class="vsep">Thao tác</div>
+      <button class="pri" id="qDrop">⬇ Thả nam châm</button>
+      <button id="qReset">↺ Cầm lại nam châm</button>
+      <button id="qPole" title="Đảo cực của nam châm"></button>
+      <div class="hrow"><button id="qHm" title="Hạ thấp độ cao thả" aria-label="Giảm độ cao h">−</button><span id="qH"></span><button id="qHp" title="Nâng cao độ cao thả" aria-label="Tăng độ cao h">+</button></div>
+      <button id="qMode" title="Đổi cách nối hai đầu cuộn dây"></button>
+      <button id="qSpd" title="Đổi tốc độ hình"></button>
+      <button id="qClear">Xóa đồ thị</button>
     </div>
     <div class="gfloat" id="gfloat"><div class="gh"><span>Đồ thị e(t) – cảm biến điện thế</span><button id="bGHide" title="Ẩn đồ thị (bật lại ở mục Hiển thị)">✕</button></div><canvas id="graph2"></canvas><div class="gleg" id="gleg"></div></div>
     <div class="hint" id="hint">Kéo nam châm lên cao rồi buông tay để thả · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
@@ -385,11 +400,16 @@ el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(
 let hintT=setTimeout(hideHint,9000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
 
 // ====== Bảng điều khiển ======
-function setH(h){st.h=h;$('rH').value=Math.round(h*100);$('vH').textContent=Math.round(h*100)+' cm'}
+function setH(h){st.h=h;$('rH').value=Math.round(h*100);$('vH').textContent=Math.round(h*100)+' cm';$('qH').textContent='h = '+Math.round(h*100)+' cm'}
 function syncUI(){
   $('segPole').querySelectorAll('button').forEach(b=>b.classList.toggle('on',(b.dataset.v==='N')===st.nDown));
   $('segMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.mode));
   $('segSpd').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===st.spd));
+  // các nút thao tác nhanh trên khung 3D
+  $('qPole').textContent='⇅ Đảo cực: '+(st.nDown?'N':'S')+' xuống';
+  $('qH').textContent='h = '+Math.round(st.h*100)+' cm';
+  $('qMode').textContent=st.mode==='R'?'Nối: điện trở R = '+st.R+' Ω':'Nối: cảm biến điện thế';
+  $('qSpd').textContent='Tốc độ: '+({1:'thời gian thực',0.1:'chậm 10 lần',0.025:'chậm 40 lần'})[st.spd];
   $('rH').value=Math.round(st.h*100);$('vH').textContent=Math.round(st.h*100)+' cm';
   $('rN').value=st.N;$('vN').textContent=st.N+' vòng (r = '+fmt(rCoil(),0)+' Ω)';
   $('rR').value=st.R;$('vR').textContent=st.R+' Ω';$('lR').style.display=st.mode==='R'?'grid':'none';
@@ -408,6 +428,12 @@ $('kKeep').onchange=()=>{st.keep=$('kKeep').checked};
 $('bClear').onclick=()=>{runs=mag.state==='fall'&&cur?[cur]:[];if(mag.state!=='fall')cur=null};
 $('bDrop').onclick=()=>{hold();drop();hint('Đã thả nam châm')};
 $('bReset').onclick=()=>{hold();hint('Nam châm đã được cầm lại ở độ cao h')};
+$('qDrop').onclick=()=>$('bDrop').onclick();$('qReset').onclick=()=>$('bReset').onclick();$('qClear').onclick=()=>$('bClear').onclick();
+$('qPole').onclick=change(()=>{st.nDown=!st.nDown;hint(st.nDown?'Cực Bắc (N) hướng xuống':'Cực Nam (S) hướng xuống')});
+$('qHm').onclick=change(()=>{st.h=Math.max(2,Math.round(st.h*100)-1)/100});
+$('qHp').onclick=change(()=>{st.h=Math.min(25,Math.round(st.h*100)+1)/100});
+$('qMode').onclick=change(()=>{st.mode=st.mode==='R'?'sensor':'R';hint(st.mode==='R'?'Hai đầu cuộn dây nối với điện trở R (mạch kín)':'Hai đầu cuộn dây nối với cảm biến điện thế')});
+$('qSpd').onclick=()=>{const L=[1,0.1,0.025];st.spd=L[(L.indexOf(st.spd)+1)%L.length];syncUI()};
 syncUI();hold();
 
 // ====== Đồ thị e(t) ======
@@ -424,7 +450,7 @@ function drawGraph(gcv=$('graph'),big=true){
   for(let t=0;t<=Tm;t+=stepT){g.beginPath();g.moveTo(X(t),y0);g.lineTo(X(t),y1);g.stroke()}
   g.strokeStyle='#64748b';g.beginPath();g.moveTo(x0,Y(0));g.lineTo(x1,Y(0));g.moveTo(x0,y0);g.lineTo(x0,y1);g.stroke();
   g.font=(big?11:12)+'px system-ui,sans-serif';g.fillStyle='#93a3c0';g.textAlign='right';g.textBaseline='middle';
-  for(let e=-Em;e<=Em+1e-9;e+=Em>2?1:0.5)g.fillText(fmt(e,1),x0-4,Y(e));
+  {const sl=Em>2?1:0.5;for(let e=-Math.floor(Em/sl)*sl;e<=Em+1e-9;e+=sl)g.fillText(fmt(e,1),x0-4,Y(e))}
   g.textAlign='center';g.textBaseline='alphabetic';const lab=Tm>700?200:100;for(let t=0;t<=Tm;t+=lab)g.fillText(t,X(t),h-8);
   g.textAlign='left';g.fillText('e (V)',x0+4,10);g.textAlign='right';g.fillText('t (ms), tính từ lúc thả',x1,10);
   if($('kPhi').checked&&pMax>0){const k=Em*0.9/pMax;runs.forEach(R=>{g.strokeStyle=R.col;g.globalAlpha=.55;g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();R.pts.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[2]*k)):g.moveTo(X(p[0]),Y(p[2]*k)));g.stroke()});g.setLineDash([]);g.globalAlpha=1;
