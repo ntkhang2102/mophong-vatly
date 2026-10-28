@@ -71,6 +71,13 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
 .note li{margin-bottom:3px}
 .biet{border-left:3px solid #f472b6}
 .biet>h2{color:#f9a8d4}
+.gfloat{position:absolute;right:10px;bottom:10px;width:min(52%,540px);background:rgba(11,19,36,.94);border:1px solid #22314f;border-radius:12px;padding:6px 8px 6px;z-index:2;box-shadow:0 4px 14px rgba(15,23,42,.25);display:flex;flex-direction:column;gap:4px}
+.gfloat .gh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;font-weight:600}
+.gfloat .gh button{padding:2px 9px;font-size:12px}
+#graph2{width:100%;height:min(270px,38vh);display:block}
+.gleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:11.5px;color:var(--muted)}
+.gleg i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.stage.gon .hint{bottom:auto;top:52px}
 .nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:#1f2937;font-size:15px;z-index:3}
 @media (max-width:860px){
   .chip{font-size:12.5px;padding:3px 8px}
@@ -78,6 +85,10 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto}
   .stage{height:64vh;min-height:380px}
+  .stage.gon{height:76vh;min-height:520px}
+  .gfloat{left:8px;right:8px;bottom:8px;width:auto;padding:5px 6px}
+  #graph2{height:170px}
+  .stage.gon .hint{top:auto;bottom:auto;display:none}
   .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){.hint{transition:none}}
@@ -96,6 +107,7 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
       <button data-view="coil">Cận cảnh cuộn dây</button>
       <button data-view="top">Nhìn từ trên</button>
     </div>
+    <div class="gfloat" id="gfloat"><div class="gh"><span>Đồ thị e(t) – cảm biến điện thế</span><button id="bGHide" title="Ẩn đồ thị (bật lại ở mục Hiển thị)">✕</button></div><canvas id="graph2"></canvas><div class="gleg" id="gleg"></div></div>
     <div class="hint" id="hint">Kéo nam châm lên cao rồi buông tay để thả · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
   </div>
 
@@ -129,6 +141,7 @@ label.rng input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
         <label><input type="checkbox" id="kV" checked> Vectơ v, P, F từ</label>
         <label><input type="checkbox" id="kPhi"> Vẽ thêm Φ(t) trên đồ thị</label>
         <label><input type="checkbox" id="kL" checked> Chú thích</label>
+        <label style="grid-column:1/-1"><input type="checkbox" id="kG" checked> Đồ thị e(t) đặt cạnh mô phỏng (vừa xem nam châm rơi, vừa xem đồ thị)</label>
       </div>
     </div>
 
@@ -230,6 +243,9 @@ function drop(){
   const used=runs.map(r=>r.col);
   cur={pts:[[0,0,mag.phi]],last:0,emax:0,emin:0,tmax:0,tmin:0,col:COLS.find(c=>!used.includes(c))||COLS[0],
     lab:`${st.nDown?'N':'S'} xuống · h = ${Math.round(st.h*100)} cm · ${st.N} vòng · ${st.mode==='R'?'R = '+st.R+' Ω':'cảm biến'}`};
+  // dự đoán trước biên độ và thời gian rơi (rơi tự do) để trục đồ thị không đổi tỉ lệ giữa chừng
+  const z0=zOf(mag.y);let pk=0;for(let z=z0;z>-0.2;z-=5e-4)pk=Math.max(pk,Math.abs(fluxG(z)[1])*Math.sqrt(2*G*(z0-z)));
+  cur.pred=pk;cur.tPred=Math.sqrt(2*(mag.y-MH/2-FLOOR)/U/G)*1000;
   runs.push(cur);
 }
 
@@ -395,35 +411,37 @@ $('bReset').onclick=()=>{hold();hint('Nam châm đã được cầm lại ở đ
 syncUI();hold();
 
 // ====== Đồ thị e(t) ======
-const gcv=$('graph'),gctx=gcv.getContext('2d');
+const gcv=$('graph'),gcv2=$('graph2');
 function niceTop(v){return Math.max(1,Math.ceil(v/0.5)*0.5)}
-function drawGraph(){
+function drawGraph(gcv=$('graph'),big=true){
   const r=gcv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(!r.width)return;if(gcv.width!==Math.round(r.width*dpr)||gcv.height!==Math.round(r.height*dpr)){gcv.width=Math.round(r.width*dpr);gcv.height=Math.round(r.height*dpr)}
-  const g=gctx;g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
-  let tEnd=0,eMax=0,pMax=0;runs.forEach(R=>R.pts.forEach(p=>{tEnd=Math.max(tEnd,p[0]);eMax=Math.max(eMax,Math.abs(p[1]));pMax=Math.max(pMax,Math.abs(p[2]))}));
+  const g=gcv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);
+  let tEnd=0,eMax=0,pMax=0;runs.forEach(R=>{tEnd=Math.max(tEnd,R.tPred||0);eMax=Math.max(eMax,R.pred||0)});runs.forEach(R=>R.pts.forEach(p=>{tEnd=Math.max(tEnd,p[0]);eMax=Math.max(eMax,Math.abs(p[1]));pMax=Math.max(pMax,Math.abs(p[2]))}));
   const Tm=Math.max(300,Math.ceil((tEnd+20)/50)*50),Em=niceTop(eMax*1.08),stepT=Tm>700?100:50;
   const x0=40,x1=w-10,y0=16,y1=h-22;const X=t=>x0+t/Tm*(x1-x0),Y=e=>(y0+y1)/2-e/Em*(y1-y0)/2;
   g.strokeStyle='#1c2a47';g.lineWidth=1;
   for(let e=-Em;e<=Em+1e-9;e+=0.5){g.beginPath();g.moveTo(x0,Y(e));g.lineTo(x1,Y(e));g.stroke()}
   for(let t=0;t<=Tm;t+=stepT){g.beginPath();g.moveTo(X(t),y0);g.lineTo(X(t),y1);g.stroke()}
   g.strokeStyle='#64748b';g.beginPath();g.moveTo(x0,Y(0));g.lineTo(x1,Y(0));g.moveTo(x0,y0);g.lineTo(x0,y1);g.stroke();
-  g.font='11px system-ui,sans-serif';g.fillStyle='#93a3c0';g.textAlign='right';g.textBaseline='middle';
+  g.font=(big?11:12)+'px system-ui,sans-serif';g.fillStyle='#93a3c0';g.textAlign='right';g.textBaseline='middle';
   for(let e=-Em;e<=Em+1e-9;e+=Em>2?1:0.5)g.fillText(fmt(e,1),x0-4,Y(e));
   g.textAlign='center';g.textBaseline='alphabetic';const lab=Tm>700?200:100;for(let t=0;t<=Tm;t+=lab)g.fillText(t,X(t),h-8);
   g.textAlign='left';g.fillText('e (V)',x0+4,10);g.textAlign='right';g.fillText('t (ms), tính từ lúc thả',x1,10);
   if($('kPhi').checked&&pMax>0){const k=Em*0.9/pMax;runs.forEach(R=>{g.strokeStyle=R.col;g.globalAlpha=.55;g.setLineDash([4,3]);g.lineWidth=1.4;g.beginPath();R.pts.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[2]*k)):g.moveTo(X(p[0]),Y(p[2]*k)));g.stroke()});g.setLineDash([]);g.globalAlpha=1;
     g.fillStyle='#94a3b8';g.textAlign='left';g.fillText('nét đứt: N·Φ',x0+44,10)}
-  runs.forEach(R=>{if(R.pts.length<2)return;g.strokeStyle=R.col;g.lineWidth=R===cur?2.4:1.5;g.globalAlpha=R===cur?1:.75;g.beginPath();R.pts.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke();g.globalAlpha=1});
+  runs.forEach(R=>{if(R.pts.length<2)return;g.strokeStyle=R.col;g.lineWidth=(R===cur?2.4:1.5)*(big?1:1.3);g.globalAlpha=R===cur?1:.75;g.beginPath();R.pts.forEach((p,j)=>j?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke();g.globalAlpha=1});
   // đánh dấu hai đỉnh của lần thả hiện tại
-  if(cur&&cur.emax>0.02&&cur.emin<-0.02){g.font='bold 11px system-ui,sans-serif';
+  if(cur&&cur.emax>0.02&&cur.emin<-0.02){g.font='bold '+(big?11:13)+'px system-ui,sans-serif';
     for(const [t,e] of[[cur.tmax,cur.emax],[cur.tmin,cur.emin]]){g.fillStyle=cur.col;g.beginPath();g.arc(X(t*1000),Y(e),3.2,0,TAU);g.fill();
       g.fillStyle='#e6ecf7';g.textAlign=X(t*1000)>w-80?'right':'left';g.textBaseline='middle';g.fillText(sgn(e,2)+' V',X(t*1000)+(X(t*1000)>w-80?-6:6),Y(e)+(e>0?6:-6))}}
   // dấu thời gian hiện tại
-  if(mag.state==='fall'){g.strokeStyle='rgba(250,204,21,.5)';g.beginPath();g.moveTo(X(mag.t*1000),y0);g.lineTo(X(mag.t*1000),y1);g.stroke()}
+  if(mag.state==='fall'){g.strokeStyle='rgba(250,204,21,.5)';g.beginPath();g.moveTo(X(mag.t*1000),y0);g.lineTo(X(mag.t*1000),y1);g.stroke();
+    g.fillStyle='#fde047';g.beginPath();g.arc(X(mag.t*1000),Y(mag.e),4,0,TAU);g.fill()}   // điểm đang ghi
+  if(!big){const lg=runs.map(R=>`<span><i style="background:${R.col}"></i>${R.lab.split(' · ').slice(0,2).join(', ')}${R===cur?' (đang xem)':''}</span>`).join('')||'<span>Bấm “Thả nam châm” hoặc kéo nam châm lên rồi buông tay.</span>';if(lg!==lastGl){$('gleg').innerHTML=lg;lastGl=lg}return}
   const lg=runs.map(R=>`<div><i style="background:${R.col}"></i>${R.lab}${R.emax>0.02?` · đỉnh ${sgn(R.emax,2)} V / ${sgn(R.emin,2)} V`:''}</div>`).join('')||'<div>Chưa có lần thả nào.</div>';
   if(lg!==lastLg){$('legend').innerHTML=lg;lastLg=lg}
 }
-let lastLg='';
+let lastLg='',lastGl='';
 // màn hình nhỏ trên bộ thu thập dữ liệu (vẽ lại đồ thị của lần thả hiện tại)
 function drawScreen(){const g=scrC.getContext('2d');g.fillStyle='#0b1427';g.fillRect(0,0,256,128);g.strokeStyle='#334155';g.beginPath();g.moveTo(0,64);g.lineTo(256,64);g.stroke();
   if(cur&&cur.pts.length>1){const T=Math.max(300,cur.pts[cur.pts.length-1][0]+20);g.strokeStyle='#38bdf8';g.lineWidth=3;g.beginPath();cur.pts.forEach((p,j)=>{const x=p[0]/T*256,y=64-p[1]/2.2*56;j?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()}
@@ -492,8 +510,16 @@ $('bNew').onclick=()=>{const q=QS[Math.floor(Math.random()*QS.length)],idx=q.o.m
     $('score').textContent=`Đúng ${Q.ok} / ${Q.n} câu`;q.d();hint('Mô phỏng đã chuyển sang tình huống minh họa')})};
 
 // ====== Vòng lặp ======
-function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
-new ResizeObserver(resize).observe(view);resize();setView('iso');Object.assign(cam,tc);
+const stage=$('stage'),gfl=$('gfloat'),mobile=matchMedia('(max-width:860px)');
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;
+  // khi đồ thị nằm trên khung 3D: dời cảnh sang trái (máy tính) hoặc lên trên (điện thoại) để không bị che
+  if($('kG').checked){const r=gfl.getBoundingClientRect();if(mobile.matches)camera.setViewOffset(w,h,0,Math.round((r.height+8)/2),w,h);else camera.setViewOffset(w,h,Math.round((r.width+10)/3),0,w,h)}
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix()}
+function layoutG(){const on=$('kG').checked;stage.classList.toggle('gon',on);gfl.style.display=on?'flex':'none';resize();drawGraph(gcv2,false)}
+$('kG').onchange=layoutG;$('bGHide').onclick=()=>{$('kG').checked=false;layoutG();hint('Đã ẩn đồ thị – bật lại ở mục Hiển thị')};
+mobile.addEventListener&&mobile.addEventListener('change',resize);
+new ResizeObserver(resize).observe(view);new ResizeObserver(resize).observe(gfl);layoutG();setView('iso');Object.assign(cam,tc);
 let last=performance.now(),uiT=0;
 function loop(now){
   const rdt=clamp((now-last)/1000,0,0.05);last=now;
@@ -520,7 +546,8 @@ function loop(now){
   if(showH){const t='h = '+Math.round(st.h*100)+' cm';if(lbH.userData.t!==t){lbH.userData.t=t;relabel(lbH,t,'#1e3a8a',0.24)}lbH.position.set(0.85,mag.y-MH/2+0.1,0)}
   labels.forEach(l=>{if(!special.includes(l))l.visible=kL});lbLog.visible=lbSen.visible=kL&&st.mode==='sensor';lbRes.visible=kL&&st.mode==='R';
   tubeMat.opacity=viewMode==='top'?0.15:0.33;
-  uiT+=rdt;if(uiT>0.08){uiT=0;ui();drawGraph();if(logger.visible)drawScreen()}
+  const gOn=$('kG').checked;if(gOn&&mag.state==='fall')drawGraph(gcv2,false);   // đồ thị cạnh mô phỏng: vẽ lại mỗi khung hình khi đang rơi
+  uiT+=rdt;if(uiT>0.08){uiT=0;ui();drawGraph();if(gOn&&mag.state!=='fall')drawGraph(gcv2,false);if(logger.visible)drawScreen()}
   applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
 }
 window.__namchamcuonday={st,mag,get runs(){return runs},get cur(){return cur},fluxG,step,hold,drop,syncUI,PO,MASS,G,U,YC,rCoil,camera};   // dùng cho kiểm thử tự động
