@@ -142,11 +142,11 @@ window.MO_PHONG = [
   },
   {
     ten: "Nam châm rơi trong ống đồng 3D",
-    mota: "Thả nam châm vào hai ống đặt cạnh nhau (nhựa, nhôm, đồng, đồng xẻ khe): trong ống đồng nam châm rơi từ từ do dòng điện xoáy trên thành ống. Quan sát hai vòng dòng điện ngược chiều, lực P và F từ, đồ thị quãng đường – thời gian.",
+    mota: "Thả nam châm vào hai ống đặt cạnh nhau (nhựa, nhôm, đồng, đồng xẻ khe) hoặc thả rơi tự do không có ống để so sánh: trong ống đồng nam châm rơi từ từ do dòng điện xoáy trên thành ống. Quan sát hai vòng dòng điện ngược chiều, lực P và F từ, đồ thị quãng đường – thời gian.",
     chuong: "Ứng dụng cảm ứng điện từ",
     lop: 12,
     file: "sims/nam-cham-roi-ong-dong-3d.html",
-    tags: ["nam châm rơi", "ống đồng", "dòng điện xoáy", "Foucault", "Fuco", "Lenz", "3D", "kéo thả"]
+    tags: ["nam châm rơi", "rơi tự do", "ống đồng", "dòng điện xoáy", "Foucault", "Fuco", "Lenz", "3D", "kéo thả"]
   },
   {
     ten: "Loa điện động và micro điện động 3D",

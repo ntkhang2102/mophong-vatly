@@ -103,9 +103,9 @@ button.wide{flex:1}
       <h2>Thả nam châm</h2>
       <div class="row"><button class="wide pri" id="bDrop">⬇ Thả cả hai cùng lúc</button><button class="wide" id="bReset">↺ Đưa về miệng ống</button></div>
       <div class="lbl">Ống bên trái</div>
-      <div class="seg" id="seg0"><button data-v="nhua">Nhựa</button><button data-v="nhom">Nhôm</button><button data-v="dong">Đồng</button><button data-v="khe">Đồng xẻ khe</button></div>
+      <div class="seg" id="seg0"><button data-v="khong">Không có ống</button><button data-v="nhua">Nhựa</button><button data-v="nhom">Nhôm</button><button data-v="dong">Đồng</button><button data-v="khe">Đồng xẻ khe</button></div>
       <div class="lbl">Ống bên phải</div>
-      <div class="seg" id="seg1"><button data-v="nhua">Nhựa</button><button data-v="nhom">Nhôm</button><button data-v="dong">Đồng</button><button data-v="khe">Đồng xẻ khe</button></div>
+      <div class="seg" id="seg1"><button data-v="khong">Không có ống</button><button data-v="nhua">Nhựa</button><button data-v="nhom">Nhôm</button><button data-v="dong">Đồng</button><button data-v="khe">Đồng xẻ khe</button></div>
       <div class="lbl">Vật được thả</div>
       <div class="seg" id="segObj"><button data-v="mag">Nam châm</button><button data-v="al">Thỏi nhôm (không phải nam châm)</button></div>
       <div class="row"><button class="wide" id="bFlip">Đổi cực nam châm</button></div>
@@ -149,6 +149,7 @@ button.wide{flex:1}
         <li>Phần ống <b>phía dưới</b> nam châm: từ thông tăng ⇒ dòng điện xoáy tạo từ trường <b>đẩy</b> nam châm. Phần ống <b>phía trên</b>: từ thông giảm ⇒ dòng điện ngược chiều, tạo từ trường <b>hút</b> nam châm lại. Cả hai đều <b>cản trở</b> chuyển động rơi (định luật Lenz).</li>
         <li>Lực cản tỉ lệ với tốc độ: nam châm nhanh chóng rơi <b>đều</b> khi lực từ F cân bằng trọng lực P. Thế năng chuyển thành <b>nhiệt</b> trong thành ống.</li>
         <li>Ống dẫn điện càng tốt (đồng tốt hơn nhôm) ⇒ dòng điện xoáy càng mạnh ⇒ rơi càng chậm. Ống nhựa, hoặc vật không phải nam châm ⇒ rơi gần như tự do.</li>
+        <li><b>Không có ống</b>: nam châm rơi tự do (a = g, rơi 1 m mất ≈ 0,45 s). Ống nhựa cho kết quả giống hệt rơi tự do; ống đồng làm nam châm rơi chậm hơn hàng chục lần.</li>
         <li>Ống đồng <b>xẻ một khe dọc</b>: dòng điện không chạy vòng quanh ống được ⇒ dòng xoáy yếu hẳn ⇒ nam châm rơi nhanh hơn nhiều.</li>
       </ul>
     </div>
@@ -168,10 +169,10 @@ if(!window.THREE){const n=$('nogl');n.style.display='flex';n.textContent='Không
 const U=6,TT=6.6,TB=0.6,RO=0.3,RI=0.25,PAD=0.12;     // miệng ống, đáy ống, bán kính ngoài/trong, đệm hứng
 const MR=0.19,MH=0.32;                               // nam châm: bán kính, chiều cao
 const G=9.8,KM=57.6;                                 // k/m với ống đồng ⇒ vận tốc giới hạn g/KM ≈ 0,17 m/s
-const SIG={nhua:0,nhom:0.59,dong:1,khe:0.06};
-const TNAME={nhua:'Ống nhựa',nhom:'Ống nhôm',dong:'Ống đồng',khe:'Ống đồng xẻ khe'};
+const SIG={khong:0,nhua:0,nhom:0.59,dong:1,khe:0.06};
+const TNAME={khong:'Không có ống (rơi tự do)',nhua:'Ống nhựa',nhom:'Ống nhôm',dong:'Ống đồng',khe:'Ống đồng xẻ khe'};
 const TX=[-1.6,1.6];
-const st={tube:['nhua','dong'],obj:'mag',nDown:true,spd:1,t:0,follow:false};
+const st={tube:['khong','dong'],obj:'mag',nDown:true,spd:1,t:0,follow:false};
 const HOLD=TT+MH/2+0.02;   // vị trí cầm nam châm ngay miệng ống
 const mags=[0,1].map(i=>({i,x:TX[i],y:HOLD,v:0,state:'hold',tube:i,tIn:null,tOut:null,vmax:0,s:[],t0:null}));
 
@@ -193,9 +194,10 @@ const grid=new THREE.GridHelper(10,10,0xa3acb9,0xbfc7d2);grid.position.y=0.002;s
 const steel=new THREE.MeshStandardMaterial({color:0x6b7280,metalness:.6,roughness:.35});
 const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,7.4,16),steel);rod.position.set(0,3.7,-1.0);scene.add(rod);
 const foot=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.12,1.4),steel);foot.position.set(0,0.06,-0.6);scene.add(foot);
+const rings=[];   // vòng kẹp quanh từng ống
 for(const y of[1.4,5.8]){const arm=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.1,0.1),steel);arm.position.set(0,y,-1.0);scene.add(arm);
-  for(const x of TX){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.16,0.75),steel);c.position.set(x,y,-0.62);scene.add(c);
-    const cl=new THREE.Mesh(new THREE.TorusGeometry(RO+0.04,0.035,8,32),steel);cl.rotation.x=Math.PI/2;cl.position.set(x,y,0);scene.add(cl)}}
+  for(const x of TX){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.16,0.75),steel);c.position.set(x,y,-0.62);scene.add(c);(rings[TX.indexOf(x)]||=[]).push(c);
+    const cl=new THREE.Mesh(new THREE.TorusGeometry(RO+0.04,0.035,8,32),steel);cl.rotation.x=Math.PI/2;cl.position.set(x,y,0);scene.add(cl);(rings[TX.indexOf(x)]||=[]).push(cl)}}
 // đệm hứng dưới mỗi ống
 for(const x of TX){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,PAD,24),new THREE.MeshStandardMaterial({color:0x334155,roughness:.9}));p.position.set(x,PAD/2,0);scene.add(p)}
 
@@ -209,7 +211,9 @@ const tubes=[0,1].map(i=>{
     const gap=kind==='khe'?0.22:0,start=-Math.PI/2+gap/2;   // khe hướng về phía người xem (+z)
     t.mesh=new THREE.Mesh(new THREE.CylinderGeometry(RO,RO,TT-TB,48,1,true,start,TAU-gap),mat);t.mesh.position.y=(TT+TB)/2;t.mesh.renderOrder=5;g.add(t.mesh);
     t.lip=new THREE.Mesh(new THREE.RingGeometry(RI,RO,48,1,start,TAU-gap),new THREE.MeshStandardMaterial({color:0x7c4a24,side:THREE.DoubleSide}));t.lip.rotation.x=-Math.PI/2;t.lip.position.y=TT+0.001;g.add(t.lip);
-    const c={nhua:0xdbeafe,nhom:0xc9ced6,dong:0xc4733f,khe:0xc4733f}[kind];mat.color.setHex(c);mat.metalness=kind==='nhua'?0:.5;t.lip.material.color.setHex(kind==='nhua'?0x93c5fd:kind==='nhom'?0x94a3b8:0x7c4a24);
+    const c={nhua:0xdbeafe,nhom:0xc9ced6,dong:0xc4733f,khe:0xc4733f}[kind];mat.color.setHex(c||0xdbeafe);mat.metalness=kind==='nhua'?0:.5;
+    t.mesh.visible=t.lip.visible=kind!=='khong';(rings[i]||[]).forEach(r=>r.visible=kind!=='khong');   // không có ống: nam châm rơi tự do trong không khí
+    t.lip.material.color.setHex(kind==='nhua'?0x93c5fd:kind==='nhom'?0x94a3b8:0x7c4a24);
   };
   return t;
 });
@@ -291,12 +295,12 @@ el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
   if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,3,30);return}
   if(drag){setNdc(e);if(ray.ray.intersectPlane(plane,hit)){const m=drag.m;m.x=clamp(hit.x,-4.5,4.5);m.y=clamp(hit.y,MH/2,TT+2.2);
       // không cho xuyên qua thành ống từ bên cạnh
-      for(const x of TX)if(Math.abs(m.x-x)<RO+MR&&m.y<TT+MH/2)m.y=TT+MH/2+0.02}}
+      TX.forEach((x,i)=>{if(st.tube[i]!=='khong'&&Math.abs(m.x-x)<RO+MR&&m.y<TT+MH/2)m.y=TT+MH/2+0.02})}}
   else if(orbit){tc.az-=(e.clientX-prev.x)*0.008;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.006,-0.1,1.5)}});
 function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;
   if(drag&&!ptrs.size){const m=drag.m;let k=-1;TX.forEach((x,i)=>{if(Math.abs(m.x-x)<0.75)k=i});
     if(k>=0){if(mags.some(o=>o!==m&&o.tube===k&&o.state!=='rest')){hint('Ống này đang có vật khác, hãy chờ hoặc bấm “Đưa về miệng ống”');k=-1}}
-    if(k>=0){m.x=TX[k];m.y=HOLD;m.tube=k;release(m);hint(`Đã thả vào ${TNAME[st.tube[k]].toLowerCase()}`)}
+    if(k>=0){m.x=TX[k];m.y=HOLD;m.tube=k;release(m);hint(st.tube[k]==='khong'?'Đã thả rơi tự do (không có ống)':`Đã thả vào ${TNAME[st.tube[k]].toLowerCase()}`)}
     else{m.tube=-1;m.state='fall';m.v=0;m.t0=null}
     drag=null;el.style.cursor='default'}
   if(!ptrs.size)orbit=false}
@@ -335,7 +339,7 @@ function syncUI(){
     m.lo.material=st.nDown?mN:mS;m.hi.material=st.nDown?mS:mN;m.topFace.material.map=st.nDown?texS:texN;m.topFace.material.needsUpdate=true});
 }
 function resetAll(){mags.forEach((m,i)=>{m.x=TX[i];m.y=HOLD;m.v=0;m.state='hold';m.tube=i;m.tIn=null;m.tOut=null;m.vmax=0;m.s=[];m.t0=null})}
-function dropAll(){resetAll();mags.forEach(release);hint('Đã thả đồng thời hai vật vào hai ống')}
+function dropAll(){resetAll();mags.forEach(release);hint(st.tube.includes('khong')?'Đã thả đồng thời hai vật':'Đã thả đồng thời hai vật vào hai ống')}
 [0,1].forEach(i=>$('seg'+i).querySelectorAll('button').forEach(b=>b.onclick=()=>{st.tube[i]=b.dataset.v;syncUI();resetAll()}));
 $('segObj').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.obj=b.dataset.v;syncUI();resetAll()});
 $('segSpd').querySelectorAll('button').forEach(b=>b.onclick=()=>{st.spd=+b.dataset.v;syncUI()});
@@ -365,19 +369,21 @@ let lastE='',lastC='',lastR='';
 const objName=()=>st.obj==='mag'?'Nam châm':'Thỏi nhôm';
 function tThrough(m){return m.tOut!==null&&m.tIn!==null?m.tOut-m.tIn:null}
 function ui(){
-  const c=mags.map((m,i)=>{const tt=tThrough(m);return[`${['Trái','Phải'][i]} · ${TNAME[st.tube[i]].replace('Ống ','')}`,tt!==null?fmt(tt,2)+' s':m.state==='fall'?fmt(m.v,2)+' m/s':'chờ thả',i?'ind':'']})
+  const c=mags.map((m,i)=>{const tt=tThrough(m);return[`${['Trái','Phải'][i]} · ${TNAME[st.tube[i]].replace('Ống ','').replace(' (rơi tự do)','')}`,tt!==null?fmt(tt,2)+' s':m.state==='fall'?fmt(m.v,2)+' m/s':'chờ thả',i?'ind':'']})
     .map(([a,b,cl])=>`<div class="chip ${cl}">${a}: <b>${b}</b></div>`).join('');if(c!==lastC){$('chips').innerHTML=c;lastC=c}
   const rows=[];mags.forEach((m,i)=>{const tt=tThrough(m),a=KM*SIG[st.tube[i]]*(st.obj==='mag'?1:0);
     rows.push(`<div class="cell h" style="grid-column:1/-1;color:${LCOL[i]}">${['Ống trái','Ống phải'][i]}: ${TNAME[st.tube[i]].toLowerCase()} · ${objName().toLowerCase()}</div>`);
-    rows.push(`<div class="cell"><div class="k">Thời gian rơi hết ống</div><div class="val">${tt!==null?fmt(tt,2)+' s':m.state==='fall'&&m.tIn!==null?'đang rơi…':'–'}</div></div>`);
-    rows.push(`<div class="cell"><div class="k">${a>0?'Vận tốc giới hạn (rơi đều)':'Vận tốc khi ra khỏi ống'}</div><div class="val">${a>0?fmt(Math.min(G/a,4.43),2):fmt(4.43,2)} m/s</div></div>`)});
+    rows.push(`<div class="cell"><div class="k">${st.tube[i]==='khong'?'Thời gian rơi 1 m':'Thời gian rơi hết ống'}</div><div class="val">${tt!==null?fmt(tt,2)+' s':m.state==='fall'&&m.tIn!==null?'đang rơi…':'–'}</div></div>`);
+    rows.push(`<div class="cell"><div class="k">${a>0?'Vận tốc giới hạn (rơi đều)':st.tube[i]==='khong'?'Vận tốc sau khi rơi 1 m':'Vận tốc khi ra khỏi ống'}</div><div class="val">${a>0?fmt(Math.min(G/a,4.43),2):fmt(4.43,2)} m/s</div></div>`)});
   rows.push(`<div class="cell" style="grid-column:1/-1"><div class="k">So sánh: rơi tự do hết 1 m mất</div><div class="val">0,45 s</div></div>`);
   const r=rows.join('');if(r!==lastR){$('res').innerHTML=r;lastR=r}
   const m=mags[1],k=st.tube[1];let s='<ol>';
   if(st.obj!=='mag'){s+='<li>Thỏi nhôm <b>không phải nam châm</b>: nó không tạo ra từ trường ⇒ khi rơi, từ thông qua thành ống không biến thiên ⇒ không có dòng điện xoáy.</li><li>Thỏi nhôm rơi gần như <b>tự do</b> trong cả hai ống (≈ 0,45 s cho 1 m), dù ống bằng đồng.</li>'}
   else{
-    s+='<li>Nam châm tạo từ trường (đường sức xanh lá). Khi nam châm rơi, từ thông qua từng “vòng” của thành ống liên tục biến thiên.</li>';
-    if(k==='nhua')s+='<li>Ống bên phải là <b>ống nhựa không dẫn điện</b> ⇒ không có dòng điện cảm ứng ⇒ nam châm rơi tự do.</li>';
+    if(k!=='khong')s+='<li>Nam châm tạo từ trường (đường sức xanh lá). Khi nam châm rơi, từ thông qua từng “vòng” của thành ống liên tục biến thiên.</li>';
+    st.tube.forEach((t,i)=>{if(t==='khong'&&!(i===1))s+=`<li>Bên ${['trái','phải'][i]} <b>không có ống</b>: nam châm chỉ chịu trọng lực P (bỏ qua sức cản không khí) ⇒ <b>rơi tự do</b> với a = g ≈ 9,8 m/s²; rơi 1 m mất ≈ 0,45 s, đạt v ≈ 4,43 m/s. Đây là <b>mốc để so sánh</b>.</li>`});
+    if(k==='khong')s+='<li>Bên phải <b>không có ống</b>: không có vật dẫn nào quanh nam châm ⇒ không có dòng điện cảm ứng, không có lực từ cản ⇒ nam châm <b>rơi tự do</b> với a = g ≈ 9,8 m/s² (rơi 1 m mất ≈ 0,45 s). Đây là mốc để so sánh.</li>';
+    else if(k==='nhua')s+='<li>Ống bên phải là <b>ống nhựa không dẫn điện</b> ⇒ không có dòng điện cảm ứng ⇒ nam châm rơi tự do.</li>';
     else{
       s+=`<li>Thành ${TNAME[k].toLowerCase()} dẫn điện ⇒ xuất hiện <b>dòng điện xoáy chạy vòng quanh ống</b>: một vòng ngay <b>dưới</b> nam châm (từ thông tăng) và một vòng ngay <b>trên</b> nam châm (từ thông giảm), hai vòng <b>ngược chiều nhau</b>.</li>`;
       s+='<li>Định luật Lenz: vòng dưới tạo từ trường <b>đẩy</b> nam châm, vòng trên tạo từ trường <b>hút</b> nam châm lại ⇒ lực từ F hướng lên, <b>cản trở</b> chuyển động rơi.</li>';
@@ -392,7 +398,8 @@ function ui(){
 // ====== Đố nhanh ======
 const setup=(a,b,obj='mag')=>{st.tube=[a,b];st.obj=obj;syncUI();dropAll()};
 const QS=[
-  {q:'Thả một nam châm vào ống đồng dựng đứng, nam châm rơi chậm hơn nhiều so với rơi tự do. Nguyên nhân là:',o:['Dòng điện xoáy trong thành ống tạo lực từ cản trở chuyển động của nam châm','Nam châm bị ống đồng hút dính vào thành ống','Không khí trong ống cản mạnh','Đồng có từ tính mạnh hơn nam châm'],e:'Nam châm rơi ⇒ từ thông qua thành ống biến thiên ⇒ dòng điện xoáy ⇒ lực từ hướng lên cản trở chuyển động (Lenz). Đồng không bị nam châm hút.',d:()=>setup('nhua','dong')},
+  {q:'Thả đồng thời hai nam châm giống nhau từ cùng độ cao: một rơi tự do (không có ống), một rơi trong ống nhựa dựng đứng. Kết quả:',o:['Hai nam châm chạm đệm gần như cùng lúc','Nam châm trong ống nhựa chạm đệm muộn hơn nhiều','Nam châm trong ống nhựa chạm đệm sớm hơn','Nam châm rơi tự do bị lệch hướng'],e:'Nhựa không dẫn điện ⇒ không có dòng điện cảm ứng ⇒ không có lực từ cản ⇒ nam châm trong ống nhựa cũng rơi tự do như khi không có ống.',d:()=>setup('khong','nhua')},
+  {q:'Thả một nam châm vào ống đồng dựng đứng, nam châm rơi chậm hơn nhiều so với rơi tự do. Nguyên nhân là:',o:['Dòng điện xoáy trong thành ống tạo lực từ cản trở chuyển động của nam châm','Nam châm bị ống đồng hút dính vào thành ống','Không khí trong ống cản mạnh','Đồng có từ tính mạnh hơn nam châm'],e:'Nam châm rơi ⇒ từ thông qua thành ống biến thiên ⇒ dòng điện xoáy ⇒ lực từ hướng lên cản trở chuyển động (Lenz). Đồng không bị nam châm hút.',d:()=>setup('khong','dong')},
   {q:'Thả thỏi nhôm (không phải nam châm) có cùng kích thước vào ống đồng thì:',o:['Thỏi nhôm rơi gần như tự do','Thỏi nhôm rơi chậm như nam châm','Thỏi nhôm bị kẹt lại trong ống','Thỏi nhôm rơi chậm hơn nam châm'],e:'Thỏi nhôm không tạo từ trường ⇒ từ thông qua thành ống không biến thiên ⇒ không có dòng điện xoáy.',d:()=>setup('nhua','dong','al')},
   {q:'Thay ống đồng bằng ống đồng có một khe xẻ dọc theo chiều dài ống. Nam châm sẽ:',o:['Rơi nhanh hơn nhiều vì dòng điện không chạy vòng quanh ống được','Rơi chậm hơn','Rơi như trong ống đồng nguyên vẹn','Dừng lại trong ống'],e:'Khe dọc cắt đứt đường đi vòng quanh ống của dòng điện xoáy ⇒ dòng yếu ⇒ lực cản nhỏ.',d:()=>setup('dong','khe')},
   {q:'Khi nam châm đã rơi đều trong ống đồng thì:',o:['Lực từ do dòng điện xoáy cân bằng với trọng lực','Lực từ bằng 0','Lực từ lớn hơn trọng lực','Nam châm không còn chịu trọng lực'],e:'Rơi đều ⇒ gia tốc bằng 0 ⇒ hợp lực bằng 0 ⇒ F từ = P.',d:()=>{setup('nhua','dong');setView('follow')}},
