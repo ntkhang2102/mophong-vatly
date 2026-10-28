@@ -27,6 +27,9 @@ body{background:var(--panel);color:var(--text);font-family:var(--font);font-size
 .hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(15,23,42,.88);color:#fff;padding:7px 14px;border-radius:20px;font-size:13px;transition:opacity 1s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
 .views{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .views button{background:rgba(15,23,42,.85);font-size:12.5px;padding:6px 10px}
+.views .vsep{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#334155;text-align:center;margin-top:4px;border-top:1px solid #9fb0c8;padding-top:5px}
+.views .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.views .pad button{padding:5px 0;font-size:13px}
 .panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:12px 24px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px;min-width:0}
 .back{color:var(--accent2);text-decoration:none;font-size:12.5px}.back:hover{text-decoration:underline}
 h1{font-size:17px;margin:0;line-height:1.3;text-wrap:balance}
@@ -74,6 +77,7 @@ label.chk input{accent-color:var(--accent)}
 @media (max-width:860px){
   .chip{font-size:12.5px;padding:3px 8px}
   .views button{font-size:11px;padding:4px 7px}
+  .views .pad button{padding:3px 0;font-size:12px}.views .vsep{font-size:10px;margin-top:2px}
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto}
   .stage{height:62vh;min-height:360px}
@@ -98,8 +102,11 @@ table.dt th{color:var(--muted);font-weight:600;background:#0b1427}
       <button data-view="line">Đường dây 500 kV</button>
       <button data-view="sub">Các trạm hạ áp</button>
       <button data-view="home">Nơi tiêu thụ 220 V</button>
+      <div class="vsep">Di chuyển tự do</div>
+      <button id="bPan" title="Bật: kéo 1 ngón / chuột trái để dời cảnh thay vì xoay">✥ Kéo để: xoay</button>
+      <div class="pad"><span></span><button data-mv="0,-1" aria-label="Lên">▲</button><span></span><button data-mv="-1,0" aria-label="Sang trái">◀</button><button data-mv="zi" aria-label="Phóng to">＋</button><button data-mv="1,0" aria-label="Sang phải">▶</button><span></span><button data-mv="0,1" aria-label="Xuống">▼</button><button data-mv="zo" aria-label="Thu nhỏ">－</button></div>
     </div>
-    <div class="hint" id="hint">Bấm vào máy biến áp / trạm để xem thông số · Kéo vùng trống để xoay · Lăn chuột / chụm 2 ngón để phóng to</div>
+    <div class="hint" id="hint">Kéo để xoay · Chuột phải / Shift + kéo / hai ngón để dời cảnh · Lăn chuột phóng to vào chỗ con trỏ · Nhấp đúp để bay tới chỗ đó · Bấm vào trạm để xem thông số</div>
   </div>
 
   <div class="panel">
@@ -191,7 +198,7 @@ try{renderer=new THREE.WebGLRenderer({antialias:true})}catch(e){const n=$('nogl'
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 const view=$('view');view.appendChild(renderer.domElement);
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xdbeafe);scene.fog=new THREE.Fog(0xdbeafe,160,320);
-const camera=new THREE.PerspectiveCamera(40,1,0.5,600);
+const camera=new THREE.PerspectiveCamera(40,1,0.2,600);
 scene.add(new THREE.HemisphereLight(0xffffff,0x6b8f5e,0.85));
 const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(30,60,40);scene.add(sun);
 const fill=new THREE.DirectionalLight(0xc7d7ff,0.3);fill.position.set(-40,20,-30);scene.add(fill);
@@ -214,9 +221,9 @@ function makeLabel(text,color='#0f172a',size=0.3,bg='rgba(255,255,255,.92)'){
   g.fillStyle=bg;g.beginPath();const r=16;g.moveTo(r,0);g.arcTo(w,0,w,h,r);g.arcTo(w,h,0,h,r);g.arcTo(0,h,0,0,r);g.arcTo(0,0,w,0,r);g.fill();
   g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';lines.forEach((l,i)=>g.fillText(l,w/2,37+i*60));
   const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
-  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.renderOrder=30;return s}
+  s.scale.set(size*0.72*w/60,size*0.72*h/60,1);s.userData.bs=s.scale.clone();s.renderOrder=30;return s}
 const L=(t,c,x,y,z,s=2.2,arr=labels)=>{const l=makeLabel(t,c,s);l.position.set(x,y,z);scene.add(l);arr.push(l);return l};
-function setText(s,t,c,size,bg){if(s.userData.text===t)return;s.userData.text=t;const n=makeLabel(t,c,size,bg);s.material.map.dispose();s.material.map=n.material.map;s.scale.copy(n.scale)}
+function setText(s,t,c,size,bg){if(s.userData.text===t)return;s.userData.text=t;const n=makeLabel(t,c,size,bg);s.material.map.dispose();s.material.map=n.material.map;s.scale.copy(n.scale);s.userData.bs=n.scale.clone()}
 
 // ---- Nhà máy thủy điện: đập, hồ chứa, nhà máy với 2 tổ máy phát ----
 const XPL=-78;
@@ -321,20 +328,44 @@ function setView(k){const v=VIEWS[k];let d=((v[0]-cam.az+Math.PI)%TAU+TAU)%TAU-M
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
 function applyCam(){for(const n in cam)cam[n]+=(tc[n]-cam[n])*0.12;const ce=Math.cos(cam.el);camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az),cam.ty+cam.r*Math.sin(cam.el),cam.tz+cam.r*ce*Math.cos(cam.az));camera.lookAt(cam.tx,cam.ty,cam.tz)}
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
-const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=150,moved=0,downAt=null;
 const pickables=[];stations.forEach(s=>s.g.traverse(o=>{if(o.isMesh){o.userData.st=s;pickables.push(o)}}));genG.traverse(o=>{if(o.isMesh){o.userData.st=stPlant;pickables.push(o)}});
+const el=renderer.domElement,ptrs=new Map();let pinch0=0,r0=150,mid0=null,moved=0,downAt=null,panMode=false,panDrag=false,lastTap=0;
+const RMIN=3,RMAX=260;
 function setNdc(e){const r=el.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera)}
+// ====== Di chuyển tự do: dời tâm nhìn (pan), phóng to vào chỗ con trỏ, nhấp đúp để bay tới ======
+const ground=new THREE.Plane(new THREE.Vector3(0,1,0),0),gHit=new THREE.Vector3();
+function clampT(){tc.tx=clamp(tc.tx,-200,200);tc.tz=clamp(tc.tz,-95,95);tc.ty=clamp(tc.ty,0,60)}
+function pan(dx,dy){   // dx, dy: số điểm ảnh kéo trên màn hình
+  const k=2*tc.r*Math.tan(camera.fov*Math.PI/360)/Math.max(1,el.clientHeight),s=Math.sin(tc.az),c=Math.cos(tc.az),f=1/Math.max(0.35,Math.sin(tc.el));
+  tc.tx+=(-dx*c-dy*s*f)*k;tc.tz+=(dx*s-dy*c*f)*k;clampT()}
+function pointAt(e){setNdc(e);const h=ray.intersectObjects(scene.children,true).find(x=>x.object.visible&&!x.object.isSprite&&!x.object.isLine);if(h)return h.point.clone();return ray.ray.intersectPlane(ground,gHit)?gHit.clone():null}
+function zoomAt(e,f){const P=e?pointAt(e):null;const nr=clamp(tc.r*f,RMIN,RMAX),q=1-nr/tc.r;tc.r=nr;if(P){tc.tx+=(P.x-tc.tx)*q;tc.ty+=(P.y-tc.ty)*q;tc.tz+=(P.z-tc.tz)*q;clampT()}}
+function flyTo(e){const P=pointAt(e);if(!P)return;tc.tx=P.x;tc.ty=P.y;tc.tz=P.z;tc.r=clamp(Math.min(tc.r*0.45,30),RMIN,RMAX);clampT();hint('Đã bay tới chỗ vừa nhấp – nhấp đúp tiếp để lại gần hơn, bấm “Toàn cảnh” để quay về')}
+function setPanMode(v){panMode=v;$('bPan').textContent=v?'✥ Kéo để: dời cảnh':'⟳ Kéo để: xoay';$('bPan').classList.toggle('on',v)}
+$('bPan').onclick=()=>{setPanMode(!panMode);hint(panMode?'Kéo một ngón / chuột trái để dời cảnh':'Kéo một ngón / chuột trái để xoay')};setPanMode(false);
+document.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{const v=b.dataset.mv,h=el.clientHeight*0.25;if(v==='zi')zoomAt(null,0.7);else if(v==='zo')zoomAt(null,1/0.7);else{const[a,c]=v.split(',').map(Number);pan(-a*h,-c*h)}});
+el.addEventListener('contextmenu',e=>e.preventDefault());
 el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});hideHint();moved=0;downAt={x:e.clientX,y:e.clientY};
-  if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r}});
+  panDrag=panMode||e.button===2||e.button===1||e.shiftKey||e.ctrlKey;
+  if(ptrs.size===2){const p=[...ptrs.values()];pinch0=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);r0=tc.r;mid0={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}}});
 el.addEventListener('pointermove',e=>{const prev=ptrs.get(e.pointerId);
   if(!prev){setNdc(e);el.style.cursor=ray.intersectObjects(pickables).length?'pointer':'default';return}
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved+=Math.abs(e.clientX-prev.x)+Math.abs(e.clientY-prev.y);
-  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch0>0)tc.r=clamp(r0*pinch0/d,12,260);return}
+  if(ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),m={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+    if(pinch0>0)tc.r=clamp(r0*pinch0/d,RMIN,RMAX);if(mid0){pan(m.x-mid0.x,m.y-mid0.y);mid0=m}return}   // hai ngón: chụm để phóng to, kéo để dời cảnh
+  if(panDrag){pan(e.clientX-prev.x,e.clientY-prev.y);el.style.cursor='move';return}
   tc.az-=(e.clientX-prev.x)*0.007;tc.el=clamp(tc.el+(e.clientY-prev.y)*0.005,0.03,1.5)});
-el.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;
-  if(moved<6&&downAt){setNdc(e);const h=ray.intersectObjects(pickables)[0];if(h){st.sel=h.object.userData.st;showInfo();hint('Đã chọn: '+st.sel.name+' – xem thông số trong bảng bên')}}});
-el.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId)});
-el.addEventListener('wheel',e=>{e.preventDefault();tc.r=clamp(tc.r*(1+Math.sign(e.deltaY)*0.08),12,260)},{passive:false});
+el.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2){pinch0=0;mid0=null}
+  if(moved<6&&downAt){const now=performance.now();if(now-lastTap<350){flyTo(e);lastTap=0;return}lastTap=now;
+    setNdc(e);const h=ray.intersectObjects(pickables)[0];if(h){st.sel=h.object.userData.st;showInfo();hint('Đã chọn: '+st.sel.name+' – xem thông số trong bảng bên')}}
+  if(!ptrs.size)el.style.cursor='default'});
+el.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2){pinch0=0;mid0=null}});
+el.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e,1+Math.sign(e.deltaY)*0.1)},{passive:false});
+// bàn phím: mũi tên / W A S D dời cảnh, Q E xoay, + − phóng to
+window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;const h=el.clientHeight*0.12,k=e.key.toLowerCase();
+  const act={arrowleft:()=>pan(h,0),a:()=>pan(h,0),arrowright:()=>pan(-h,0),d:()=>pan(-h,0),arrowup:()=>pan(0,h),w:()=>pan(0,h),arrowdown:()=>pan(0,-h),s:()=>pan(0,-h),
+    q:()=>{tc.az+=0.15},e:()=>{tc.az-=0.15},'+':()=>zoomAt(null,0.8),'=':()=>zoomAt(null,0.8),'-':()=>zoomAt(null,1.25)}[k];
+  if(act){act();e.preventDefault()}});
 let hintT=setTimeout(hideHint,10000);function hint(t){const h=$('hint');h.textContent=t;h.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(hideHint,5000)}function hideHint(){$('hint').style.opacity=0}
 
 // ====== Bảng điều khiển ======
@@ -444,9 +475,12 @@ function loop(now){
   setText(lbMain,'Đường dây '+st.U+' kV'+(st.U===500?' Bắc – Nam':''),'#b91c1c',2.2);
   labels.forEach(l=>l.visible=showL);
   uiT+=dt;if(uiT>0.15){uiT=0;ui();drawGraph()}
-  applyCam();renderer.render(scene,camera);requestAnimationFrame(loop);
+  applyCam();
+  // nhãn chữ thu nhỏ khi camera lại gần (xem cận cảnh không bị nhãn che kín màn hình)
+  scene.traverse(o=>{if(o.isSprite&&o.userData.bs){const k=clamp(o.position.distanceTo(camera.position)/80,0.12,1);o.scale.copy(o.userData.bs).multiplyScalar(k)}});
+  renderer.render(scene,camera);requestAnimationFrame(loop);
 }
-window.__tt={st,calc,lossFor,syncUI,camera,cam,tc,setView,stations,S0};   // dùng cho kiểm thử tự động
+window.__tt={st,calc,lossFor,syncUI,camera,cam,tc,setView,stations,S0,scene};   // dùng cho kiểm thử tự động
 ui();requestAnimationFrame(loop);
 })();
 </script>
